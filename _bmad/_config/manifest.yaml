@@ -1,0 +1,9 @@
+installation:
+  version: 6.0.0-alpha.19
+  installDate: 2025-12-21T03:24:47.944Z
+  lastUpdated: 2025-12-21T03:24:47.944Z
+modules:
+  - core
+  - bmm
+ides:
+  - cursor

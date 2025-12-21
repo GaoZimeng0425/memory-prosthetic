@@ -1,0 +1,16 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2025-12-16T05:08:14Z",
+    "last_updated": "2025-12-16T05:08:14Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "quick",
+  "project_root": "/Users/aa00930/Documents/Learn/tauri-app",
+  "output_folder": "docs",
+  "completed_steps": [],
+  "current_step": "step_1",
+  "findings": {},
+  "outputs_generated": ["project-scan-report.json"],
+  "resume_instructions": "Starting from step 1"
+}

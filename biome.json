@@ -1,0 +1,226 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "root": true,
+  "assist": {
+    "includes": ["**", "!**/node_modules", "!**/packages/design/src/components/ui/**", "!**/.next"],
+    "actions": {
+      "source": {
+        "organizeImports": {
+          "level": "on",
+          "options": {
+            "identifierOrder": "natural",
+            "groups": [
+              ":BUN:",
+              ":NODE:",
+              ["npm:*", "npm:*/**"],
+              ["react"],
+              ":PACKAGE_WITH_PROTOCOL:",
+              ":URL:",
+              [":PACKAGE:", "!@prime-next/**"],
+              ":BLANK_LINE:",
+              ["@/assets/**"],
+              ["@prime-next/**"],
+              [":ALIAS:", "!**/*.css", "!@/assets/**"],
+              ":PATH:",
+              {
+                "type": false,
+                "source": "**/*"
+              }
+            ]
+          }
+        },
+        "useSortedAttributes": "on",
+        "useSortedKeys": "off"
+      }
+    }
+  },
+  "vcs": {
+    "clientKind": "git",
+    "defaultBranch": "main",
+    "enabled": true,
+    "useIgnoreFile": true
+  },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "enabled": true
+    },
+    "linter": {
+      "enabled": false
+    }
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/*.svg",
+      "!**/.vscode",
+      "!**/.next",
+      "!**/pnpm-lock.yaml",
+      "!**/node_modules",
+      "!**/packages/design/src/components/ui"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": true,
+    "includes": [
+      "**",
+      ".vscode",
+      "!**/*/generated-new.ts",
+      "!**/*/generated-v2.ts",
+      "!**/.next",
+      "!**/node_modules",
+      "!**/packages/design/src/components/ui/**"
+    ],
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
+    }
+  },
+  "json": {
+    "formatter": {
+      "enabled": true,
+      "indentStyle": "space",
+      "indentWidth": 2,
+      "lineWidth": 120
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "domains": {
+      "next": "recommended"
+    },
+    "includes": ["**", "!**/node_modules", "!**/packages/design/src/components/ui/**", "!**/.next"],
+    "rules": {
+      "recommended": true,
+      "a11y": {
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off"
+      },
+      "complexity": {
+        "recommended": true,
+        "noUselessTernary": {
+          "level": "warn",
+          "fix": "safe"
+        },
+        "noUselessFragments": {
+          "fix": "safe",
+          "level": "info"
+        }
+      },
+      "correctness": {
+        "noNodejsModules": "off",
+        "noUndeclaredDependencies": "off",
+        "useExhaustiveDependencies": "info",
+        "useImportExtensions": "off",
+        "noUnusedVariables": {
+          "options": {
+            "ignoreRestSiblings": true
+          },
+          "level": "warn",
+          "fix": "none"
+        },
+        "noUnusedImports": {
+          "level": "warn",
+          "fix": "none"
+        }
+      },
+      "nursery": {
+        "noFloatingPromises": {
+          "level": "warn",
+          "fix": "safe"
+        },
+        "useExplicitType": "off",
+        "useSortedClasses": {
+          "fix": "safe",
+          "level": "info",
+          "options": {
+            "attributes": ["classList"],
+            "functions": ["cn", "clsx", "cva", "tw"]
+          }
+        }
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noNamespaceImport": "off"
+      },
+      "security": {},
+      "style": {
+        "noDefaultExport": "off",
+        "noEnum": "off",
+        "noImplicitBoolean": "off",
+        "noInferrableTypes": "error",
+        "noNestedTernary": "off",
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "error",
+        "noProcessEnv": "off",
+        "noUnusedTemplateLiteral": "error",
+        "noUselessElse": "error",
+        "useAsConstAssertion": "error",
+        "useBlockStatements": "off",
+        "useComponentExportOnlyModules": "off",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useExplicitLengthCheck": "off",
+        "useNamingConvention": {
+          "level": "info",
+          "options": {
+            "requireAscii": true,
+            "strictCase": false,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "enumMember",
+                  "scope": "any"
+                },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              },
+              {
+                "selector": {
+                  "kind": "objectLiteralMember",
+                  "scope": "any"
+                },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              },
+              {
+                "selector": {
+                  "kind": "const",
+                  "scope": "any"
+                },
+                "formats": ["camelCase", "PascalCase", "CONSTANT_CASE"]
+              }
+            ]
+          }
+        },
+        "useNumberNamespace": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error"
+      },
+      "suspicious": {
+        "noDebugger": {
+          "fix": "none",
+          "level": "info"
+        },
+        "noArrayIndexKey": "warn",
+        "noConsole": "off",
+        "noDuplicateObjectKeys": "error",
+        "noExplicitAny": "warn",
+        "noReactSpecificProps": "off"
+      }
+    }
+  }
+}

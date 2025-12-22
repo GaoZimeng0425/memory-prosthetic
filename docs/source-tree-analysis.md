@@ -109,7 +109,7 @@ tauri-app/
 | `App.tsx` | 主应用组件，包含 Tauri IPC 调用示例 | ⭐ 核心 |
 | `components/ui/` | shadcn/ui 组件库，53 个预构建组件 | 🎨 UI 基础 |
 | `hooks/` | 自定义 React Hooks | 🔧 工具 |
-| `lib/utils.ts` | 工具函数 (`cn` 类名合并) | 🔧 工具 |
+| `utils/tw.ts` | 工具函数 (`cn` 类名合并) | 🔧 工具 |
 | `styles/global.css` | Tailwind CSS 全局样式 | 🎨 样式 |
 
 ### 后端 (`src-tauri/`)

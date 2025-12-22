@@ -1,46 +1,86 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import { invoke } from '@tauri-apps/api/core'
-import './App.css'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@memory-prosthetic/ui/components/ui/tabs'
+import { Library, Search } from 'lucide-react'
+
+import { CollectionList } from '@/components/CollectionList'
+import { EmptyState } from '@/components/EmptyState'
+import { SearchBar } from '@/components/SearchBar'
+import { SearchResults } from '@/components/SearchResults'
+import { useCollections } from '@/hooks/use-collections'
+import { useSearch } from '@/hooks/use-search'
+import '@memory-prosthetic/ui/styles/globals.css'
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState('')
-  const [name, setName] = useState('')
+  const [activeTab, setActiveTab] = useState('collections')
+  const { query, setQuery, results, isLoading: searchLoading, error: searchError, search, clearResults } = useSearch()
+  const { collections, stats, isLoading: collectionsLoading, refresh } = useCollections()
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke('greet', { name }))
-  }
+  const hasSearched = results.length > 0 || searchError
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b bg-card/50 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                <span className="font-bold text-sm text-white">M</span>
+              </div>
+              <h1 className="font-semibold text-xl">Memory Prosthetic</h1>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+      {/* Main content */}
+      <main className="container mx-auto px-4 py-6">
+        <div className="mx-auto max-w-2xl">
+          <Tabs onValueChange={setActiveTab} value={activeTab}>
+            <TabsList className="mb-6 grid w-full grid-cols-2">
+              <TabsTrigger className="flex items-center gap-2" value="collections">
+                <Library className="h-4 w-4" />
+                收集 ({collections.length})
+              </TabsTrigger>
+              <TabsTrigger className="flex items-center gap-2" value="search">
+                <Search className="h-4 w-4" />
+                搜索
+              </TabsTrigger>
+            </TabsList>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault()
-          greet()
-        }}
-      >
-        <input id="greet-input" onChange={(e) => setName(e.currentTarget.value)} placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+            <TabsContent className="space-y-6" value="collections">
+              {collectionsLoading && collections.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                </div>
+              ) : (
+                <CollectionList collections={collections} onRefresh={refresh} stats={stats} />
+              )}
+            </TabsContent>
+
+            <TabsContent className="space-y-6" value="search">
+              <SearchBar
+                isLoading={searchLoading}
+                onClear={clearResults}
+                onQueryChange={setQuery}
+                onSearch={search}
+                query={query}
+              />
+
+              {searchError ? (
+                <EmptyState message={searchError} type="error" />
+              ) : hasSearched && results.length === 0 ? (
+                <EmptyState type="no-results" />
+              ) : results.length > 0 ? (
+                <SearchResults query={query} results={results} />
+              ) : (
+                <EmptyState type="search" />
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
+    </div>
   )
 }
 

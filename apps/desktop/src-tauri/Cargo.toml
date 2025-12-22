@@ -23,3 +23,21 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# Database
+rusqlite = { version = "0.34", features = ["bundled"] }
+
+# HTTP Server
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tower-http = { version = "0.6", features = ["cors"] }
+
+# Embedding / AI
+ort = { version = "2.0.0-rc.10", default-features = false, features = ["ndarray", "download-binaries"] }
+tokenizers = "0.21"
+ndarray = "0.16"
+
+# Utilities
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+once_cell = "1"

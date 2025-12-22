@@ -125,7 +125,7 @@ import { Input } from '@/components/ui/input'
 
 ```typescript
 // cn() - 类名合并工具
-import { cn } from '@/lib/utils'
+import { cn } from '@/utils/tw'
 
 <div className={cn('base-class', conditional && 'conditional-class')} />
 ```

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ESNext",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     /* Bundler mode */
@@ -18,7 +18,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@memory-prosthetic/ui/*": ["../../packages/ui/src/*"]
+      "@memory-prosthetic/shared": ["./packages/shared/src/index.ts"],
+      "@memory-prosthetic/shared/*": ["./packages/shared/src/*"],
+      "@memory-prosthetic/ui": ["./packages/ui/src/index.ts"],
+      "@memory-prosthetic/ui/*": ["./packages/ui/src/*"]
     }
   },
   "references": [

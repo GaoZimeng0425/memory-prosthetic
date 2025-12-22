@@ -52,6 +52,7 @@
 |------|------|
 | [项目概览](./project-overview.md) | 项目简介、技术栈、快速开始 |
 | [架构文档](./architecture.md) | 系统架构、模块设计、通信模式 |
+| [项目上下文](./project-context.md) | AI Agent 实现指南、关键规则 |
 | [开发指南](./development-guide.md) | 环境配置、开发流程、调试技巧 |
 | [源码树分析](./source-tree-analysis.md) | 目录结构、入口点、数据流 |
 | [组件清单](./component-inventory.md) | 53 个 shadcn/ui 组件详情 |

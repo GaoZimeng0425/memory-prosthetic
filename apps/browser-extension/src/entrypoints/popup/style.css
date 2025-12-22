@@ -1,0 +1,13 @@
+@import "@memory-prosthetic/ui/styles/globals.css";
+
+/* Extension popup specific overrides */
+body {
+  margin: 0;
+  min-width: auto;
+  min-height: auto;
+}
+
+/* Force dark mode for popup */
+:root {
+  color-scheme: dark;
+}

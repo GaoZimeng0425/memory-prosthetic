@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "../../packages/ui/src/styles/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@memory-prosthetic/ui/components",
+    "hooks": "@memory-prosthetic/ui/hooks",
+    "lib": "@memory-prosthetic/ui/lib",
+    "utils": "@memory-prosthetic/ui/utils/tw",
+    "ui": "@memory-prosthetic/ui/components/ui"
+  }
+}

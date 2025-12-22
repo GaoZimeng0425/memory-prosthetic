@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "assist": {
-    "includes": ["**", "!**/node_modules", "!**/packages/design/src/components/ui/**", "!**/.next"],
+    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**", "!**/.next"],
     "actions": {
       "source": {
         "organizeImports": {
@@ -61,7 +61,7 @@
       "!**/.next",
       "!**/pnpm-lock.yaml",
       "!**/node_modules",
-      "!**/packages/design/src/components/ui"
+      "!**/packages/ui/src/components/ui"
     ]
   },
   "formatter": {
@@ -74,7 +74,7 @@
       "!**/*/generated-v2.ts",
       "!**/.next",
       "!**/node_modules",
-      "!**/packages/design/src/components/ui/**"
+      "!**/packages/ui/src/components/ui/**"
     ],
     "indentStyle": "space",
     "indentWidth": 2,
@@ -104,7 +104,7 @@
     "domains": {
       "next": "recommended"
     },
-    "includes": ["**", "!**/node_modules", "!**/packages/design/src/components/ui/**", "!**/.next"],
+    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**", "!**/.next"],
     "rules": {
       "recommended": true,
       "a11y": {

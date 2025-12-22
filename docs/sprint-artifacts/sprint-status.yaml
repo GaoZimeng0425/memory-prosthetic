@@ -1,0 +1,104 @@
+# generated: 2025-12-22
+# project: tauri-app
+# project_key: memory-prosthetic
+# tracking_system: file-system
+# story_location: docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2025-12-22
+project: tauri-app
+project_key: memory-prosthetic
+tracking_system: file-system
+story_location: docs/sprint-artifacts
+
+development_status:
+  # ============================================
+  # Epic 1: 一键收集核心流程 (MVP P0)
+  # ============================================
+  epic-1: done
+  1-1-shared-type-package-init: done
+  1-2-local-database-content-storage: done
+  1-3-http-server-health-check: done
+  1-4-content-collect-api: done
+  1-5-browser-extension-app-status-detection: done
+  1-6-browser-extension-one-click-collect: done
+  epic-1-retrospective: optional
+
+  # ============================================
+  # Epic 2: 语义搜索核心能力 (MVP P0)
+  # ============================================
+  epic-2: done
+  2-1-embedding-model-integration: done
+  2-2-vector-storage-index: done
+  2-3-auto-generate-embedding-on-collect: done
+  2-4-semantic-search-api: done
+  2-5-search-results-ui: done
+  epic-2-retrospective: optional
+
+  # ============================================
+  # Epic 3: 快速唤起体验 (MVP P0)
+  # ============================================
+  epic-3: backlog
+  3-1-global-shortcut-registration: backlog
+  3-2-search-window-quick-invoke: backlog
+  3-3-shortcut-customization-settings: backlog
+  epic-3-retrospective: optional
+
+  # ============================================
+  # Epic 4: 系统托盘与常驻 (P1)
+  # ============================================
+  epic-4: backlog
+  4-1-system-tray-icon: backlog
+  4-2-tray-context-menu: backlog
+  4-3-auto-start-on-boot: backlog
+  epic-4-retrospective: optional
+
+  # ============================================
+  # Epic 5: 内容管理与设置 (P1)
+  # ============================================
+  epic-5: backlog
+  5-1-content-list-browse: backlog
+  5-2-content-detail-delete: backlog
+  5-3-content-stats-dashboard: backlog
+  5-4-app-settings-page: backlog
+  epic-5-retrospective: optional
+
+  # ============================================
+  # Epic 6: 搜索增强与应用提示 (Alpha/Beta)
+  # ============================================
+  epic-6: backlog
+  6-1-app-not-running-prompt: backlog
+  6-2-collect-preview-summary: backlog
+  6-3-manual-notes-tags: backlog
+  6-4-ai-auto-summary: backlog
+  6-5-ai-auto-tags: backlog
+  6-6-search-suggestions: backlog
+  epic-6-retrospective: optional

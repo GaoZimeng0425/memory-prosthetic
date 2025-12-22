@@ -68,10 +68,11 @@ workflow_status:
   # Phase 2 - Solutioning (Required)
   phase_2_solutioning:
     - id: create-architecture
-      status: recommended
+      status: "docs/architecture.md"
       agent: architect
       command: create-architecture
-      note: "HIGHLY RECOMMENDED: Distills brownfield context into focused solution design"
+      completed: "2025-12-22"
+      note: "Complete - 8 ADRs, Implementation Patterns, Project Structure, Validation"
 
     - id: create-epics-and-stories
       status: required

@@ -1,185 +1,268 @@
 # 源码树分析 (Source Tree Analysis)
 
-**项目:** tauri-app
-**类型:** Tauri Desktop App (Hybrid: React + TypeScript + Rust)
-**生成日期:** 2025-12-21
+**项目:** Memory Prosthetic
+**仓库类型:** Monorepo (Bun Workspaces)
+**生成日期:** 2025-12-22
+**扫描模式:** Quick Scan (完整重新扫描)
 
 ---
 
-## 📁 完整目录结构
+## 📁 项目结构概览
 
 ```
-tauri-app/
-├── 📄 index.html                    # Vite HTML 入口
-├── 📄 package.json                  # Node.js 依赖和脚本
-├── 📄 bun.lock                      # Bun 锁文件
-├── 📄 vite.config.ts                # Vite 构建配置
-├── 📄 tsconfig.json                 # TypeScript 配置
-├── 📄 tsconfig.node.json            # Node.js TypeScript 配置
-├── 📄 biome.json                    # Biome Linter/Formatter 配置
-├── 📄 components.json               # shadcn/ui 配置
-├── 📄 README.md                     # 项目说明
+memory-prosthetic/                    # 项目根目录
+├── apps/                             # 🎯 应用目录 (可部署单元)
+│   ├── desktop/                      # Tauri 桌面应用
+│   │   ├── src/                      # React 前端源码
+│   │   │   ├── main.tsx              # ⭐ 前端入口
+│   │   │   ├── App.tsx               # 根组件
+│   │   │   ├── components/           # 功能组件
+│   │   │   │   ├── CollectionDetail.tsx
+│   │   │   │   ├── CollectionList.tsx
+│   │   │   │   ├── EmptyState.tsx
+│   │   │   │   ├── SearchBar.tsx     # 搜索核心组件
+│   │   │   │   ├── SearchResults.tsx
+│   │   │   │   └── SettingsPanel.tsx
+│   │   │   ├── hooks/                # React Hooks
+│   │   │   │   ├── use-collections.ts
+│   │   │   │   └── use-search.ts
+│   │   │   ├── pages/
+│   │   │   │   └── SearchWindow.tsx  # 全局搜索窗口
+│   │   │   └── types/
+│   │   │       ├── api.ts
+│   │   │       └── settings.ts
+│   │   ├── src-tauri/                # Rust 后端
+│   │   │   ├── src/
+│   │   │   │   ├── main.rs           # ⭐ Rust 入口
+│   │   │   │   ├── lib.rs            # Tauri 命令定义 (596 行)
+│   │   │   │   ├── tray.rs           # 系统托盘
+│   │   │   │   ├── settings.rs       # 设置管理
+│   │   │   │   ├── db/               # 数据库层
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── connection.rs # SQLite 连接
+│   │   │   │   │   ├── collections.rs# 内容 CRUD
+│   │   │   │   │   └── embeddings.rs # 向量存储
+│   │   │   │   ├── embedding/        # AI 推理层
+│   │   │   │   │   ├── mod.rs
+│   │   │   │   │   ├── model.rs      # ONNX 模型加载
+│   │   │   │   │   └── service.rs    # Embedding 服务
+│   │   │   │   └── server/           # HTTP Server
+│   │   │   │       ├── mod.rs
+│   │   │   │       ├── routes.rs     # Axum 路由
+│   │   │   │       └── handlers.rs   # 请求处理
+│   │   │   ├── Cargo.toml            # Rust 依赖
+│   │   │   ├── tauri.conf.json       # Tauri 配置
+│   │   │   └── icons/                # 应用图标
+│   │   ├── package.json
+│   │   ├── vite.config.ts
+│   │   └── index.html
+│   │
+│   └── browser-extension/            # WXT 浏览器插件
+│       ├── src/
+│       │   ├── entrypoints/          # WXT 入口点
+│       │   │   ├── popup/            # 弹窗 UI
+│       │   │   │   ├── App.tsx       # ⭐ 弹窗主组件
+│       │   │   │   ├── main.tsx
+│       │   │   │   └── index.html
+│       │   │   ├── background.ts     # ⭐ Service Worker
+│       │   │   └── content.ts        # ⭐ 内容脚本
+│       │   ├── hooks/
+│       │   │   ├── use-collect.ts    # 收集逻辑
+│       │   │   └── use-connection.ts # 连接检测
+│       │   ├── utils/
+│       │   │   ├── api.ts            # HTTP 客户端
+│       │   │   └── content-extractor.ts
+│       │   ├── types/
+│       │   │   ├── api.ts
+│       │   │   └── messages.ts       # 消息类型
+│       │   └── constants/
+│       │       └── api.ts            # API 常量
+│       ├── wxt.config.ts             # WXT 配置
+│       ├── package.json
+│       └── public/icon/              # 插件图标
 │
-├── 📂 src/                          # 🎯 前端源码 (React + TypeScript)
-│   ├── 📄 main.tsx                  # ⭐ 前端入口点 - React 挂载
-│   ├── 📄 App.tsx                   # ⭐ 主应用组件 - Tauri IPC 示例
-│   ├── 📄 App.css                   # 应用样式
-│   ├── 📄 vite-env.d.ts             # Vite 类型声明
+├── packages/                         # 📦 共享包
+│   ├── shared/                       # 共享类型和工具
+│   │   ├── src/
+│   │   │   ├── index.ts              # 包入口
+│   │   │   ├── types/
+│   │   │   │   ├── index.ts          # 类型导出
+│   │   │   │   ├── api.ts            # API 类型
+│   │   │   │   ├── collection.ts     # Collection 实体
+│   │   │   │   └── tauri.ts          # Tauri IPC 类型
+│   │   │   └── utils/
+│   │   │       ├── index.ts
+│   │   │       └── typed.ts          # 类型工具
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   │
-│   ├── 📂 components/               # React 组件
-│   │   └── 📂 ui/                   # 🎨 shadcn/ui 组件库 (53 个组件)
-│   │       ├── 📄 accordion.tsx     # 手风琴
-│   │       ├── 📄 alert-dialog.tsx  # 警告对话框
-│   │       ├── 📄 alert.tsx         # 警告提示
-│   │       ├── 📄 button.tsx        # 按钮
-│   │       ├── 📄 card.tsx          # 卡片
-│   │       ├── 📄 dialog.tsx        # 对话框
-│   │       ├── 📄 form.tsx          # 表单 (React Hook Form 集成)
-│   │       ├── 📄 input.tsx         # 输入框
-│   │       ├── 📄 select.tsx        # 选择器
-│   │       ├── 📄 sidebar.tsx       # 侧边栏
-│   │       ├── 📄 table.tsx         # 表格
-│   │       ├── 📄 tabs.tsx          # 标签页
-│   │       └── ... (更多组件)       # 共 53 个 UI 组件
-│   │
-│   ├── 📂 hooks/                    # 自定义 React Hooks
-│   │   └── 📄 use-mobile.ts         # 移动端检测 Hook
-│   │
-│   ├── 📂 lib/                      # 工具库
-│   │   └── 📄 utils.ts              # 工具函数 (cn, clsx)
-│   │
-│   ├── 📂 styles/                   # 样式文件
-│   │   └── 📄 global.css            # 全局样式 (Tailwind CSS)
-│   │
-│   └── 📂 assets/                   # 静态资源
-│       └── 📄 react.svg             # React Logo
+│   └── ui/                           # UI 组件库
+│       ├── src/
+│       │   ├── components/ui/        # 56 个 shadcn/ui 组件
+│       │   │   ├── button.tsx
+│       │   │   ├── dialog.tsx
+│       │   │   ├── input.tsx
+│       │   │   ├── command.tsx       # 命令面板
+│       │   │   ├── scroll-area.tsx
+│       │   │   ├── card.tsx
+│       │   │   ├── ... (53 更多组件)
+│       │   ├── hooks/
+│       │   │   └── use-mobile.ts
+│       │   ├── styles/
+│       │   │   └── globals.css       # 全局样式
+│       │   └── utils/
+│       │       └── tw.ts             # tailwind-merge
+│       ├── components.json           # shadcn 配置
+│       ├── package.json
+│       └── tsconfig.json
 │
-├── 📂 src-tauri/                    # 🦀 后端源码 (Rust + Tauri)
-│   ├── 📄 Cargo.toml                # Rust 依赖配置
-│   ├── 📄 Cargo.lock                # Rust 锁文件
-│   ├── 📄 build.rs                  # Tauri 构建脚本
-│   ├── 📄 tauri.conf.json           # ⭐ Tauri 应用配置
-│   │
-│   ├── 📂 src/                      # Rust 源码
-│   │   ├── 📄 main.rs               # ⭐ 后端入口点 - Tauri 启动
-│   │   └── 📄 lib.rs                # ⭐ Tauri 命令定义
-│   │
-│   ├── 📂 capabilities/             # Tauri 能力/权限配置
-│   │   └── 📄 default.json          # 默认权限
-│   │
-│   ├── 📂 icons/                    # 应用图标 (各平台)
-│   │   ├── 📄 icon.icns             # macOS 图标
-│   │   ├── 📄 icon.ico              # Windows 图标
-│   │   ├── 📄 icon.png              # 通用图标
-│   │   └── 📄 Square*.png           # Windows Store 图标 (多尺寸)
-│   │
-│   ├── 📂 gen/                      # 生成的文件 (自动)
-│   │   └── 📂 schemas/              # Tauri 配置 JSON Schema
-│   │
-│   └── 📂 target/                   # 构建输出 (gitignore)
+├── docs/                             # 📚 项目文档
+│   ├── index.md                      # 文档入口
+│   ├── prd.md                        # 产品需求文档
+│   ├── architecture.md               # 架构决策文档
+│   ├── epics.md                      # Epic 和 Story 分解
+│   ├── ux-design-specification.md    # UX 设计规范
+│   ├── project-overview.md           # 项目概览
+│   ├── development-guide.md          # 开发指南
+│   ├── source-tree-analysis.md       # 本文档
+│   ├── component-inventory.md        # 组件清单
+│   └── analysis/                     # 分析文档
 │
-├── 📂 public/                       # 公共静态资源
-│   ├── 📄 tauri.svg                 # Tauri Logo
-│   └── 📄 vite.svg                  # Vite Logo
-│
-├── 📂 docs/                         # 📚 项目文档
-│   ├── 📄 index.md                  # 文档索引 (待生成)
-│   ├── 📄 project-scan-report.json  # 扫描状态文件
-│   ├── 📄 bmm-workflow-status.yaml  # BMAD 工作流状态
-│   ├── 📂 analysis/                 # 分析文档
-│   ├── 📂 workflows/                # 工作流文档
-│   └── 📂 sprint-artifacts/         # Sprint 产出物
-│
-├── 📂 _bmad/                        # BMAD 方法论配置
-│   ├── 📂 bmm/                      # BMM 模块
-│   └── 📂 core/                     # 核心模块
-│
-└── 📂 node_modules/                 # Node.js 依赖 (gitignore)
-```
-
----
-
-## 🎯 关键目录说明
-
-### 前端 (`src/`)
-
-| 目录/文件 | 用途 | 重要性 |
-|-----------|------|--------|
-| `main.tsx` | React 应用入口，创建 Root 并渲染 App | ⭐ 核心 |
-| `App.tsx` | 主应用组件，包含 Tauri IPC 调用示例 | ⭐ 核心 |
-| `components/ui/` | shadcn/ui 组件库，53 个预构建组件 | 🎨 UI 基础 |
-| `hooks/` | 自定义 React Hooks | 🔧 工具 |
-| `utils/tw.ts` | 工具函数 (`cn` 类名合并) | 🔧 工具 |
-| `styles/global.css` | Tailwind CSS 全局样式 | 🎨 样式 |
-
-### 后端 (`src-tauri/`)
-
-| 目录/文件 | 用途 | 重要性 |
-|-----------|------|--------|
-| `src/main.rs` | Tauri 应用启动入口 | ⭐ 核心 |
-| `src/lib.rs` | Tauri 命令定义（前端可调用的 Rust 函数） | ⭐ 核心 |
-| `tauri.conf.json` | 应用配置（窗口、构建、打包） | ⚙️ 配置 |
-| `capabilities/` | 权限和安全策略 | 🔒 安全 |
-| `icons/` | 各平台应用图标 | 📦 打包 |
-
----
-
-## 🔗 数据流与通信
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Tauri Desktop App                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                  前端 (Webview)                          │   │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │   │
-│  │  │   React     │───▶│   State     │───▶│    View     │  │   │
-│  │  │ Components  │    │  (useState) │    │  (Render)   │  │   │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘  │   │
-│  │         │                                      ▲         │   │
-│  │         │ invoke()                             │         │   │
-│  │         ▼                                      │         │   │
-│  │  ┌─────────────────────────────────────────────┐        │   │
-│  │  │           Tauri IPC Bridge                  │        │   │
-│  │  │  @tauri-apps/api/core                       │        │   │
-│  │  └─────────────────────────────────────────────┘        │   │
-│  └──────────────────────────┬──────────────────────────────┘   │
-│                             │                                   │
-│  ┌──────────────────────────┴──────────────────────────────┐   │
-│  │                  后端 (Rust Native)                      │   │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │   │
-│  │  │   Tauri     │───▶│  Commands   │───▶│   System    │  │   │
-│  │  │  Handler    │    │  (lib.rs)   │    │    APIs     │  │   │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘  │   │
-│  │                                                          │   │
-│  │  插件: tauri-plugin-opener (打开链接/文件)                │   │
-│  └──────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+├── package.json                      # Workspace 根配置
+├── biome.json                        # 代码格式化配置
+├── tsconfig.json                     # 根 TypeScript 配置
+└── README.md
 ```
 
 ---
 
-## 📌 入口点总结
+## ⭐ 关键入口点
 
-| 层级 | 文件 | 函数/组件 | 说明 |
-|------|------|-----------|------|
-| HTML | `index.html` | `<div id="root">` | DOM 挂载点 |
-| 前端 | `src/main.tsx` | `ReactDOM.createRoot()` | React 应用初始化 |
-| 前端 | `src/App.tsx` | `App()` | 主应用组件 |
-| 后端 | `src-tauri/src/main.rs` | `main()` | Tauri 进程入口 |
-| 后端 | `src-tauri/src/lib.rs` | `run()` | Tauri 应用构建和运行 |
+### Desktop 应用
 
----
-
-## 📊 文件统计
-
-| 类型 | 数量 | 说明 |
+| 入口 | 文件 | 说明 |
 |------|------|------|
-| TypeScript/TSX | 57 | 53 UI 组件 + 4 核心文件 |
-| Rust | 2 | main.rs, lib.rs |
-| JSON 配置 | 5 | package.json, tsconfig.json, etc. |
-| 样式文件 | 2 | global.css, App.css |
-| 图标文件 | 16 | 各平台应用图标 |
-| SVG 资源 | 3 | Logo 文件 |
+| **前端入口** | `apps/desktop/src/main.tsx` | React 应用挂载 |
+| **根组件** | `apps/desktop/src/App.tsx` | 应用根组件 |
+| **Rust 入口** | `apps/desktop/src-tauri/src/main.rs` | Tauri 进程启动 |
+| **命令定义** | `apps/desktop/src-tauri/src/lib.rs` | Tauri Commands |
+| **搜索窗口** | `apps/desktop/src/pages/SearchWindow.tsx` | 全局搜索 UI |
+
+### Browser Extension
+
+| 入口 | 文件 | 说明 |
+|------|------|------|
+| **弹窗入口** | `apps/browser-extension/src/entrypoints/popup/App.tsx` | 弹窗 UI |
+| **后台脚本** | `apps/browser-extension/src/entrypoints/background.ts` | Service Worker |
+| **内容脚本** | `apps/browser-extension/src/entrypoints/content.ts` | 页面内容提取 |
+
+---
+
+## 🔗 数据流
+
+### 内容收集流程
+
+```
+浏览器网页
+    │
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ Browser Extension                                        │
+│   content.ts (提取内容) → background.ts (转发请求)       │
+└─────────────────────────────────────────────────────────┘
+    │
+    │ HTTP POST /api/collect
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ Desktop App - Rust Backend                               │
+│   server/handlers.rs → db/collections.rs                │
+│                      → embedding/service.rs              │
+└─────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ SQLite Database                                          │
+│   collections 表 + embeddings 表 (sqlite-vec)           │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 搜索流程
+
+```
+用户输入
+    │
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ Desktop App - React Frontend                             │
+│   SearchBar.tsx → use-search.ts → invoke("search")      │
+└─────────────────────────────────────────────────────────┘
+    │
+    │ Tauri IPC
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ Desktop App - Rust Backend                               │
+│   lib.rs (search command)                                │
+│     → embedding/service.rs (query → vector)              │
+│     → db/embeddings.rs (similarity search)               │
+│     → db/collections.rs (fetch results)                  │
+└─────────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─────────────────────────────────────────────────────────┐
+│ SearchResults.tsx (显示结果)                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📦 包依赖关系
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Root Workspace                        │
+│  (react, tailwindcss, ai-sdk, tanstack, zod, axios)     │
+└─────────────────────────────────────────────────────────┘
+         │                           │
+         ▼                           ▼
+┌─────────────────┐       ┌─────────────────────┐
+│ @mp/shared      │       │ @mp/ui              │
+│ (types, utils)  │       │ (56 shadcn 组件)    │
+└─────────────────┘       └─────────────────────┘
+         │                           │
+         ├───────────┬───────────────┤
+         ▼           ▼               ▼
+┌─────────────┐  ┌─────────────────────────┐
+│ @mp/desktop │  │ @mp/browser-extension   │
+│ (Tauri App) │  │ (WXT Extension)         │
+└─────────────┘  └─────────────────────────┘
+```
+
+---
+
+## 📊 代码统计
+
+| 部分 | TypeScript 文件 | Rust 文件 | 组件数 | 说明 |
+|------|----------------|-----------|--------|------|
+| `apps/desktop` | ~15 | ~12 | 6 | 桌面应用核心 |
+| `apps/browser-extension` | ~12 | 0 | 1 | 浏览器插件 |
+| `packages/shared` | ~6 | 0 | 0 | 共享类型 |
+| `packages/ui` | ~56 | 0 | 56 | UI 组件库 |
+
+---
+
+## 🔧 关键配置文件
+
+| 文件 | 位置 | 用途 |
+|------|------|------|
+| `package.json` | `/` | Workspace 配置、根依赖 |
+| `biome.json` | `/` | 代码格式化规则 |
+| `tsconfig.json` | `/` | 根 TypeScript 配置 |
+| `tauri.conf.json` | `apps/desktop/src-tauri/` | Tauri 应用配置 |
+| `Cargo.toml` | `apps/desktop/src-tauri/` | Rust 依赖 |
+| `wxt.config.ts` | `apps/browser-extension/` | WXT 插件配置 |
+| `vite.config.ts` | `apps/desktop/` | Vite 构建配置 |
+| `components.json` | 多处 | shadcn/ui 配置 |
+
+---
+
+*本文档由 BMAD Document Project Workflow 自动生成*

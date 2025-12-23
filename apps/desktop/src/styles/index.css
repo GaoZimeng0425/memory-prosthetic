@@ -1,0 +1,6 @@
+@import "@memory-prosthetic/ui/styles/globals.css";
+
+html,
+body {
+  @apply bg-background text-foreground antialiased overflow-hidden h-screen w-screen;
+}

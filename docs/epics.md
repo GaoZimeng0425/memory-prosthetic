@@ -7,16 +7,16 @@ workflowType: 'epics-and-stories'
 lastStep: 4
 status: 'complete'
 completedAt: '2025-12-22'
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-22'
 ---
 
-# tauri-app - Epic Breakdown
+# Memory Prosthetic - Epic Breakdown
 
 ## Overview
 
-This document provides the complete epic and story breakdown for tauri-app（记忆外挂），decomposing the requirements from the PRD and Architecture requirements into implementable stories.
+This document provides the complete epic and story breakdown for Memory Prosthetic（记忆外挂），decomposing the requirements from the PRD and Architecture requirements into implementable stories.
 
 ## Requirements Inventory
 
@@ -126,7 +126,7 @@ This document provides the complete epic and story breakdown for tauri-app（记
 
 **数据架构：**
 - 数据库: SQLite 3.x + sqlite-vec 向量扩展
-- 存储位置: `~/Library/Application Support/tauri-app/`
+- 存储位置: `~/Library/Application Support/memory-prosthetic/`
 - Embedding 模型: all-MiniLM-L6-v2 (23MB, 384 维向量)
 - 推理框架: candle (Rust) 或 ort (ONNX Runtime)
 
@@ -301,7 +301,7 @@ This document provides the complete epic and story breakdown for tauri-app（记
 
 **Given** 桌面应用首次启动
 **When** 应用初始化
-**Then** SQLite 数据库在 `~/Library/Application Support/tauri-app/` 创建
+**Then** SQLite 数据库在 `~/Library/Application Support/memory-prosthetic/` 创建
 **And** `collections` 表自动创建
 
 **Given** 数据库已初始化

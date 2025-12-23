@@ -1,55 +1,63 @@
 /**
- * Hook for collecting page content
+ * Collect Hook
+ *
+ * Manages page content collection with preview support.
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 
-import type { ContentResponse } from '@/types/messages'
-import { collectContent } from '@/utils/api'
+import { collections } from '@/apis'
+import type { ContentResponse, ExtractedContent } from '@/types/messages'
 
-export type CollectStatus = 'idle' | 'extracting' | 'collecting' | 'success' | 'error'
+export type CollectStatus = 'idle' | 'extracting' | 'previewing' | 'collecting' | 'success' | 'error'
 
 interface UseCollectResult {
   status: CollectStatus
   error: string | null
-  collect: () => Promise<void>
+  preview: ExtractedContent | null
+  collect: () => void
+  confirmCollect: () => void
+  cancelPreview: () => void
   reset: () => void
 }
 
 /**
- * Hook to manage page collection
+ * Extract content from current tab via browser messaging
+ */
+async function extractContent(): Promise<ExtractedContent> {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+
+  if (!tab?.id) {
+    throw new Error('无法获取当前标签页')
+  }
+
+  const response: ContentResponse = await browser.tabs.sendMessage(tab.id, {
+    type: 'EXTRACT_CONTENT',
+  })
+
+  if (!response.success) {
+    throw new Error(response.error)
+  }
+
+  return response.data
+}
+
+/**
+ * Hook to manage page collection with preview
  */
 export function useCollect(): UseCollectResult {
   const [status, setStatus] = useState<CollectStatus>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<ExtractedContent | null>(null)
 
-  const collect = async () => {
-    setStatus('extracting')
-    setError(null)
-
-    try {
-      // Get current tab
-      const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-
-      if (!tab?.id) {
-        throw new Error('无法获取当前标签页')
-      }
-
-      // Send message to content script to extract content
-      const response: ContentResponse = await browser.tabs.sendMessage(tab.id, {
-        type: 'EXTRACT_CONTENT',
-      })
-
-      if (!response.success) {
-        throw new Error(response.error)
-      }
-
-      // Send to desktop app
-      setStatus('collecting')
-      const collectResult = await collectContent(response.data)
-
-      if (!collectResult.success) {
-        throw new Error(collectResult.error.message)
+  const collectMutation = useMutation({
+    ...collections.mutations.collect(),
+    onSuccess: (data) => {
+      if (!data.success) {
+        setError(data.error.message)
+        setStatus('error')
+        return
       }
 
       setStatus('success')
@@ -57,22 +65,73 @@ export function useCollect(): UseCollectResult {
       // Auto reset after 2 seconds
       setTimeout(() => {
         setStatus('idle')
+        setPreview(null)
       }, 2000)
-    } catch (err) {
+    },
+    onError: (err) => {
       setError(err instanceof Error ? err.message : '收集失败')
       setStatus('error')
-    }
+    },
+  })
+
+  // Auto-extract content on mount for preview
+  useEffect(() => {
+    setStatus('extracting')
+
+    extractContent()
+      .then((content) => {
+        setPreview(content)
+        setStatus('previewing')
+      })
+      .catch(() => {
+        // Content script may not be loaded, ignore silently
+        setStatus('idle')
+      })
+  }, [])
+
+  const collect = () => {
+    setStatus('extracting')
+    setError(null)
+
+    extractContent()
+      .then((content) => {
+        setPreview(content)
+        setStatus('previewing')
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : '提取内容失败')
+        setStatus('error')
+      })
+  }
+
+  const confirmCollect = () => {
+    if (!preview) return
+
+    setStatus('collecting')
+    setError(null)
+
+    collectMutation.mutate(preview)
+  }
+
+  const cancelPreview = () => {
+    setStatus('idle')
+    setPreview(null)
   }
 
   const reset = () => {
     setStatus('idle')
     setError(null)
+    setPreview(null)
+    collectMutation.reset()
   }
 
   return {
     status,
     error,
+    preview,
     collect,
+    confirmCollect,
+    cancelPreview,
     reset,
   }
 }

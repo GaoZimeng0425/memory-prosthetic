@@ -1,11 +1,11 @@
 ---
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-22'
 status: 'complete'
 ---
 
-# Project Context - tauri-app
+# Project Context - Memory Prosthetic
 
 > AI Agent 实现指南：本文档包含编写代码时必须遵循的关键规则。
 
@@ -22,6 +22,7 @@ status: 'complete'
 | Compiler | babel-plugin-react-compiler | latest |
 | UI Library | shadcn/ui | 50+ 组件 |
 | Styling | TailwindCSS | 4.x |
+| Date/Time | date-fns | 4.x |
 | Database | SQLite + sqlite-vec | latest |
 | HTTP | Axum | latest |
 | AI | all-MiniLM-L6-v2 | - |
@@ -58,7 +59,8 @@ status: 'complete'
 ### React Patterns
 
 - 函数组件 + Hooks (无 class 组件)
-- 状态管理: Zustand (UI) + TanStack Query (服务端)
+- 状态管理: Zustand (UI 状态)
+- **网络请求**: 所有请求使用 `@tanstack/react-query`
 - 路由: TanStack Router
 - **React Compiler**: 已启用 `babel-plugin-react-compiler`，自动优化
 - **禁止手动 memoization**: 不使用 `useMemo`, `useCallback`, `memo`
@@ -120,6 +122,8 @@ interface ApiError { success: false; error: { code: string; message: string } }
 - ❌ 使用 `useMemo`, `useCallback`, `memo` (React Compiler 自动处理)
 - ❌ 编写自定义 CSS (优先 TailwindCSS)
 - ❌ 自己写基础 UI 组件 (优先使用 shadcn/ui)
+- ❌ 使用 moment.js 或原生 Date API (使用 date-fns)
+- ❌ 使用 fetch/axios 直接请求 (使用 @tanstack/react-query)
 - ❌ 直接修改 `packages/ui/src/components/ui/` (shadcn 组件)
 - ❌ 在 app 目录复制 shadcn 组件 (应从 `@memory-prosthetic/ui` 导入)
 - ❌ 在 React 组件中直接访问 SQLite
@@ -173,12 +177,14 @@ packages/ui/src/
 |------|------|
 | 使用 shadcn 组件 | 从 `@memory-prosthetic/ui` 导入 |
 | 添加样式 | 使用 TailwindCSS 类，避免自定义 CSS |
+| 时间处理 | 使用 date-fns，不使用 moment.js 或原生 Date |
+| 网络请求 | 使用 @tanstack/react-query，不直接用 fetch/axios |
 | 性能优化 | 无需手动 memo，React Compiler 自动处理 |
 | 新增功能组件 | `components/features/` + PascalCase |
 | 新增 Tauri Command | `commands/` + snake_case + CommandResult |
 | 共享类型 | `packages/shared/src/types/` |
 | 工具函数 | `packages/shared/src/utils/` |
-| 状态管理 | `stores/use-{domain}-store.ts` |
+| UI 状态管理 | `stores/use-{domain}-store.ts` (Zustand) |
 | API 端点 | `/api/kebab-case` + ApiResponse |
 
 ### UI 组件使用
@@ -217,6 +223,50 @@ const SearchBox = memo(({ onSearch }) => {
 
 // ❌ 错误: 自定义 CSS
 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+```
+
+### date-fns 时间处理
+
+```typescript
+// ✅ 正确: 使用 date-fns
+import { format, formatDistanceToNow, isToday, parseISO } from 'date-fns'
+import { zhCN } from 'date-fns/locale'
+
+const formattedDate = format(date, 'yyyy-MM-dd HH:mm')
+const relativeTime = formatDistanceToNow(date, { locale: zhCN, addSuffix: true })
+const isNew = isToday(parseISO(dateString))
+
+// ❌ 错误: moment.js 或原生 Date
+import moment from 'moment' // ❌
+new Date().toLocaleDateString() // ❌
+```
+
+### @tanstack/react-query 网络请求
+
+```typescript
+// ✅ 正确: 使用 useQuery 获取数据
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+
+// 查询数据
+const { data, isLoading, error } = useQuery({
+  queryKey: ['collections', filters],
+  queryFn: () => fetchCollections(filters),
+})
+
+// 修改数据
+const queryClient = useQueryClient()
+const { mutate } = useMutation({
+  mutationFn: createCollection,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['collections'] })
+  },
+})
+
+// ❌ 错误: 直接使用 fetch/axios
+const [data, setData] = useState(null)
+useEffect(() => {
+  fetch('/api/collections').then(r => r.json()).then(setData) // ❌
+}, [])
 ```
 
 ### TypeScript 类型与函数声明

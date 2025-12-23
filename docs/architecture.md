@@ -9,7 +9,7 @@ workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
 completedAt: '2025-12-22'
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
 ---
@@ -96,6 +96,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | **Bun Workspaces** | ✅ 良好 | 快速安装、原生 Monorepo 支持 |
 | **shadcn/ui** | ✅ 优秀 | 50+ 可定制组件、Radix UI 基础、TailwindCSS |
 | **TailwindCSS 4.x** | ✅ 优秀 | 原子化 CSS、零运行时、与 shadcn 配合 |
+| **date-fns 4.x** | ✅ 优秀 | 模块化时间处理、Tree-shaking 友好、TypeScript 支持 |
 
 ### Selected Starter: 现有技术栈（无需更换）
 
@@ -200,7 +201,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 |------|-----|
 | 引擎 | SQLite 3.x |
 | 向量扩展 | sqlite-vec |
-| 存储位置 | `~/Library/Application Support/tauri-app/` |
+| 存储位置 | `~/Library/Application Support/memory-prosthetic/` |
 | 备份策略 | 单文件复制 |
 
 **Embedding Pipeline:**
@@ -311,7 +312,7 @@ bun run tauri dev
 bun run tauri build
 
 # 产物
-target/release/bundle/dmg/tauri-app_0.1.0_aarch64.dmg
+target/release/bundle/dmg/memory-prosthetic_0.1.0_aarch64.dmg
 ```
 
 ### Decision Impact Analysis
@@ -594,7 +595,7 @@ const queryKeys = {
 
 ```rust
 // Rust
-tracing::info!(target: "tauri-app", event = "collection_started", url = %url);
+tracing::info!(target: "memory-prosthetic", event = "collection_started", url = %url);
 ```
 
 ```typescript
@@ -619,6 +620,7 @@ log.error("Collection failed", error);
 8. ✅ 优先使用 shadcn/ui 组件 (从 `@memory-prosthetic/ui` 导入)
 9. ✅ 类型定义使用 `type`，而非 `interface`
 10. ✅ 函数声明使用 `const` 箭头函数，而非 `function`
+11. ✅ 所有网络请求使用 `@tanstack/react-query`，禁止直接使用 fetch/axios
 
 **Pattern Enforcement:**
 
@@ -663,6 +665,17 @@ import './custom.css'; // ❌ (除非必要)
 
 // 错误: 自己写基础 UI 组件
 const MyButton = ({ children }) => <button>{children}</button>; // ❌
+
+// 错误: 使用 moment.js 或原生 Date API
+import moment from 'moment'; // ❌
+new Date().toLocaleDateString(); // ❌
+// 应使用 date-fns: import { format } from 'date-fns'
+
+// 错误: 直接使用 fetch/axios
+useEffect(() => {
+  fetch('/api/data').then(r => r.json()).then(setData); // ❌
+}, []);
+// 应使用 @tanstack/react-query: useQuery({ queryKey, queryFn })
 
 // 错误: 文件命名不一致
 // search_box.tsx ❌
@@ -1042,7 +1055,7 @@ memory-prosthetic/
 ### Implementation Handoff
 
 **For AI Agents:**
-本架构文档是实现 tauri-app 的完整指南。请严格遵循所有决策、模式和结构。
+本架构文档是实现 Memory Prosthetic 的完整指南。请严格遵循所有决策、模式和结构。
 
 **First Implementation Priority:**
 

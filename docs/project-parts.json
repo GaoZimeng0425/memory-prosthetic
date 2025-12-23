@@ -1,0 +1,133 @@
+{
+  "repository_type": "monorepo",
+  "project_name": "Memory Prosthetic",
+  "package_manager": "bun",
+  "workspace_config": "package.json",
+  "parts": [
+    {
+      "id": "desktop",
+      "name": "Desktop App",
+      "path": "apps/desktop",
+      "type": "desktop",
+      "description": "Tauri 桌面应用 - 主应用，包含搜索界面、内容存储和 AI 推理",
+      "tech_stack": {
+        "framework": "Tauri 2.x",
+        "frontend": "React 19 + TypeScript 5.9",
+        "backend": "Rust 2021",
+        "database": "SQLite + sqlite-vec",
+        "ai": "ONNX Runtime (all-MiniLM-L6-v2)",
+        "http_server": "Axum 0.8"
+      },
+      "entry_points": {
+        "frontend": "src/main.tsx",
+        "backend": "src-tauri/src/main.rs",
+        "commands": "src-tauri/src/lib.rs"
+      },
+      "dependencies": ["@memory-prosthetic/shared", "@memory-prosthetic/ui"]
+    },
+    {
+      "id": "browser-extension",
+      "name": "Browser Extension",
+      "path": "apps/browser-extension",
+      "type": "extension",
+      "description": "WXT 浏览器插件 - 用于收集网页内容",
+      "tech_stack": {
+        "framework": "WXT 0.20",
+        "frontend": "React 19 + TypeScript 5.9",
+        "manifest": "V3"
+      },
+      "entry_points": {
+        "popup": "src/entrypoints/popup/App.tsx",
+        "background": "src/entrypoints/background.ts",
+        "content": "src/entrypoints/content.ts"
+      },
+      "dependencies": ["@memory-prosthetic/shared", "@memory-prosthetic/ui"]
+    },
+    {
+      "id": "shared",
+      "name": "Shared Library",
+      "path": "packages/shared",
+      "type": "library",
+      "description": "共享类型定义和工具函数",
+      "tech_stack": {
+        "language": "TypeScript 5.9"
+      },
+      "entry_points": {
+        "main": "src/index.ts",
+        "types": "src/types/index.ts",
+        "utils": "src/utils/index.ts"
+      },
+      "exports": {
+        ".": "./src/index.ts",
+        "./types": "./src/types/index.ts",
+        "./utils": "./src/utils/index.ts"
+      },
+      "dependencies": []
+    },
+    {
+      "id": "ui",
+      "name": "UI Library",
+      "path": "packages/ui",
+      "type": "library",
+      "description": "共享 UI 组件库 (基于 shadcn/ui)",
+      "tech_stack": {
+        "framework": "React 19",
+        "styling": "Tailwind CSS 4.x",
+        "components": "shadcn/ui (Radix UI)"
+      },
+      "entry_points": {
+        "components": "src/components/ui/",
+        "styles": "src/styles/globals.css",
+        "utils": "src/utils/tw.ts"
+      },
+      "component_count": 56,
+      "dependencies": []
+    }
+  ],
+  "integration_points": [
+    {
+      "from": "browser-extension",
+      "to": "desktop",
+      "type": "HTTP",
+      "protocol": "REST API",
+      "endpoints": [
+        { "method": "GET", "path": "/api/health", "purpose": "健康检查" },
+        { "method": "POST", "path": "/api/collect", "purpose": "收集内容" },
+        { "method": "GET", "path": "/api/search", "purpose": "搜索 (可选)" }
+      ],
+      "port": 21890
+    },
+    {
+      "from": "desktop-frontend",
+      "to": "desktop-backend",
+      "type": "IPC",
+      "protocol": "Tauri Commands + Events",
+      "commands": ["search", "get_collections", "delete_collection", "get_settings", "set_settings"],
+      "events": ["collection:completed", "embedding:progress"]
+    },
+    {
+      "from": "desktop",
+      "to": "shared",
+      "type": "Package Dependency",
+      "usage": "类型定义和工具函数"
+    },
+    {
+      "from": "browser-extension",
+      "to": "shared",
+      "type": "Package Dependency",
+      "usage": "类型定义和工具函数"
+    },
+    {
+      "from": "desktop",
+      "to": "ui",
+      "type": "Package Dependency",
+      "usage": "UI 组件"
+    },
+    {
+      "from": "browser-extension",
+      "to": "ui",
+      "type": "Package Dependency",
+      "usage": "UI 组件"
+    }
+  ]
+}

@@ -1,51 +1,37 @@
 /**
- * Hook for checking connection status to desktop app
+ * Connection Hook
+ *
+ * Monitors connection status to the desktop app.
  */
 
-import { useEffect, useState } from 'react'
+import { type QueryObserverResult, useQuery } from '@tanstack/react-query'
 
+import { health } from '@/apis'
 import type { ConnectionStatus, HealthResponse } from '@/types/api'
-import { checkHealth } from '@/utils/api'
 
 interface UseConnectionResult {
   status: ConnectionStatus
   healthData: HealthResponse | null
-  checkConnection: () => Promise<void>
+  checkConnection: () => Promise<QueryObserverResult<HealthResponse, Error>>
   isConnected: boolean
   isChecking: boolean
 }
 
-/**
- * Hook to manage connection status with the desktop app
- * Note: No useCallback needed with React Compiler
- */
 export function useConnection(): UseConnectionResult {
-  const [status, setStatus] = useState<ConnectionStatus>('checking')
-  const [healthData, setHealthData] = useState<HealthResponse | null>(null)
+  const {
+    data: healthData,
+    isLoading,
+    refetch: checkConnection,
+  } = useQuery({
+    ...health.queries.check(),
+    refetchInterval: 1000,
+  })
 
-  const checkConnection = async () => {
-    setStatus('checking')
-
-    const result = await checkHealth()
-
-    if (result && result.status === 'ok') {
-      setStatus('connected')
-      setHealthData(result)
-    } else {
-      setStatus('disconnected')
-      setHealthData(null)
-    }
-  }
-
-  // Check connection on mount
-  // biome-ignore lint/correctness/useExhaustiveDependencies: react compiler will handle this
-  useEffect(() => {
-    void checkConnection()
-  }, [])
+  const status: ConnectionStatus = isLoading ? 'checking' : healthData?.status === 'ok' ? 'connected' : 'disconnected'
 
   return {
     status,
-    healthData,
+    healthData: healthData ?? null,
     checkConnection,
     isConnected: status === 'connected',
     isChecking: status === 'checking',

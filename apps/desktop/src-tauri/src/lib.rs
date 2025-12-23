@@ -5,18 +5,23 @@
 mod db;
 mod embedding;
 mod server;
+mod settings;
+mod tray;
 
 use db::{Collection, CollectionListItem, CollectionRepository, CollectionStats, CreateCollection, Database, DbError, EmbeddingsRepository};
 use embedding::get_embedding_model;
 use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tauri::{Manager, State};
+use settings::{AppSettings, SettingsManager, ShortcutConfig, Theme};
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Manager, State};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tracing::info;
 
 /// Application state shared across commands
 pub struct AppState {
     pub db: Database,
+    pub settings: Mutex<SettingsManager>,
 }
 
 /// Command result wrapper for success responses
@@ -90,10 +95,227 @@ pub struct SearchResponse {
 // Tauri Commands
 // ============================================
 
-/// Greet command (example, can be removed later)
+/// Toggle the search window visibility
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn toggle_search_window(app: AppHandle) -> Result<(), CommandError> {
+    toggle_search(&app).map_err(|e| CommandError {
+        code: "WINDOW_ERROR".to_string(),
+        message: e.to_string(),
+    })
+}
+
+/// Hide the search window
+#[tauri::command]
+fn hide_search_window(app: AppHandle) -> Result<(), CommandError> {
+    if let Some(window) = app.get_webview_window("search") {
+        window.hide().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+    Ok(())
+}
+
+/// Show the search window
+#[tauri::command]
+fn show_search_window(app: AppHandle) -> Result<(), CommandError> {
+    if let Some(window) = app.get_webview_window("search") {
+        window.show().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+        window.set_focus().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+    Ok(())
+}
+
+/// Helper to toggle search window
+fn toggle_search(app: &AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("search") {
+        if window.is_visible().unwrap_or(false) {
+            window.hide().map_err(|e| e.to_string())?;
+        } else {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    } else {
+        Err("Search window not found".to_string())
+    }
+}
+
+/// Get current settings
+#[tauri::command]
+fn get_settings(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<AppSettings>, CommandError> {
+    let settings = state.settings.lock().map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    Ok(CommandResult {
+        data: settings.get().clone(),
+    })
+}
+
+/// Update shortcut configuration
+#[tauri::command]
+fn update_shortcut(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    shortcut: ShortcutConfig,
+) -> Result<CommandResult<ShortcutConfig>, CommandError> {
+    // Update settings
+    {
+        let mut settings = state.settings.lock().map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+        settings.update_shortcut(shortcut.clone()).map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+
+    // Re-register global shortcut
+    let new_shortcut = shortcut_from_config(&shortcut);
+
+    // Unregister all shortcuts first
+    if let Err(e) = app.global_shortcut().unregister_all() {
+        tracing::warn!("Failed to unregister shortcuts: {}", e);
+    }
+
+    // Register new shortcut
+    if let Err(e) = app.global_shortcut().register(new_shortcut) {
+        return Err(CommandError {
+            code: "SHORTCUT_ERROR".to_string(),
+            message: format!("Failed to register shortcut: {}", e),
+        });
+    }
+
+    info!("Shortcut updated to: {}", shortcut.to_display_string());
+
+    Ok(CommandResult { data: shortcut })
+}
+
+/// Set auto start on boot
+#[tauri::command]
+fn set_auto_start(
+    app: AppHandle,
+    state: State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<CommandResult<bool>, CommandError> {
+    use tauri_plugin_autostart::ManagerExt;
+
+    // Update settings
+    {
+        let mut settings = state.settings.lock().map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+        let mut current = settings.get().clone();
+        current.auto_start = enabled;
+        settings.update(current).map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+
+    // Update autostart registration
+    let autostart = app.autolaunch();
+    if enabled {
+        autostart.enable().map_err(|e| CommandError {
+            code: "AUTOSTART_ERROR".to_string(),
+            message: format!("Failed to enable autostart: {}", e),
+        })?;
+        info!("Autostart enabled");
+    } else {
+        autostart.disable().map_err(|e| CommandError {
+            code: "AUTOSTART_ERROR".to_string(),
+            message: format!("Failed to disable autostart: {}", e),
+        })?;
+        info!("Autostart disabled");
+    }
+
+    Ok(CommandResult { data: enabled })
+}
+
+/// Update theme preference
+#[tauri::command]
+fn update_theme(
+    state: State<'_, Arc<AppState>>,
+    theme: Theme,
+) -> Result<CommandResult<Theme>, CommandError> {
+    let mut settings = state.settings.lock().map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    settings.update_theme(theme.clone()).map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    info!("Theme updated to: {:?}", theme);
+
+    Ok(CommandResult { data: theme })
+}
+
+/// Convert ShortcutConfig to Shortcut
+fn shortcut_from_config(config: &ShortcutConfig) -> Shortcut {
+    let mut modifiers = Modifiers::empty();
+
+    if config.use_super {
+        modifiers |= Modifiers::SUPER;
+    }
+    if config.use_ctrl {
+        modifiers |= Modifiers::CONTROL;
+    }
+    if config.use_shift {
+        modifiers |= Modifiers::SHIFT;
+    }
+    if config.use_alt {
+        modifiers |= Modifiers::ALT;
+    }
+
+    let code = match config.key.to_lowercase().as_str() {
+        "space" => Code::Space,
+        "a" => Code::KeyA,
+        "b" => Code::KeyB,
+        "c" => Code::KeyC,
+        "d" => Code::KeyD,
+        "e" => Code::KeyE,
+        "f" => Code::KeyF,
+        "g" => Code::KeyG,
+        "h" => Code::KeyH,
+        "i" => Code::KeyI,
+        "j" => Code::KeyJ,
+        "k" => Code::KeyK,
+        "l" => Code::KeyL,
+        "m" => Code::KeyM,
+        "n" => Code::KeyN,
+        "o" => Code::KeyO,
+        "p" => Code::KeyP,
+        "q" => Code::KeyQ,
+        "r" => Code::KeyR,
+        "s" => Code::KeyS,
+        "t" => Code::KeyT,
+        "u" => Code::KeyU,
+        "v" => Code::KeyV,
+        "w" => Code::KeyW,
+        "x" => Code::KeyX,
+        "y" => Code::KeyY,
+        "z" => Code::KeyZ,
+        _ => Code::Space,
+    };
+
+    Shortcut::new(Some(modifiers), code)
 }
 
 /// Insert or update a collection
@@ -166,6 +388,45 @@ fn get_collection_stats(
     Ok(CommandResult { data: stats })
 }
 
+/// Search suggestion item
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchSuggestion {
+    pub text: String,
+    pub suggestion_type: String, // "title" or "recent"
+}
+
+/// Get search suggestions based on query prefix
+#[tauri::command]
+fn get_search_suggestions(
+    state: State<'_, Arc<AppState>>,
+    query: String,
+    limit: Option<usize>,
+) -> Result<CommandResult<Vec<SearchSuggestion>>, CommandError> {
+    let limit = limit.unwrap_or(5);
+
+    if query.len() < 2 {
+        return Ok(CommandResult { data: vec![] });
+    }
+
+    let repo = CollectionRepository::new(&state.db);
+    let collections = repo.list(100, 0)?;
+
+    // Find matching titles (case-insensitive)
+    let query_lower = query.to_lowercase();
+    let suggestions: Vec<SearchSuggestion> = collections
+        .into_iter()
+        .filter(|c| c.title.to_lowercase().contains(&query_lower))
+        .take(limit)
+        .map(|c| SearchSuggestion {
+            text: c.title,
+            suggestion_type: "title".to_string(),
+        })
+        .collect();
+
+    Ok(CommandResult { data: suggestions })
+}
+
 /// Semantic search across collections
 #[tauri::command]
 fn search(
@@ -232,6 +493,21 @@ fn search(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(move |app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        if let Err(e) = toggle_search(app) {
+                            tracing::error!("Failed to toggle search window: {}", e);
+                        }
+                    }
+                })
+                .build(),
+        )
         .setup(move |app| {
             // Get app data directory
             let app_data_dir = app
@@ -245,6 +521,11 @@ pub fn run() {
             let db = db::init_database(app_data_dir.clone())
                 .expect("Failed to initialize database");
 
+            // Initialize settings
+            let settings_manager = SettingsManager::new(app_data_dir.clone())
+                .expect("Failed to initialize settings");
+            let shortcut_config = settings_manager.get().search_shortcut.clone();
+
             // Initialize embedding model (optional - may not exist)
             let model_dir = app_data_dir.join("models").join("all-MiniLM-L6-v2");
             let has_embedding_model = embedding::init_embedding_model(model_dir).is_ok();
@@ -255,7 +536,18 @@ pub fn run() {
 
             // Create app state
             let db_arc = Arc::new(db.clone());
-            let state = Arc::new(AppState { db });
+            let state = Arc::new(AppState {
+                db,
+                settings: Mutex::new(settings_manager),
+            });
+
+            // Register global shortcut from settings
+            let shortcut = shortcut_from_config(&shortcut_config);
+            if let Err(e) = app.global_shortcut().register(shortcut) {
+                tracing::warn!("Failed to register global shortcut: {}. You can change it in settings.", e);
+            } else {
+                info!("Global shortcut registered: {}", shortcut_config.to_display_string());
+            }
 
             // Clone state for HTTP server
             let server_state = Arc::clone(&state);
@@ -295,18 +587,30 @@ pub fn run() {
             // Manage state for Tauri commands
             app.manage(state);
 
+            // Setup system tray
+            if let Err(e) = tray::setup_tray(app.handle()) {
+                tracing::error!("Failed to setup system tray: {}", e);
+            }
+
             info!("Application initialized successfully");
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             collect,
             get_collection,
             get_collections,
             delete_collection,
             get_collection_stats,
             search,
+            get_search_suggestions,
+            toggle_search_window,
+            hide_search_window,
+            show_search_window,
+            get_settings,
+            update_shortcut,
+            set_auto_start,
+            update_theme,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

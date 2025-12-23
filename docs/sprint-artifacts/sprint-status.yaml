@@ -1,5 +1,5 @@
 # generated: 2025-12-22
-# project: tauri-app
+# project: Memory Prosthetic
 # project_key: memory-prosthetic
 # tracking_system: file-system
 # story_location: docs/sprint-artifacts
@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2025-12-22
-project: tauri-app
+project: Memory Prosthetic
 project_key: memory-prosthetic
 tracking_system: file-system
 story_location: docs/sprint-artifacts
@@ -66,39 +66,39 @@ development_status:
   # ============================================
   # Epic 3: 快速唤起体验 (MVP P0)
   # ============================================
-  epic-3: backlog
-  3-1-global-shortcut-registration: backlog
-  3-2-search-window-quick-invoke: backlog
-  3-3-shortcut-customization-settings: backlog
+  epic-3: done
+  3-1-global-shortcut-registration: done
+  3-2-search-window-quick-invoke: done
+  3-3-shortcut-customization-settings: done
   epic-3-retrospective: optional
 
   # ============================================
   # Epic 4: 系统托盘与常驻 (P1)
   # ============================================
-  epic-4: backlog
-  4-1-system-tray-icon: backlog
-  4-2-tray-context-menu: backlog
-  4-3-auto-start-on-boot: backlog
+  epic-4: done
+  4-1-system-tray-icon: done
+  4-2-tray-context-menu: done
+  4-3-auto-start-on-boot: done
   epic-4-retrospective: optional
 
   # ============================================
   # Epic 5: 内容管理与设置 (P1)
   # ============================================
-  epic-5: backlog
-  5-1-content-list-browse: backlog
-  5-2-content-detail-delete: backlog
-  5-3-content-stats-dashboard: backlog
-  5-4-app-settings-page: backlog
+  epic-5: done
+  5-1-content-list-browse: done
+  5-2-content-detail-delete: done
+  5-3-content-stats-dashboard: done
+  5-4-app-settings-page: done
   epic-5-retrospective: optional
 
   # ============================================
   # Epic 6: 搜索增强与应用提示 (Alpha/Beta)
   # ============================================
-  epic-6: backlog
-  6-1-app-not-running-prompt: backlog
-  6-2-collect-preview-summary: backlog
+  epic-6: done
+  6-1-app-not-running-prompt: done
+  6-2-collect-preview-summary: done
   6-3-manual-notes-tags: backlog
   6-4-ai-auto-summary: backlog
   6-5-ai-auto-tags: backlog
-  6-6-search-suggestions: backlog
+  6-6-search-suggestions: done
   epic-6-retrospective: optional

@@ -16,10 +16,10 @@
               ["react"],
               ":PACKAGE_WITH_PROTOCOL:",
               ":URL:",
-              [":PACKAGE:", "!@prime-next/**"],
+              [":PACKAGE:", "!@memory-prosthetic/**"],
               ":BLANK_LINE:",
               ["@/assets/**"],
-              ["@prime-next/**"],
+              ["@memory-prosthetic/**"],
               [":ALIAS:", "!**/*.css", "!@/assets/**"],
               ":PATH:",
               {

@@ -80,8 +80,11 @@ export interface SearchResultItem {
   id: number
   url: string
   title: string
-  snippet: string
-  score: number
+  snippet?: string
+  score?: number
+  similarity?: number
+  domain?: string
+  createdAt?: string
 }
 
 /**

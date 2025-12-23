@@ -1,7 +1,7 @@
-import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import { ExternalLink } from 'lucide-react'
 
+import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import type { SearchResultItem } from '@/types/api'
 
 interface SearchResultsProps {
@@ -57,14 +57,23 @@ export function SearchResults({ results, query }: SearchResultsProps) {
                   <CardTitle className="truncate font-medium text-base">{result.title}</CardTitle>
                   <CardDescription className="mt-1 flex items-center gap-2">
                     <span className="truncate">{extractDomain(result.url)}</span>
-                    <span className="text-xs">•</span>
-                    <span className="text-xs">{formatDate(result.createdAt)}</span>
+                    {result.createdAt && (
+                      <>
+                        <span className="text-xs">•</span>
+                        <span className="text-xs">{formatDate(result.createdAt)}</span>
+                      </>
+                    )}
                   </CardDescription>
                 </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  <Badge className={`${getSimilarityColor(result.similarity)} text-white`} variant="secondary">
-                    {formatSimilarity(result.similarity)}
-                  </Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  {(result.similarity ?? result.score) != null && (
+                    <Badge
+                      className={`${getSimilarityColor(result.similarity ?? result.score ?? 0)} text-white`}
+                      variant="secondary"
+                    >
+                      {formatSimilarity(result.similarity ?? result.score ?? 0)}
+                    </Badge>
+                  )}
                   <a
                     className="text-muted-foreground hover:text-foreground"
                     href={result.url}

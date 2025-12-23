@@ -23,6 +23,7 @@ export interface Collection {
   title: string
   content: string
   summary?: string
+  embeddingStatus?: EmbeddingStatus
   createdAt: string
   updatedAt: string
 }

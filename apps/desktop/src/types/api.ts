@@ -1,37 +1,35 @@
-// API types for the desktop app
+/**
+ * Desktop App API Types
+ *
+ * Re-exports shared types and defines desktop-specific types.
+ */
 
-export interface SearchRequest {
-  query: string
-  limit?: number
+// Re-export shared types
+// Alias for backward compatibility
+export type {
+  Collection,
+  CollectionListItem,
+  CollectionStats,
+  CollectionWithStatus,
+  CommandResult,
+  SearchResultItem,
+  SearchResultItem as SearchResult,
+} from '@memory-prosthetic/shared'
+
+// Desktop-specific settings types
+export type Theme = 'light' | 'dark' | 'system'
+
+export interface ShortcutConfig {
+  useSuper: boolean
+  useCtrl: boolean
+  useShift: boolean
+  useAlt: boolean
+  key: string
 }
 
-export interface SearchResultItem {
-  id: number
-  url: string
-  title: string
-  similarity: number
-  createdAt: string
-}
-
-export interface SearchResponse {
-  results: SearchResultItem[]
-  query: string
-}
-
-export interface CommandResult<T> {
-  data: T
-}
-
-export interface CollectionListItem {
-  id: number
-  url: string
-  title: string
-  domain: string
-  createdAt: string
-}
-
-export interface CollectionStats {
-  total: number
-  thisWeek: number
-  lastCollectedAt: string | null
+export interface AppSettings {
+  searchShortcut: ShortcutConfig
+  serverPort: number
+  autoStart: boolean
+  theme: Theme
 }

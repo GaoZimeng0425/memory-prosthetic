@@ -14,9 +14,9 @@
 #   - {file-path}: File created/found (e.g., "docs/product-brief.md")
 #   - skipped: Optional/conditional workflow that was skipped
 
-generated: "2025-12-21"
-project: "tauri-app"
-project_type: "Tauri Desktop App (React + TypeScript + Rust)"
+generated: "2025-12-22"
+project: "Memory Prosthetic"
+project_type: "Monorepo (Tauri Desktop + WXT Browser Extension)"
 selected_track: "method"
 field_type: "brownfield"
 workflow_path: "method-brownfield.yaml"

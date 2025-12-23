@@ -2,6 +2,8 @@
  * Shared Utils - Barrel Export
  */
 
+export type { GroupByTimeOptions, TimeGroup } from './date'
+export { formatRelativeTime, getDomain, groupByTime } from './date'
 export type { AnyFunction } from './typed'
 export {
   has,

@@ -3,12 +3,12 @@ stepsCompleted: []
 inputDocuments: []
 workflowType: 'product-brief'
 lastStep: 0
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'User'
 date: '2025-12-16'
 ---
 
-# Product Brief: tauri-app
+# Product Brief: Memory Prosthetic
 
 **Date:** 2025-12-16
 **Author:** User

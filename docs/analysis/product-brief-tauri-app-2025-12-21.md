@@ -6,12 +6,12 @@ inputDocuments:
   - docs/architecture.md
 workflowType: 'product-brief'
 lastStep: 5
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
 ---
 
-# Product Brief: tauri-app
+# Product Brief: Memory Prosthetic
 
 **Date:** 2025-12-21
 **Author:** Gao
@@ -20,7 +20,7 @@ date: '2025-12-21'
 
 ## Executive Summary
 
-**tauri-app**（暂定名）是一款 **「记忆外挂」** 应用 —— 让模糊的记忆变成精确的检索。
+**Memory Prosthetic** 是一款 **「记忆外挂」** 应用 —— 让模糊的记忆变成精确的检索。
 
 通过浏览器插件一键收集网页内容，结合 AI 语义理解和 Spotlight 级快速唤起，解决现代人 **"我看过但找不到"** 的知识焦虑。
 

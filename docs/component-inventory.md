@@ -1,261 +1,267 @@
-# UI 组件清单 (Component Inventory)
+# 组件清单 (Component Inventory)
 
-**项目:** tauri-app
-**UI 库:** shadcn/ui (new-york 风格)
-**基色:** Slate
-**图标库:** Lucide React
-**生成日期:** 2025-12-21
+**项目:** Memory Prosthetic
+**更新日期:** 2025-12-22
+**组件总数:** 56 个 shadcn/ui 组件 + 6 个自定义组件
 
 ---
 
-## 📊 组件概览
+## 📦 共享 UI 组件库 (@memory-prosthetic/ui)
+
+位置: `packages/ui/src/components/ui/`
+
+### 基础组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Button | `button.tsx` | 按钮组件，支持多种变体 |
+| Button Group | `button-group.tsx` | 按钮组 |
+| Input | `input.tsx` | 输入框 |
+| Input Group | `input-group.tsx` | 输入框组 |
+| Textarea | `textarea.tsx` | 多行文本输入 |
+| Label | `label.tsx` | 表单标签 |
+| Checkbox | `checkbox.tsx` | 复选框 |
+| Radio Group | `radio-group.tsx` | 单选组 |
+| Switch | `switch.tsx` | 开关 |
+| Slider | `slider.tsx` | 滑块 |
+| Select | `select.tsx` | 下拉选择 |
+
+### 布局组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Card | `card.tsx` | 卡片容器 |
+| Separator | `separator.tsx` | 分隔线 |
+| Scroll Area | `scroll-area.tsx` | 滚动区域 |
+| Resizable | `resizable.tsx` | 可调整大小面板 |
+| Aspect Ratio | `aspect-ratio.tsx` | 宽高比容器 |
+| Sidebar | `sidebar.tsx` | 侧边栏 |
+
+### 导航组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Tabs | `tabs.tsx` | 标签页 |
+| Navigation Menu | `navigation-menu.tsx` | 导航菜单 |
+| Breadcrumb | `breadcrumb.tsx` | 面包屑 |
+| Pagination | `pagination.tsx` | 分页 |
+| Menubar | `menubar.tsx` | 菜单栏 |
+
+### 反馈组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Alert | `alert.tsx` | 警告提示 |
+| Alert Dialog | `alert-dialog.tsx` | 确认对话框 |
+| Dialog | `dialog.tsx` | 对话框 |
+| Drawer | `drawer.tsx` | 抽屉 |
+| Sheet | `sheet.tsx` | 侧边抽屉 |
+| Sonner | `sonner.tsx` | Toast 通知 |
+| Progress | `progress.tsx` | 进度条 |
+| Skeleton | `skeleton.tsx` | 骨架屏 |
+| Spinner | `spinner.tsx` | 加载指示器 |
+
+### 数据展示
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Table | `table.tsx` | 表格 |
+| Badge | `badge.tsx` | 徽章 |
+| Avatar | `avatar.tsx` | 头像 |
+| Tooltip | `tooltip.tsx` | 工具提示 |
+| Hover Card | `hover-card.tsx` | 悬停卡片 |
+| Popover | `popover.tsx` | 弹出框 |
+| Chart | `chart.tsx` | 图表 (Recharts) |
+| Calendar | `calendar.tsx` | 日历 |
+| Carousel | `carousel.tsx` | 轮播 |
+
+### 表单组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Form | `form.tsx` | 表单 (react-hook-form) |
+| Field | `field.tsx` | 表单字段 |
+| Input OTP | `input-otp.tsx` | OTP 输入 |
+
+### 交互组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Command | `command.tsx` | 命令面板 (cmdk) |
+| Context Menu | `context-menu.tsx` | 右键菜单 |
+| Dropdown Menu | `dropdown-menu.tsx` | 下拉菜单 |
+| Collapsible | `collapsible.tsx` | 可折叠 |
+| Accordion | `accordion.tsx` | 手风琴 |
+| Toggle | `toggle.tsx` | 切换按钮 |
+| Toggle Group | `toggle-group.tsx` | 切换按钮组 |
+
+### 其他组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Empty | `empty.tsx` | 空状态 |
+| Item | `item.tsx` | 列表项 |
+| Kbd | `kbd.tsx` | 键盘快捷键显示 |
+
+---
+
+## 🎨 Desktop 应用自定义组件
+
+位置: `apps/desktop/src/components/`
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| SearchBar | `SearchBar.tsx` | 搜索栏 (172 行) |
+| SearchResults | `SearchResults.tsx` | 搜索结果列表 |
+| CollectionList | `CollectionList.tsx` | 收集内容列表 |
+| CollectionDetail | `CollectionDetail.tsx` | 内容详情 |
+| SettingsPanel | `SettingsPanel.tsx` | 设置面板 |
+| EmptyState | `EmptyState.tsx` | 空状态 |
+
+### SearchBar 组件详情
+
+```tsx
+// apps/desktop/src/components/SearchBar.tsx
+// 核心搜索组件，支持:
+// - 全局快捷键唤起
+// - 实时搜索
+// - 键盘导航
+// - 搜索结果预览
+
+type SearchBarProps = {
+  onSearch: (query: string) => void
+  isLoading?: boolean
+}
+```
+
+---
+
+## 🧩 Browser Extension 组件
+
+位置: `apps/browser-extension/src/`
+
+### 入口组件
+
+| 组件 | 文件 | 说明 |
+|------|------|------|
+| Popup App | `entrypoints/popup/App.tsx` | 弹窗主组件 (155 行) |
+
+### Popup App 组件详情
+
+```tsx
+// apps/browser-extension/src/entrypoints/popup/App.tsx
+// 浏览器插件弹窗，包含:
+// - 连接状态检测
+// - 一键收集按钮
+// - 收集确认反馈
+// - 错误提示
+```
+
+---
+
+## 🔧 Hooks
+
+### Desktop Hooks
+
+| Hook | 文件 | 说明 |
+|------|------|------|
+| useSearch | `hooks/use-search.ts` | 搜索逻辑 |
+| useCollections | `hooks/use-collections.ts` | 收集列表管理 (59 行) |
+
+### Browser Extension Hooks
+
+| Hook | 文件 | 说明 |
+|------|------|------|
+| useCollect | `hooks/use-collect.ts` | 收集逻辑 (131 行) |
+| useConnection | `hooks/use-connection.ts` | 连接检测 |
+
+### UI Hooks
+
+| Hook | 文件 | 说明 |
+|------|------|------|
+| useMobile | `hooks/use-mobile.ts` | 移动端检测 |
+
+---
+
+## 📊 组件统计
 
 | 类别 | 数量 |
 |------|------|
-| 布局组件 | 7 |
-| 导航组件 | 6 |
-| 表单组件 | 14 |
-| 反馈组件 | 12 |
-| 数据展示 | 8 |
-| 工具组件 | 6 |
-| **总计** | **53** |
+| **shadcn/ui 基础组件** | 56 |
+| **Desktop 自定义组件** | 6 |
+| **Extension 组件** | 1 |
+| **自定义 Hooks** | 5 |
+| **总计** | 68 |
 
 ---
 
-## 🎨 组件详情
+## 🎯 核心组件使用示例
 
-### 布局组件 (Layout)
+### 使用 shadcn/ui 组件
 
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Card** | `card.tsx` | 内容卡片容器 |
-| **Separator** | `separator.tsx` | 分隔线 |
-| **Resizable** | `resizable.tsx` | 可调整大小的面板 |
-| **Scroll Area** | `scroll-area.tsx` | 自定义滚动区域 |
-| **Aspect Ratio** | `aspect-ratio.tsx` | 固定宽高比容器 |
-| **Collapsible** | `collapsible.tsx` | 可折叠区域 |
-| **Sidebar** | `sidebar.tsx` | 侧边栏布局 |
+```tsx
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem
+} from '@memory-prosthetic/ui'
 
-### 导航组件 (Navigation)
-
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Navigation Menu** | `navigation-menu.tsx` | 主导航菜单 |
-| **Menubar** | `menubar.tsx` | 菜单栏 |
-| **Tabs** | `tabs.tsx` | 标签页切换 |
-| **Breadcrumb** | `breadcrumb.tsx` | 面包屑导航 |
-| **Pagination** | `pagination.tsx` | 分页控件 |
-| **Sidebar** | `sidebar.tsx` | 侧边导航 |
-
-### 表单组件 (Form)
-
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Button** | `button.tsx` | 按钮 (多变体) |
-| **Button Group** | `button-group.tsx` | 按钮组 |
-| **Input** | `input.tsx` | 文本输入框 |
-| **Input Group** | `input-group.tsx` | 输入框组 |
-| **Input OTP** | `input-otp.tsx` | OTP 验证码输入 |
-| **Textarea** | `textarea.tsx` | 多行文本输入 |
-| **Checkbox** | `checkbox.tsx` | 复选框 |
-| **Radio Group** | `radio-group.tsx` | 单选按钮组 |
-| **Select** | `select.tsx` | 下拉选择器 |
-| **Switch** | `switch.tsx` | 开关切换 |
-| **Slider** | `slider.tsx` | 滑块 |
-| **Calendar** | `calendar.tsx` | 日历选择器 |
-| **Form** | `form.tsx` | 表单容器 (RHF 集成) |
-| **Label** | `label.tsx` | 表单标签 |
-| **Field** | `field.tsx` | 表单字段 |
-
-### 反馈组件 (Feedback)
-
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Alert** | `alert.tsx` | 静态警告提示 |
-| **Alert Dialog** | `alert-dialog.tsx` | 确认对话框 |
-| **Dialog** | `dialog.tsx` | 模态对话框 |
-| **Drawer** | `drawer.tsx` | 抽屉面板 |
-| **Sheet** | `sheet.tsx` | 侧边抽屉 |
-| **Popover** | `popover.tsx` | 弹出层 |
-| **Hover Card** | `hover-card.tsx` | 悬浮卡片 |
-| **Tooltip** | `tooltip.tsx` | 工具提示 |
-| **Sonner** | `sonner.tsx` | Toast 通知 |
-| **Progress** | `progress.tsx` | 进度条 |
-| **Skeleton** | `skeleton.tsx` | 骨架屏加载 |
-| **Spinner** | `spinner.tsx` | 加载指示器 |
-
-### 数据展示组件 (Data Display)
-
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Table** | `table.tsx` | 数据表格 |
-| **Avatar** | `avatar.tsx` | 头像 |
-| **Badge** | `badge.tsx` | 徽章/标签 |
-| **Chart** | `chart.tsx` | 图表 (Recharts 封装) |
-| **Carousel** | `carousel.tsx` | 轮播图 |
-| **Accordion** | `accordion.tsx` | 手风琴展开 |
-| **Empty** | `empty.tsx` | 空状态 |
-| **Item** | `item.tsx` | 列表项 |
-
-### 工具组件 (Utility)
-
-| 组件 | 文件 | 用途 |
-|------|------|------|
-| **Command** | `command.tsx` | 命令面板 (⌘K) |
-| **Context Menu** | `context-menu.tsx` | 右键菜单 |
-| **Dropdown Menu** | `dropdown-menu.tsx` | 下拉菜单 |
-| **Toggle** | `toggle.tsx` | 切换按钮 |
-| **Toggle Group** | `toggle-group.tsx` | 切换按钮组 |
-| **Kbd** | `kbd.tsx` | 键盘快捷键显示 |
-
----
-
-## 🔧 组件使用
-
-### 导入方式
-
-```typescript
-// 从 @/components/ui 导入
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
+const SearchDialog = () => {
+  return (
+    <Dialog>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>搜索</DialogTitle>
+        </DialogHeader>
+        <Command>
+          <CommandInput placeholder="输入关键词..." />
+          <CommandList>
+            <CommandItem>结果 1</CommandItem>
+            <CommandItem>结果 2</CommandItem>
+          </CommandList>
+        </Command>
+      </DialogContent>
+    </Dialog>
+  )
+}
 ```
 
-### 工具函数
+### 使用自定义 Hooks
 
-```typescript
-// cn() - 类名合并工具
-import { cn } from '@/utils/tw'
+```tsx
+import { useSearch } from '@/hooks/use-search'
+import { useCollections } from '@/hooks/use-collections'
 
-<div className={cn('base-class', conditional && 'conditional-class')} />
-```
-
----
-
-## 🎯 Button 变体示例
-
-```typescript
-// 默认变体
-<Button>默认</Button>
-
-// 不同变体
-<Button variant="destructive">删除</Button>
-<Button variant="outline">描边</Button>
-<Button variant="secondary">次要</Button>
-<Button variant="ghost">幽灵</Button>
-<Button variant="link">链接</Button>
-
-// 不同尺寸
-<Button size="sm">小</Button>
-<Button size="default">默认</Button>
-<Button size="lg">大</Button>
-<Button size="icon">图标</Button>
-```
-
----
-
-## 📐 表单集成
-
-### React Hook Form 集成
-
-```typescript
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-})
-
-function LoginForm() {
-  const form = useForm({
-    resolver: zodResolver(schema),
-  })
+const SearchPage = () => {
+  const { search, results, isLoading } = useSearch()
+  const { collections, deleteCollection } = useCollections()
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>邮箱</FormLabel>
-              <FormControl>
-                <Input {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit">提交</Button>
-      </form>
-    </Form>
+    <div>
+      <SearchBar onSearch={search} isLoading={isLoading} />
+      <SearchResults results={results} />
+    </div>
   )
 }
 ```
 
 ---
 
-## 🎨 主题定制
+## 📁 组件路径别名
 
-### CSS 变量
-
-shadcn/ui 使用 CSS 变量进行主题定制：
-
-```css
-/* src/styles/global.css */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  /* ... 更多变量 */
-}
-```
-
-### 暗色模式
-
-项目已安装 `next-themes` 支持暗色模式切换。
+| 别名 | 路径 | 说明 |
+|------|------|------|
+| `@memory-prosthetic/ui` | `packages/ui/src` | UI 组件库 |
+| `@memory-prosthetic/shared` | `packages/shared/src` | 共享类型 |
+| `@/` | `apps/*/src/` | 应用内部路径 |
 
 ---
 
-## 📦 添加新组件
-
-使用 shadcn CLI 添加新组件：
-
-```bash
-# 添加单个组件
-bunx shadcn@latest add [component-name]
-
-# 添加多个组件
-bunx shadcn@latest add button card dialog
-
-# 查看可用组件
-bunx shadcn@latest add --help
-```
-
-### 可用但未安装的组件
-
-| 组件 | 说明 |
-|------|------|
-| Toast | 简单通知 (可用 Sonner 替代) |
-| Data Table | 高级数据表格 |
-| Combobox | 可搜索下拉框 |
-| Date Picker | 日期选择器 |
-
----
-
-## 🔗 相关资源
-
-- [shadcn/ui 官方文档](https://ui.shadcn.com/)
-- [Radix UI 原语](https://www.radix-ui.com/)
-- [Lucide 图标库](https://lucide.dev/)
-- [Tailwind CSS 文档](https://tailwindcss.com/)
+*本文档由 BMAD Document Project Workflow 自动生成*

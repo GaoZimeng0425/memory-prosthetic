@@ -16,12 +16,12 @@ documentCounts:
   projectDocs: 6
 workflowType: 'prd'
 lastStep: 11
-project_name: 'tauri-app'
+project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
 ---
 
-# Product Requirements Document - tauri-app
+# Product Requirements Document - Memory Prosthetic
 
 **Author:** Gao
 **Date:** 2025-12-21
@@ -30,7 +30,7 @@ date: '2025-12-21'
 
 ## Executive Summary
 
-**tauri-app**（暂定名）是一款 **「记忆外挂」** 桌面应用 —— 让模糊的记忆变成精确的检索。
+**Memory Prosthetic** 是一款 **「记忆外挂」** 桌面应用 —— 让模糊的记忆变成精确的检索。
 
 ### 产品愿景
 
@@ -338,7 +338,7 @@ memory-prosthetic/
 
 ### 项目类型概述
 
-**tauri-app** 是一个混合项目，由两个主要组件组成：
+**Memory Prosthetic** 是一个混合项目，由两个主要组件组成：
 
 | 组件 | 技术栈 | 职责 |
 |------|--------|------|

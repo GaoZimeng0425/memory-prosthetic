@@ -1,65 +1,57 @@
-import { useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
+/**
+ * Search Hook
+ *
+ * Performs semantic search using react-query mutation.
+ */
 
-import type { CommandResult, SearchRequest, SearchResponse, SearchResultItem } from '@/types/api'
+import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+
+import type { SearchParams, SearchResult } from '@memory-prosthetic/shared/apis'
+import { search } from '@/apis'
 
 interface UseSearchReturn {
   query: string
   setQuery: (query: string) => void
-  results: SearchResultItem[]
+  results: SearchResult['results']
   isLoading: boolean
   error: string | null
-  search: () => Promise<void>
+  search: () => void
   clearResults: () => void
 }
 
 export function useSearch(): UseSearchReturn {
   const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResultItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [results, setResults] = useState<SearchResult['results']>([])
 
-  const search = async () => {
-    if (!query.trim()) {
-      return
-    }
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const request: SearchRequest = {
-        query: query.trim(),
-        limit: 20,
-      }
-
-      const response = await invoke<CommandResult<SearchResponse>>('search', {
-        request,
-      })
-
-      setResults(response.data.results)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      setError(errorMessage)
+  const searchMutation = useMutation<SearchResult, Error, SearchParams>({
+    ...search.mutations.search(),
+    onSuccess: (data) => {
+      setResults(data.results)
+    },
+    onError: () => {
       setResults([])
-    } finally {
-      setIsLoading(false)
-    }
+    },
+  })
+
+  const performSearch = () => {
+    if (!query.trim()) return
+    searchMutation.mutate({ query: query.trim(), limit: 20 })
   }
 
   const clearResults = () => {
     setResults([])
     setQuery('')
-    setError(null)
+    searchMutation.reset()
   }
 
   return {
     query,
     setQuery,
     results,
-    isLoading,
-    error,
-    search,
+    isLoading: searchMutation.isPending,
+    error: searchMutation.error?.message ?? null,
+    search: performSearch,
     clearResults,
   }
 }

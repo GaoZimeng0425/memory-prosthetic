@@ -1,9 +1,9 @@
-# 项目文档索引 (Project Documentation Index)
+# Memory Prosthetic 项目文档索引
 
-**项目:** tauri-app
+**项目名称:** Memory Prosthetic (记忆外挂)
 **版本:** 0.1.0
-**文档生成日期:** 2025-12-21
-**扫描模式:** Quick Scan (初始扫描)
+**文档生成日期:** 2025-12-22
+**扫描模式:** Full Rescan (完整重新扫描)
 
 ---
 
@@ -11,10 +11,19 @@
 
 | 属性 | 值 |
 |------|-----|
-| **类型** | Tauri Desktop App (混合桌面应用) |
-| **仓库结构** | Monolith (单一仓库) |
+| **类型** | Monorepo (Bun Workspaces) |
+| **仓库结构** | 2 应用 + 2 共享包 |
 | **主要语言** | TypeScript + Rust |
-| **架构模式** | Hybrid (Web Frontend + Native Backend) |
+| **架构模式** | Hybrid Desktop + Browser Extension |
+
+### 项目组成
+
+| 部分 | 类型 | 技术栈 | 路径 |
+|------|------|--------|------|
+| **Desktop** | Tauri 桌面应用 | React 19 + TypeScript + Rust | `apps/desktop/` |
+| **Browser Extension** | WXT 浏览器插件 | React + TypeScript + WXT | `apps/browser-extension/` |
+| **Shared** | 共享库 | TypeScript | `packages/shared/` |
+| **UI** | UI 组件库 | React + shadcn/ui | `packages/ui/` |
 
 ---
 
@@ -27,9 +36,14 @@
 | 类型系统 | TypeScript | 5.9 |
 | 后端语言 | Rust | 2021 Edition |
 | 构建工具 | Vite | 7.x |
-| UI 组件 | shadcn/ui | 53 个组件 |
+| UI 组件 | shadcn/ui | 56 个组件 |
+| React Hooks | react-use | 17.x |
+| 工具库 | es-toolkit | 1.x |
 | 样式框架 | Tailwind CSS | 4.x |
-| 包管理器 | Bun | - |
+| 包管理器 | Bun | 1.x |
+| 插件框架 | WXT | 0.20 |
+| 数据库 | SQLite + sqlite-vec | - |
+| AI 推理 | ONNX Runtime | 2.x |
 
 ---
 
@@ -37,10 +51,13 @@
 
 | 层级 | 文件 | 说明 |
 |------|------|------|
-| 前端入口 | `src/main.tsx` | React 应用挂载 |
-| 主组件 | `src/App.tsx` | 应用根组件 |
-| 后端入口 | `src-tauri/src/main.rs` | Tauri 进程启动 |
-| 命令定义 | `src-tauri/src/lib.rs` | Tauri 命令 |
+| **Desktop 前端入口** | `apps/desktop/src/main.tsx` | React 应用挂载 |
+| **Desktop 主组件** | `apps/desktop/src/App.tsx` | 应用根组件 |
+| **Desktop 后端入口** | `apps/desktop/src-tauri/src/main.rs` | Tauri 进程启动 |
+| **Desktop 命令定义** | `apps/desktop/src-tauri/src/lib.rs` | Tauri Commands |
+| **Extension 弹窗** | `apps/browser-extension/src/entrypoints/popup/App.tsx` | 弹窗 UI |
+| **Extension 后台** | `apps/browser-extension/src/entrypoints/background.ts` | Service Worker |
+| **Extension 内容脚本** | `apps/browser-extension/src/entrypoints/content.ts` | 页面内容提取 |
 
 ---
 
@@ -51,27 +68,28 @@
 | 文档 | 说明 |
 |------|------|
 | [项目概览](./project-overview.md) | 项目简介、技术栈、快速开始 |
-| [架构文档](./architecture.md) | 系统架构、模块设计、通信模式 |
-| [项目上下文](./project-context.md) | AI Agent 实现指南、关键规则 |
+| [PRD](./prd.md) | 产品需求文档 (30 个 FR) |
+| [架构文档](./architecture.md) | 系统架构、ADR、实现模式 |
+| [Epic 分解](./epics.md) | 6 个 Epic、用户故事 |
+| [UX 设计规范](./ux-design-specification.md) | 用户体验设计 |
 | [开发指南](./development-guide.md) | 环境配置、开发流程、调试技巧 |
 | [源码树分析](./source-tree-analysis.md) | 目录结构、入口点、数据流 |
-| [组件清单](./component-inventory.md) | 53 个 shadcn/ui 组件详情 |
+| [组件清单](./component-inventory.md) | 56+ 组件详情 |
+| [集成架构](./integration-architecture.md) | 多部分通信、数据流 |
 
 ### 状态文件
 
 | 文件 | 说明 |
 |------|------|
 | [project-scan-report.json](./project-scan-report.json) | 扫描状态和进度 |
+| [project-parts.json](./project-parts.json) | 项目部分元数据 |
 | [bmm-workflow-status.yaml](./bmm-workflow-status.yaml) | BMAD 工作流状态 |
 
----
+### 分析文档
 
-## 📁 现有文档
-
-| 文档 | 位置 | 说明 |
-|------|------|------|
-| README | `README.md` | 项目基础说明 |
-| 产品简报 | `docs/analysis/product-brief-tauri-app-2025-12-16.md` | 产品简报 (草稿) |
+| 文档 | 说明 |
+|------|------|
+| [产品简报 (2025-12-21)](./analysis/product-brief-tauri-app-2025-12-21.md) | 最新产品简报 |
 
 ---
 
@@ -82,33 +100,36 @@
 - Node.js 18+
 - Bun 1.x
 - Rust 1.70+
-- Xcode (macOS) / Visual Studio Build Tools (Windows)
+- Xcode (macOS)
 
 ### 安装和运行
 
 ```bash
 # 克隆项目
 git clone <repository-url>
-cd tauri-app
+cd memory-prosthetic
 
 # 安装依赖
 bun install
 
-# 开发模式
-bun run tauri dev
+# 开发模式 - 桌面应用
+bun run dev:desktop
+
+# 开发模式 - 浏览器插件
+bun run dev:browser-extension
 
 # 生产构建
-bun run tauri build
+bun run build
 ```
 
 ### 常用命令
 
 | 命令 | 说明 |
 |------|------|
-| `bun run tauri dev` | 启动开发服务器 |
-| `bun run tauri build` | 构建生产版本 |
+| `bun run dev:desktop` | 启动桌面应用开发服务器 |
+| `bun run dev:browser-extension` | 启动浏览器插件开发服务器 |
+| `bun run build` | 构建所有应用 |
 | `bun run format` | 格式化代码 |
-| `bunx shadcn@latest add [组件]` | 添加 UI 组件 |
 
 ---
 
@@ -116,16 +137,19 @@ bun run tauri build
 
 | 指标 | 值 |
 |------|-----|
-| 核心文档 | 5 个 |
-| 扫描模式 | Quick Scan |
-| 识别的组件 | 53 个 |
-| Tauri 命令 | 1 个 |
+| 核心文档 | 9 个 |
+| 扫描模式 | Full Rescan |
+| 项目部分 | 4 个 |
+| UI 组件 | 56 个 |
+| Tauri Commands | 6 个 |
+| API 端点 | 3 个 |
 
 ---
 
 ## 🔗 外部资源
 
 - [Tauri 官方文档](https://tauri.app/v2/)
+- [WXT 官方文档](https://wxt.dev/)
 - [React 文档](https://react.dev/)
 - [shadcn/ui 组件](https://ui.shadcn.com/)
 - [TanStack Router](https://tanstack.com/router/)
@@ -139,11 +163,13 @@ bun run tauri build
 
 ### 推荐的工作流
 
-1. **完成产品简报** - 运行 `product-brief` 工作流
-2. **创建 PRD** - 运行 `prd` 工作流（棕地项目参考本文档）
-3. **UX 设计** - 运行 `create-ux-design` 工作流
-4. **架构设计** - 运行 `create-architecture` 工作流
-5. **创建用户故事** - 运行 `create-epics-and-stories` 工作流
+1. ✅ **文档项目** - 已完成 (本次扫描)
+2. ✅ **产品简报** - 已完成
+3. ✅ **PRD** - 已完成 (30 个功能需求)
+4. ✅ **架构设计** - 已完成 (8 个 ADR)
+5. 🔄 **UX 设计** - 运行 `create-ux-design` 工作流
+6. ⏳ **创建用户故事** - 运行 `create-epics-and-stories` 工作流
+7. ⏳ **Sprint 规划** - 运行 `sprint-planning` 工作流
 
 ### 检查工作流状态
 
@@ -154,4 +180,29 @@ cat docs/bmm-workflow-status.yaml
 
 ---
 
+## 🔄 集成架构速览
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                 Browser Extension (WXT)                     │
+│   收集网页内容 → HTTP API → Desktop App                     │
+└────────────────────────────────────────────────────────────┘
+                         │ HTTP (localhost:21890)
+                         ▼
+┌────────────────────────────────────────────────────────────┐
+│                    Desktop App (Tauri)                      │
+│  React Frontend ◄── IPC ──► Rust Backend                   │
+│       ↓                         ↓                          │
+│  搜索 UI              SQLite + 向量嵌入 (ONNX)              │
+└────────────────────────────────────────────────────────────┘
+                         │
+┌────────────────────────────────────────────────────────────┐
+│                    Shared Packages                          │
+│  @mp/shared (类型 + 工具)    @mp/ui (56 组件)               │
+└────────────────────────────────────────────────────────────┘
+```
+
+---
+
 *本文档由 BMAD Document Project Workflow 自动生成*
+*最后更新: 2025-12-22*

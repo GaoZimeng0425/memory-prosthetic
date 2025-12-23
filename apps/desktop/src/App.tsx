@@ -1,85 +1,196 @@
-import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@memory-prosthetic/ui/components/ui/tabs'
-import { Library, Search } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@memory-prosthetic/ui/components/ui/dialog'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 
-import { CollectionList } from '@/components/CollectionList'
-import { EmptyState } from '@/components/EmptyState'
-import { SearchBar } from '@/components/SearchBar'
-import { SearchResults } from '@/components/SearchResults'
+import { AppSidebar, type SidebarState } from '@/components/AppSidebar'
+import { ArticleReader } from '@/components/ArticleReader'
+import { ArticleList } from '@/components/article-list'
+import { SearchOverlay } from '@/components/SearchOverlay'
+import { SettingsPanel } from '@/components/SettingsPanel'
 import { useCollections } from '@/hooks/use-collections'
-import { useSearch } from '@/hooks/use-search'
-import '@memory-prosthetic/ui/styles/globals.css'
+import type { Collection, CommandResult, SearchResult } from '@/types/api'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('collections')
-  const { query, setQuery, results, isLoading: searchLoading, error: searchError, search, clearResults } = useSearch()
+  // Layout state
+  const [sidebarState, setSidebarState] = useState<SidebarState>('expanded')
+  const [activeNav, setActiveNav] = useState('all')
+  const [isReaderMaximized, setIsReaderMaximized] = useState(false)
+
+  // Search overlay state
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  // Settings dialog state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Selected article state
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedArticle, setSelectedArticle] = useState<Collection | null>(null)
+  const [isArticleLoading, setIsArticleLoading] = useState(false)
+
+  // Collections data
   const { collections, stats, isLoading: collectionsLoading, refresh } = useCollections()
 
-  const hasSearched = results.length > 0 || searchError
+  // Listen for navigation events from tray menu
+  useEffect(() => {
+    const unlisten = listen<string>('navigate', (event) => {
+      if (event.payload === 'settings') {
+        setIsSettingsOpen(true)
+      } else if (event.payload === 'search') {
+        setIsSearchOpen(true)
+      }
+    })
+    return () => {
+      void unlisten.then((fn) => fn())
+    }
+  }, [])
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K or Cmd+Space: Open search
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === ' ')) {
+        e.preventDefault()
+        setIsSearchOpen(true)
+      }
+
+      // Cmd+\: Toggle sidebar
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        setSidebarState((s) => (s === 'expanded' ? 'collapsed' : 'expanded'))
+      }
+
+      // Cmd+M: Toggle maximize reader
+      if ((e.metaKey || e.ctrlKey) && e.key === 'm') {
+        e.preventDefault()
+        if (selectedArticle) {
+          setIsReaderMaximized((m) => !m)
+        }
+      }
+
+      // Escape: Close maximized reader
+      if (e.key === 'Escape' && isReaderMaximized) {
+        setIsReaderMaximized(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedArticle, isReaderMaximized])
+
+  // Load article when selected
+  const handleSelectArticle = useCallback(async (id: number) => {
+    setSelectedId(id)
+    setIsArticleLoading(true)
+    try {
+      const result = await invoke<CommandResult<Collection | null>>('get_collection', { id })
+      setSelectedArticle(result.data)
+    } catch (err) {
+      console.error('Failed to load article:', err)
+      setSelectedArticle(null)
+    } finally {
+      setIsArticleLoading(false)
+    }
+  }, [])
+
+  // Handle search result selection
+  const handleSearchResultSelect = useCallback(
+    (result: SearchResult) => {
+      void handleSelectArticle(result.id)
+      setIsSearchOpen(false)
+    },
+    [handleSelectArticle]
+  )
+
+  // Handle delete
+  const handleDelete = useCallback(
+    (id: number) => {
+      void (async () => {
+        try {
+          await invoke('delete_collection', { id })
+          if (selectedId === id) {
+            setSelectedId(null)
+            setSelectedArticle(null)
+          }
+          void refresh()
+        } catch (error) {
+          console.error('Failed to delete:', error)
+        }
+      })()
+    },
+    [selectedId, refresh]
+  )
+
+  // Handle open URL
+  const handleOpenUrl = useCallback((url: string) => {
+    window.open(url, '_blank')
+  }, [])
+
+  // Calculate sidebar stats
+  const sidebarStats = {
+    total: stats?.total ?? collections.length,
+    starred: 0, // TODO: Implement starred count
+    recent: stats?.thisWeek ?? 0,
+    archived: 0, // TODO: Implement archived count
+  }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-10 border-b bg-card/50 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
-                <span className="font-bold text-sm text-white">M</span>
-              </div>
-              <h1 className="font-semibold text-xl">Memory Prosthetic</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      {/* Sidebar */}
+      <AppSidebar
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+        onSearchClick={() => setIsSearchOpen(true)}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        onStateChange={setSidebarState}
+        state={sidebarState}
+        stats={sidebarStats}
+      />
 
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-6">
-        <div className="mx-auto max-w-2xl">
-          <Tabs onValueChange={setActiveTab} value={activeTab}>
-            <TabsList className="mb-6 grid w-full grid-cols-2">
-              <TabsTrigger className="flex items-center gap-2" value="collections">
-                <Library className="h-4 w-4" />
-                收集 ({collections.length})
-              </TabsTrigger>
-              <TabsTrigger className="flex items-center gap-2" value="search">
-                <Search className="h-4 w-4" />
-                搜索
-              </TabsTrigger>
-            </TabsList>
+      {/* Article List */}
+      <ArticleList
+        collections={collections}
+        isLoading={collectionsLoading}
+        onDelete={handleDelete}
+        onOpenUrl={handleOpenUrl}
+        onSelect={handleSelectArticle}
+        selectedId={selectedId}
+      />
 
-            <TabsContent className="space-y-6" value="collections">
-              {collectionsLoading && collections.length === 0 ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                </div>
-              ) : (
-                <CollectionList collections={collections} onRefresh={refresh} stats={stats} />
-              )}
-            </TabsContent>
+      {/* Article Reader */}
+      <ArticleReader
+        article={selectedArticle}
+        isLoading={isArticleLoading}
+        isMaximized={isReaderMaximized}
+        onDelete={handleDelete}
+        onOpenUrl={handleOpenUrl}
+        onToggleMaximize={() => setIsReaderMaximized((m) => !m)}
+      />
 
-            <TabsContent className="space-y-6" value="search">
-              <SearchBar
-                isLoading={searchLoading}
-                onClear={clearResults}
-                onQueryChange={setQuery}
-                onSearch={search}
-                query={query}
-              />
+      {/* Search Overlay */}
+      <SearchOverlay
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onOpenUrl={handleOpenUrl}
+        onSelectResult={handleSearchResultSelect}
+      />
 
-              {searchError ? (
-                <EmptyState message={searchError} type="error" />
-              ) : hasSearched && results.length === 0 ? (
-                <EmptyState type="no-results" />
-              ) : results.length > 0 ? (
-                <SearchResults query={query} results={results} />
-              ) : (
-                <EmptyState type="search" />
-              )}
-            </TabsContent>
-          </Tabs>
-        </div>
-      </main>
+      {/* Settings Dialog */}
+      <Dialog onOpenChange={setIsSettingsOpen} open={isSettingsOpen}>
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>设置</DialogTitle>
+            <DialogDescription>管理应用程序设置和偏好</DialogDescription>
+          </DialogHeader>
+          <SettingsPanel />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

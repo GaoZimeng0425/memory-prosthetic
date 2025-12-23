@@ -11,6 +11,7 @@ export default defineConfig(async () => ({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@memory-prosthetic/ui': path.resolve(__dirname, '../../packages/ui/src'),
+      '@memory-prosthetic/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
 

@@ -1,116 +1,129 @@
 {
   "workflow_version": "1.2.0",
   "timestamps": {
-    "started": "2025-12-21T10:30:00Z",
-    "last_updated": "2025-12-21T10:50:00Z",
-    "completed": "2025-12-21T10:50:00Z"
+    "started": "2025-12-22T10:00:00Z",
+    "last_updated": "2025-12-22T10:30:00Z",
+    "completed": "2025-12-22T10:30:00Z"
   },
-  "mode": "initial_scan",
+  "mode": "full_rescan",
   "scan_level": "quick",
-  "project_root": "/Users/aa00930/Documents/Learn/tauri-app",
+  "project_root": "/Users/aa00930/Documents/Learn/memory-prosthetic",
   "output_folder": "docs",
   "completed_steps": [
     {
       "step": "step_1",
       "status": "completed",
-      "timestamp": "2025-12-21T10:32:00Z",
-      "summary": "Classified as monolith with 1 part, project_type=desktop, Tauri+React+TypeScript+Rust"
+      "timestamp": "2025-12-22T10:05:00Z",
+      "summary": "Classified as monorepo with 4 parts: desktop, browser-extension, shared, ui"
     },
     {
       "step": "step_2",
       "status": "completed",
-      "timestamp": "2025-12-21T10:35:00Z",
-      "summary": "Found 5 existing docs, no additional user context provided"
+      "timestamp": "2025-12-22T10:08:00Z",
+      "summary": "Found 11 existing docs in docs/"
     },
     {
       "step": "step_3",
       "status": "completed",
-      "timestamp": "2025-12-21T10:38:00Z",
-      "summary": "Tech stack: Tauri 2.x + React 19 + TypeScript 5.9 + Rust, 40 prod deps, 8 dev deps"
+      "timestamp": "2025-12-22T10:12:00Z",
+      "summary": "Tech stack: Tauri 2.x + React 19 + TypeScript 5.9 + Rust + WXT"
     },
     {
       "step": "step_4",
       "status": "completed",
-      "timestamp": "2025-12-21T10:42:00Z",
-      "summary": "State management: React hooks + Tauri IPC; UI components: 53 shadcn/ui; Assets: 19 files"
+      "timestamp": "2025-12-22T10:18:00Z",
+      "summary": "Analyzed: desktop (API+DB+AI), browser-extension (messaging), ui (56 components)"
     },
     {
       "step": "step_5",
       "status": "completed",
-      "timestamp": "2025-12-21T10:45:00Z",
-      "summary": "Source tree analysis generated with annotated directory structure"
+      "timestamp": "2025-12-22T10:22:00Z",
+      "summary": "Source tree analysis generated for monorepo structure"
     },
     {
       "step": "step_6",
       "status": "completed",
-      "timestamp": "2025-12-21T10:46:00Z",
-      "summary": "Development guide generated with setup, scripts, and debugging info"
+      "timestamp": "2025-12-22T10:24:00Z",
+      "summary": "Development guide updated for monorepo workflow"
+    },
+    {
+      "step": "step_7",
+      "status": "completed",
+      "timestamp": "2025-12-22T10:26:00Z",
+      "summary": "Integration architecture: Extension → HTTP → Desktop IPC"
     },
     {
       "step": "step_8",
       "status": "completed",
-      "timestamp": "2025-12-21T10:47:00Z",
-      "summary": "Architecture documentation generated"
-    },
-    {
-      "step": "step_9",
-      "status": "completed",
-      "timestamp": "2025-12-21T10:48:00Z",
-      "summary": "Supporting docs: project-overview.md, component-inventory.md"
+      "timestamp": "2025-12-22T10:28:00Z",
+      "summary": "Architecture and supporting docs generated"
     },
     {
       "step": "step_10",
       "status": "completed",
-      "timestamp": "2025-12-21T10:49:00Z",
+      "timestamp": "2025-12-22T10:29:00Z",
       "summary": "Master index generated at docs/index.md"
     },
-    {
-      "step": "step_12",
-      "status": "completed",
-      "timestamp": "2025-12-21T10:50:00Z",
-      "summary": "Workflow complete"
-    }
+    { "step": "step_12", "status": "completed", "timestamp": "2025-12-22T10:30:00Z", "summary": "Workflow complete" }
   ],
   "current_step": "completed",
   "project_types": [
     {
-      "part_id": "main",
+      "part_id": "desktop",
       "project_type_id": "desktop",
       "display_name": "Tauri Desktop App (React + TypeScript + Rust)"
-    }
+    },
+    {
+      "part_id": "browser-extension",
+      "project_type_id": "extension",
+      "display_name": "WXT Browser Extension (React + TypeScript)"
+    },
+    { "part_id": "shared", "project_type_id": "library", "display_name": "Shared TypeScript Library" },
+    { "part_id": "ui", "project_type_id": "library", "display_name": "React UI Component Library (shadcn/ui)" }
   ],
   "findings": {
     "project_classification": {
-      "repository_type": "monolith",
-      "parts_count": 1,
-      "primary_tech": "Tauri 2.x + React 19 + TypeScript 5.9 + Rust",
-      "architecture_pattern": "Hybrid Desktop (Web Frontend + Native Backend)"
+      "repository_type": "monorepo",
+      "parts_count": 4,
+      "primary_tech": "Tauri 2.x + React 19 + TypeScript 5.9 + Rust + WXT",
+      "architecture_pattern": "Hybrid Desktop + Browser Extension (Monorepo)"
     },
     "existing_docs": {
-      "count": 5
+      "count": 11,
+      "key_docs": ["prd.md", "architecture.md", "epics.md", "ux-design-specification.md"]
     },
     "technology_stack": {
-      "framework": "Tauri 2.x + React 19",
+      "framework": "Tauri 2.x + React 19 + WXT 0.20",
       "language": "TypeScript 5.9 + Rust 2021",
-      "ui_library": "shadcn/ui (53 components)",
-      "state_management": "React Hooks + TanStack Query",
-      "build_tool": "Vite 7.x",
-      "package_manager": "Bun"
+      "ui_library": "shadcn/ui (56 components)",
+      "state_management": "React Hooks + TanStack Query + react-use + Tauri IPC",
+      "utilities": "es-toolkit 1.x",
+      "build_tool": "Vite 7.x + Bun",
+      "package_manager": "Bun Workspaces"
     },
     "conditional_analysis": {
-      "state_management": "React hooks + Tauri IPC",
-      "ui_components": "53 shadcn/ui components",
-      "assets": "19 files (icons, logos)",
-      "tauri_commands": ["greet"]
+      "desktop": {
+        "api_endpoints": ["POST /api/collect", "GET /api/health", "GET /api/search"],
+        "database": "SQLite + sqlite-vec",
+        "ai_model": "all-MiniLM-L6-v2 (ONNX)",
+        "tauri_commands": ["search", "collect", "get_collections", "delete_collection", "get_settings", "set_settings"]
+      },
+      "browser_extension": {
+        "entrypoints": ["popup", "background", "content"],
+        "permissions": ["storage", "tabs", "scripting", "activeTab", "notifications", "sidePanel"],
+        "messaging": "HTTP to localhost:21890"
+      },
+      "ui": { "components": 56, "framework": "Radix UI + Tailwind CSS" }
     }
   },
   "outputs_generated": [
     "project-scan-report.json",
     "source-tree-analysis.md",
     "development-guide.md",
-    "architecture.md",
-    "component-inventory.md",
     "project-overview.md",
+    "component-inventory.md",
+    "integration-architecture.md",
+    "project-parts.json",
     "index.md"
   ],
   "resume_instructions": "Workflow completed successfully"

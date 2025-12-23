@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
+/**
+ * Collections Hook
+ *
+ * Fetches and manages collection data using react-query.
+ */
 
-import type { CollectionListItem, CollectionStats, CommandResult } from '@/types/api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+
+import type { CollectionListItem, CollectionStats } from '@memory-prosthetic/shared/types'
+import { collections } from '@/apis'
 
 interface UseCollectionsReturn {
   collections: CollectionListItem[]
@@ -12,47 +18,30 @@ interface UseCollectionsReturn {
 }
 
 export function useCollections(): UseCollectionsReturn {
-  const [collections, setCollections] = useState<CollectionListItem[]>([])
-  const [stats, setStats] = useState<CollectionStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
+  const listQuery = useQuery({
+    ...collections.queries.list({ limit: 50, offset: 0 }),
+    refetchInterval: 5000, // Poll every 5 seconds
+  })
+
+  const statsQuery = useQuery({
+    ...collections.queries.stats(),
+    refetchInterval: 5000,
+  })
 
   const refresh = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const [collectionsResult, statsResult] = await Promise.all([
-        invoke<CommandResult<CollectionListItem[]>>('get_collections', {
-          limit: 50,
-          offset: 0,
-        }),
-        invoke<CommandResult<CollectionStats>>('get_collection_stats'),
-      ])
-
-      setCollections(collectionsResult.data)
-      setStats(statsResult.data)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      setError(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: collections.keys.lists() }),
+      queryClient.invalidateQueries({ queryKey: collections.keys.stats() }),
+    ])
   }
 
-  useEffect(() => {
-    refresh()
-    // Poll every 5 seconds to check for new collections
-    const interval = setInterval(refresh, 5000)
-    return () => clearInterval(interval)
-    // biome-ignore lint/correctness/useExhaustiveDependencies: initial load only
-  }, [refresh])
-
   return {
-    collections,
-    stats,
-    isLoading,
-    error,
+    collections: listQuery.data ?? [],
+    stats: statsQuery.data ?? null,
+    isLoading: listQuery.isLoading || statsQuery.isLoading,
+    error: listQuery.error?.message ?? statsQuery.error?.message ?? null,
     refresh,
   }
 }

@@ -1,250 +1,344 @@
 # 开发指南 (Development Guide)
 
-**项目:** tauri-app
-**类型:** Tauri Desktop App (React + TypeScript + Rust)
-**生成日期:** 2025-12-21
+**项目:** Memory Prosthetic
+**更新日期:** 2025-12-22
+**仓库类型:** Monorepo (Bun Workspaces)
 
 ---
 
-## 📋 前置要求
+## 📋 环境要求
 
-### 系统要求
+### 必需工具
 
-| 工具 | 版本 | 用途 |
-|------|------|------|
-| **Node.js** | 18+ | JavaScript 运行时 |
-| **Bun** | 1.x | 包管理器 (推荐) |
-| **Rust** | 1.70+ | 后端编译 |
-| **Xcode** (macOS) | 15+ | macOS 构建工具 |
-| **Visual Studio Build Tools** (Windows) | 2022+ | Windows 构建工具 |
+| 工具 | 最低版本 | 推荐版本 | 说明 |
+|------|----------|----------|------|
+| Node.js | 18.x | 20.x+ | JavaScript 运行时 |
+| Bun | 1.0 | 1.x | 包管理器和运行时 |
+| Rust | 1.70 | 1.75+ | 后端语言 |
+| Xcode | 14.x | 15.x | macOS 构建工具 |
 
-### 安装 Rust
+### macOS 特定要求
 
 ```bash
-# macOS / Linux
+# 安装 Xcode Command Line Tools
+xcode-select --install
+
+# 安装 Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Windows - 下载并运行 rustup-init.exe
-# https://rustup.rs/
-```
-
-### 安装 Bun
-
-```bash
-# macOS / Linux
+# 安装 Bun
 curl -fsSL https://bun.sh/install | bash
-
-# Windows (PowerShell)
-powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
 ---
 
 ## 🚀 快速开始
 
-### 1. 克隆和安装依赖
+### 1. 克隆和安装
 
 ```bash
 # 克隆项目
 git clone <repository-url>
-cd tauri-app
+cd memory-prosthetic
 
-# 安装前端依赖
+# 安装所有依赖 (Workspace)
 bun install
 ```
 
-### 2. 启动开发服务器
+### 2. 开发模式
 
 ```bash
-# 启动 Tauri 开发模式 (同时启动 Vite + Rust)
-bun run tauri dev
+# 启动桌面应用 (Tauri + React)
+bun run dev:desktop
+
+# 启动浏览器插件 (WXT)
+bun run dev:browser-extension
 ```
-
-这将:
-
-- 启动 Vite 开发服务器 (<http://localhost:1420>)
-- 编译 Rust 后端
-- 打开 Tauri 桌面窗口
-- 启用热模块替换 (HMR)
 
 ### 3. 构建生产版本
 
 ```bash
-# 构建发布版本
-bun run tauri build
-```
+# 构建所有应用
+bun run build
 
-输出位置: `src-tauri/target/release/bundle/`
+# 仅构建桌面应用
+cd apps/desktop && bun run tauri build
+
+# 仅构建浏览器插件
+cd apps/browser-extension && bun run build
+```
 
 ---
 
-## 📜 可用脚本
+## 📁 项目结构
+
+```
+memory-prosthetic/
+├── apps/
+│   ├── desktop/              # Tauri 桌面应用
+│   │   ├── src/              # React 前端
+│   │   ├── src-tauri/        # Rust 后端
+│   │   └── package.json
+│   └── browser-extension/    # WXT 浏览器插件
+│       ├── src/
+│       └── package.json
+├── packages/
+│   ├── shared/               # 共享类型和工具
+│   └── ui/                   # 共享 UI 组件
+├── docs/                     # 项目文档
+├── package.json              # Workspace 根配置
+└── biome.json               # 代码格式化配置
+```
+
+---
+
+## 🛠️ 常用命令
+
+### Workspace 级别
 
 | 命令 | 说明 |
 |------|------|
-| `bun run dev` | 仅启动 Vite 开发服务器 (无 Tauri) |
-| `bun run build` | 构建前端 (TypeScript + Vite) |
-| `bun run preview` | 预览构建结果 |
-| `bun run tauri dev` | **开发模式** - Vite + Tauri |
-| `bun run tauri build` | **生产构建** - 打包桌面应用 |
-| `bun run format` | Biome 代码格式化 |
+| `bun install` | 安装所有依赖 |
+| `bun run dev:desktop` | 启动桌面应用开发 |
+| `bun run dev:browser-extension` | 启动浏览器插件开发 |
+| `bun run build` | 构建所有应用 |
+| `bun run format` | 格式化所有代码 |
 
----
+### 桌面应用 (apps/desktop)
 
-## 🏗️ 项目结构
+| 命令 | 说明 |
+|------|------|
+| `bun run dev` | 启动 Vite 开发服务器 |
+| `bun run tauri dev` | 启动 Tauri 开发模式 |
+| `bun run tauri build` | 构建生产版本 |
+| `bunx shadcn@latest add [组件]` | 添加 shadcn 组件 |
 
-```
-tauri-app/
-├── src/                    # 前端 (React + TypeScript)
-│   ├── main.tsx           # 入口点
-│   ├── App.tsx            # 主组件
-│   ├── components/ui/     # shadcn/ui 组件
-│   ├── hooks/             # 自定义 Hooks
-│   ├── lib/               # 工具函数
-│   └── styles/            # 全局样式
-├── src-tauri/             # 后端 (Rust)
-│   ├── src/main.rs        # Tauri 入口
-│   ├── src/lib.rs         # 命令定义
-│   └── tauri.conf.json    # 配置
-└── public/                # 静态资源
-```
+### 浏览器插件 (apps/browser-extension)
+
+| 命令 | 说明 |
+|------|------|
+| `bun run dev` | 启动 WXT 开发服务器 (Chrome) |
+| `bun run dev:firefox` | 启动 WXT 开发服务器 (Firefox) |
+| `bun run build` | 构建 Chrome 插件 |
+| `bun run build:firefox` | 构建 Firefox 插件 |
+| `bun run zip` | 打包发布版本 |
+
+### 共享包 (packages/*)
+
+| 命令 | 说明 |
+|------|------|
+| `bun run typecheck` | 类型检查 |
 
 ---
 
 ## 🔧 开发工作流
 
-### 添加新的 Tauri 命令
+### 添加新的 UI 组件
 
-1. 在 `src-tauri/src/lib.rs` 定义 Rust 函数:
+```bash
+# 在 packages/ui 中添加 shadcn 组件
+cd packages/ui
+bunx shadcn@latest add button dialog input
 
-```rust
-#[tauri::command]
-fn my_command(arg: String) -> Result<String, String> {
-    // 实现逻辑
-    Ok(format!("Result: {}", arg))
-}
+# 在应用中使用
+import { Button, Dialog, Input } from '@memory-prosthetic/ui'
 ```
 
-2. 注册命令:
-
-```rust
-.invoke_handler(tauri::generate_handler![greet, my_command])
-```
-
-3. 在前端调用:
+### 添加共享类型
 
 ```typescript
+// packages/shared/src/types/api.ts
+export type SearchResult = {
+  id: number
+  title: string
+  url: string
+  snippet: string
+  score: number
+}
+
+// 在应用中使用
+import type { SearchResult } from '@memory-prosthetic/shared/types'
+```
+
+### 添加 Tauri Command
+
+```rust
+// apps/desktop/src-tauri/src/lib.rs
+#[tauri::command]
+async fn my_command(query: String) -> Result<Vec<MyResult>, String> {
+    // 实现
+}
+
+// 注册命令
+.invoke_handler(tauri::generate_handler![my_command])
+```
+
+```typescript
+// apps/desktop/src/hooks/use-my-command.ts
 import { invoke } from '@tauri-apps/api/core'
 
-const result = await invoke('my_command', { arg: 'value' })
+export const useMyCommand = () => {
+  return useMutation({
+    mutationFn: (query: string) => invoke('my_command', { query })
+  })
+}
 ```
-
-### 添加 shadcn/ui 组件
-
-```bash
-# 使用 shadcn CLI 添加组件
-bunx shadcn@latest add <component-name>
-
-# 示例
-bunx shadcn@latest add button
-bunx shadcn@latest add dialog
-```
-
-### 代码格式化
-
-```bash
-# 格式化所有文件
-bun run format
-
-# 或使用 Biome 直接
-bunx biome format --write .
-```
-
----
-
-## 🌐 环境配置
-
-### Tauri 开发服务器
-
-Vite 开发服务器配置 (`vite.config.ts`):
-
-- **端口:** 1420 (固定，Tauri 要求)
-- **HMR 端口:** 1421
-- **路径别名:** `@/` → `./src/`
-
-### TypeScript 配置
-
-- **目标:** ES2020
-- **严格模式:** 启用
-- **路径别名:** `@/*` → `./src/*`
-
-### Biome 代码规范
-
-- **缩进:** 2 空格
-- **行宽:** 120 字符
-- **分号:** 按需 (ASI)
-- **引号:** 单引号
-- **尾逗号:** ES5 兼容
 
 ---
 
 ## 🐛 调试
 
-### 前端调试
-
-1. 开发模式下，右键点击窗口 → "检查元素"
-2. 使用 Chrome DevTools 调试
-3. React DevTools 扩展可用
-
-### Rust 后端调试
+### 桌面应用
 
 ```bash
-# 查看 Rust 日志
+# 启用 Rust 日志
 RUST_LOG=debug bun run tauri dev
 
-# 或在 lib.rs 中使用
-println!("Debug: {:?}", variable);
+# 在开发者工具中查看前端日志
+# Tauri 窗口中按 Cmd+Option+I
 ```
 
-### 常见问题
+### 浏览器插件
 
-| 问题 | 解决方案 |
-|------|----------|
-| 端口 1420 被占用 | 关闭占用该端口的进程 |
-| Rust 编译失败 | 运行 `rustup update` 更新 Rust |
-| 前端热更新不工作 | 检查 `src-tauri` 是否被监听 (应该被忽略) |
+1. 打开 Chrome `chrome://extensions/`
+2. 启用「开发者模式」
+3. 点击「加载已解压的扩展程序」
+4. 选择 `apps/browser-extension/.output/chrome-mv3`
+5. 点击「Service Worker」查看后台日志
+6. 右键插件图标 → 检查弹出窗口
+
+### Rust 调试
+
+```bash
+# 查看详细的 Cargo 错误
+cd apps/desktop/src-tauri
+cargo build 2>&1 | less
+
+# 运行单元测试
+cargo test
+```
 
 ---
 
-## 📦 构建和发布
+## 📝 代码规范
 
-### 开发构建
+### TypeScript/JavaScript
 
-```bash
-bun run tauri build --debug
+- **格式化:** Biome
+- **类型定义:** 使用 `type`，而非 `interface`
+- **函数声明:** 使用 `const` 箭头函数
+
+```typescript
+// ✅ 正确
+type User = {
+  id: string
+  name: string
+}
+
+const handleClick = () => {
+  // ...
+}
+
+// ❌ 错误
+interface User { ... }
+function handleClick() { ... }
 ```
 
-### 生产构建
+### React
+
+- **React Compiler 已启用**: 禁止使用 `useMemo`, `useCallback`, `memo`
+- **组件文件:** PascalCase (如 `SearchBar.tsx`)
+- **Hook 文件:** kebab-case (如 `use-search.ts`)
+
+### Rust
+
+- **命名:** snake_case (变量/函数)，PascalCase (结构体)
+- **错误处理:** 使用 `Result<T, E>` 和 `thiserror`
+
+### 提交规范
 
 ```bash
-bun run tauri build
+# 提交前格式化
+bun run format
+
+# 提交消息格式
+feat: 添加搜索功能
+fix: 修复收集失败问题
+docs: 更新开发指南
+refactor: 重构数据库模块
 ```
-
-### 构建产物
-
-| 平台 | 格式 | 位置 |
-|------|------|------|
-| macOS | `.app`, `.dmg` | `src-tauri/target/release/bundle/macos/` |
-| Windows | `.exe`, `.msi` | `src-tauri/target/release/bundle/msi/` |
-| Linux | `.deb`, `.AppImage` | `src-tauri/target/release/bundle/` |
 
 ---
 
-## 🔗 有用资源
+## 🔗 外部资源
 
-- [Tauri 官方文档](https://tauri.app/v2/)
-- [Tauri 命令指南](https://tauri.app/develop/calling-rust/)
+### 官方文档
+
+- [Tauri 2.x 文档](https://tauri.app/v2/)
+- [WXT 文档](https://wxt.dev/)
+- [React 19 文档](https://react.dev/)
 - [shadcn/ui 组件](https://ui.shadcn.com/)
-- [TanStack Router 文档](https://tanstack.com/router/latest)
-- [TanStack Query 文档](https://tanstack.com/query/latest)
-- [Biome 文档](https://biomejs.dev/)
+- [TanStack Query](https://tanstack.com/query/)
+- [TanStack Router](https://tanstack.com/router/)
+- [react-use](https://github.com/streamich/react-use)
+- [es-toolkit](https://es-toolkit.slash.page/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [Biome](https://biomejs.dev/)
+
+### 相关技术
+
+- [ONNX Runtime (ort)](https://ort.pyke.io/)
+- [Axum Web Framework](https://github.com/tokio-rs/axum)
+- [SQLite](https://www.sqlite.org/)
+
+---
+
+## ❓ 常见问题
+
+### Bun 安装失败
+
+```bash
+# 清理缓存重试
+rm -rf node_modules bun.lockb
+bun install
+```
+
+### Tauri 构建失败
+
+```bash
+# 确保 Xcode 工具已安装
+xcode-select --install
+
+# 更新 Rust
+rustup update
+
+# 清理 Cargo 缓存
+cd apps/desktop/src-tauri
+cargo clean
+```
+
+### WXT 开发模式不工作
+
+```bash
+# 重新生成配置
+cd apps/browser-extension
+bun run wxt prepare
+
+# 检查端口是否被占用
+lsof -i :3000
+```
+
+### 类型错误
+
+```bash
+# 重新构建共享包
+cd packages/shared
+bun run typecheck
+
+# 重启 TypeScript 服务器 (VS Code)
+Cmd+Shift+P → "TypeScript: Restart TS Server"
+```
+
+---
+
+*本文档由 BMAD Document Project Workflow 自动生成*

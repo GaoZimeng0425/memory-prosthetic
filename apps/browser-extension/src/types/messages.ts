@@ -24,5 +24,8 @@ export interface ExtractErrorResponse {
 /** Combined response type */
 export type ContentResponse = ExtractContentResponse | ExtractErrorResponse
 
+/** Extracted content type (alias for PageContent) */
+export type ExtractedContent = PageContent
+
 /** All message types */
 export type ExtensionMessage = ExtractContentMessage

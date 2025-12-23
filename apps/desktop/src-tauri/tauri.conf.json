@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "desktop",
+  "productName": "Memory Prosthetic",
   "version": "0.1.0",
-  "identifier": "com.aa00930.desktop",
+  "identifier": "com.aa00930.memory-prosthetic",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,27 @@
   "app": {
     "windows": [
       {
-        "title": "desktop",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Memory Prosthetic",
+        "width": 900,
+        "height": 700,
+        "minWidth": 600,
+        "minHeight": 400
+      },
+      {
+        "label": "search",
+        "title": "Search",
+        "url": "/search",
+        "width": 680,
+        "height": 480,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "focus": true
       }
     ],
     "security": {

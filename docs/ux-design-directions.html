@@ -1,0 +1,1400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory Prosthetic - 设计方向探索</title>
+  <style>
+    :root {
+      --bg-primary: #141211;
+      --bg-card: #1c1a18;
+      --bg-muted: #252320;
+      --border: #3a3735;
+      --text-primary: #f5f5f4;
+      --text-secondary: #a8a29e;
+      --text-muted: #78716c;
+      --accent-pink: #e879a2;
+      --accent-yellow: #f59e0b;
+      --accent-blue: #3b82f6;
+      --accent-green: #22c55e;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(20, 18, 17, 0.9);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header h1 span {
+      color: var(--accent-pink);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-muted);
+      padding: 4px;
+      border-radius: var(--radius-md);
+    }
+
+    .nav-tab {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-tab:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-tab.active {
+      background: var(--bg-card);
+      color: var(--text-primary);
+    }
+
+    .main {
+      padding-top: 80px;
+      min-height: 100vh;
+    }
+
+    .mockup-container {
+      display: none;
+      height: calc(100vh - 80px);
+    }
+
+    .mockup-container.active {
+      display: flex;
+    }
+
+    /* ============================================
+       Combined Direction: A + B + D Fusion
+       ============================================ */
+    .direction-combined {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Collapsible Sidebar */
+    .combined-sidebar {
+      width: 220px;
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .combined-sidebar.collapsed {
+      width: 56px;
+    }
+
+    .combined-sidebar.hidden {
+      width: 0;
+      border-right: none;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 56px;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .sidebar-logo-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo-text {
+      color: var(--accent-pink);
+      opacity: 1;
+      transition: opacity 0.2s;
+    }
+
+    .combined-sidebar.collapsed .sidebar-logo-text {
+      opacity: 0;
+    }
+
+    .sidebar-toggle {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-muted);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .sidebar-toggle:hover {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      padding: 12px 8px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .nav-section {
+      margin-bottom: 20px;
+    }
+
+    .nav-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      padding: 0 12px;
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .combined-sidebar.collapsed .nav-section-title {
+      opacity: 0;
+      height: 0;
+      margin: 0;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-muted);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: rgba(232, 121, 162, 0.1);
+      color: var(--accent-pink);
+    }
+
+    .nav-item-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-item-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .nav-item-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-muted);
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    .combined-sidebar.collapsed .nav-item-text,
+    .combined-sidebar.collapsed .nav-item-count {
+      opacity: 0;
+      width: 0;
+    }
+
+    .combined-sidebar.collapsed .nav-item {
+      justify-content: center;
+      padding: 10px;
+    }
+
+    /* List Panel */
+    .combined-list {
+      width: 320px;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: width 0.25s ease;
+    }
+
+    .combined-list.hidden {
+      width: 0;
+      border-right: none;
+      overflow: hidden;
+    }
+
+    .list-toolbar {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .list-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .list-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .list-action-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .list-action-btn:hover {
+      background: var(--bg-muted);
+      color: var(--text-primary);
+    }
+
+    .list-action-btn.active {
+      background: var(--bg-muted);
+      color: var(--accent-pink);
+    }
+
+    .list-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .list-group {
+      margin-bottom: 16px;
+    }
+
+    .list-group-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 8px 8px 4px;
+    }
+
+    .list-group-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-bottom: 4px;
+    }
+
+    .list-item:hover {
+      background: var(--bg-muted);
+    }
+
+    .list-item.active {
+      background: var(--bg-muted);
+      border-left: 2px solid var(--accent-pink);
+      margin-left: -2px;
+    }
+
+    .list-item-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .list-item-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .list-item-title {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .list-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Content Panel */
+    .combined-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: var(--bg-primary);
+      transition: all 0.25s ease;
+    }
+
+    .combined-content.maximized {
+      position: fixed;
+      inset: 80px 0 0 0;
+      z-index: 50;
+    }
+
+    .content-toolbar {
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-primary);
+    }
+
+    .content-breadcrumb {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .content-breadcrumb span {
+      color: var(--text-secondary);
+    }
+
+    .content-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .content-action-btn {
+      padding: 6px 12px;
+      background: var(--bg-muted);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .content-action-btn:hover {
+      background: var(--border);
+      color: var(--text-primary);
+    }
+
+    .content-action-btn.maximize-btn {
+      padding: 6px 10px;
+    }
+
+    .content-action-btn.maximize-btn.active {
+      background: var(--accent-pink);
+      color: white;
+    }
+
+    .content-main {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .article {
+      max-width: 720px;
+      width: 100%;
+    }
+
+    .article-header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .article-title {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 16px;
+    }
+
+    .article-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .article-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .article-body {
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+    }
+
+    .article-body p {
+      margin-bottom: 18px;
+    }
+
+    .article-body h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 32px 0 16px;
+    }
+
+    .article-body blockquote {
+      border-left: 3px solid var(--accent-pink);
+      padding-left: 16px;
+      margin: 24px 0;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Search Overlay */
+    .search-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 100px;
+    }
+
+    .search-overlay.active {
+      display: flex;
+    }
+
+    .search-modal {
+      width: 620px;
+      background: rgba(28, 26, 24, 0.98);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    .search-input-wrapper {
+      display: flex;
+      align-items: center;
+      padding: 18px 20px;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-input-wrapper svg {
+      color: var(--accent-pink);
+      flex-shrink: 0;
+    }
+
+    .search-modal input {
+      flex: 1;
+      background: none;
+      border: none;
+      color: var(--text-primary);
+      font-size: 17px;
+      outline: none;
+    }
+
+    .search-modal input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-kbd {
+      padding: 4px 8px;
+      background: var(--bg-muted);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .search-results {
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .search-result {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .search-result:hover,
+    .search-result.selected {
+      background: var(--bg-muted);
+    }
+
+    .search-result-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .search-result-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-result-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .search-result-excerpt {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .search-result-highlight {
+      color: var(--accent-pink);
+      font-weight: 500;
+    }
+
+    .search-footer {
+      padding: 14px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .search-footer-actions {
+      display: flex;
+      gap: 20px;
+    }
+
+    .search-footer-action {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .search-footer-action kbd {
+      padding: 2px 6px;
+      background: var(--bg-muted);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 11px;
+    }
+
+    /* Info Panel */
+    .info-panel {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .info-panel kbd {
+      padding: 4px 8px;
+      background: var(--bg-muted);
+      border-radius: 4px;
+      font-family: inherit;
+      margin: 0 2px;
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+    }
+
+    .tooltip::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 100%;
+      top: 50%;
+      transform: translateY(-50%);
+      margin-left: 8px;
+      padding: 6px 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      color: var(--text-primary);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      z-index: 100;
+    }
+
+    .combined-sidebar.collapsed .tooltip:hover::after {
+      opacity: 1;
+    }
+
+    /* State indicator */
+    .state-badge {
+      position: fixed;
+      top: 100px;
+      right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      z-index: 60;
+    }
+
+    .state-badge strong {
+      color: var(--accent-pink);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <h1>🧠 <span>Memory Prosthetic</span> Design Directions</h1>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-view="combined">★ Combined (A+B+D)</button>
+      <button class="nav-tab" data-view="a">A. Classic Cubox</button>
+      <button class="nav-tab" data-view="b">B. Minimal Reader</button>
+      <button class="nav-tab" data-view="d">D. Hybrid Flow</button>
+    </nav>
+  </header>
+
+  <main class="main">
+    <!-- Combined Direction: A + B + D Fusion -->
+    <div class="mockup-container active" id="view-combined">
+      <div class="direction-combined">
+        <!-- Collapsible Sidebar -->
+        <aside class="combined-sidebar" id="sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-logo">
+              <span class="sidebar-logo-icon">🧠</span>
+              <span class="sidebar-logo-text">Memory</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebar-toggle" title="切换侧边栏 (⌘\)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 19l-7-7 7-7M18 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+
+          <nav class="sidebar-nav">
+            <div class="nav-section">
+              <div class="nav-section-title">收藏</div>
+              <div class="nav-item active tooltip" data-tooltip="全部收藏">
+                <span class="nav-item-icon">📦</span>
+                <span class="nav-item-text">全部收藏</span>
+                <span class="nav-item-count">128</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="星标">
+                <span class="nav-item-icon">⭐</span>
+                <span class="nav-item-text">星标</span>
+                <span class="nav-item-count">24</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="稍后阅读">
+                <span class="nav-item-icon">🕐</span>
+                <span class="nav-item-text">稍后阅读</span>
+                <span class="nav-item-count">12</span>
+              </div>
+            </div>
+
+            <div class="nav-section">
+              <div class="nav-section-title">标签</div>
+              <div class="nav-item tooltip" data-tooltip="AI/机器学习">
+                <span class="nav-item-icon">🤖</span>
+                <span class="nav-item-text">AI/机器学习</span>
+                <span class="nav-item-count">45</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="设计">
+                <span class="nav-item-icon">🎨</span>
+                <span class="nav-item-text">设计</span>
+                <span class="nav-item-count">32</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="开发">
+                <span class="nav-item-icon">💻</span>
+                <span class="nav-item-text">开发</span>
+                <span class="nav-item-count">28</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="产品">
+                <span class="nav-item-icon">📱</span>
+                <span class="nav-item-text">产品</span>
+                <span class="nav-item-count">19</span>
+              </div>
+            </div>
+
+            <div class="nav-section">
+              <div class="nav-section-title">文件夹</div>
+              <div class="nav-item tooltip" data-tooltip="工作">
+                <span class="nav-item-icon">📁</span>
+                <span class="nav-item-text">工作</span>
+                <span class="nav-item-count">56</span>
+              </div>
+              <div class="nav-item tooltip" data-tooltip="学习">
+                <span class="nav-item-icon">📁</span>
+                <span class="nav-item-text">学习</span>
+                <span class="nav-item-count">34</span>
+              </div>
+            </div>
+          </nav>
+        </aside>
+
+        <!-- List Panel -->
+        <div class="combined-list" id="list-panel">
+          <div class="list-toolbar">
+            <span class="list-title">全部收藏</span>
+            <div class="list-actions">
+              <button class="list-action-btn active" title="列表视图">☰</button>
+              <button class="list-action-btn" title="网格视图">⊞</button>
+            </div>
+          </div>
+
+          <div class="list-content">
+            <div class="list-group">
+              <div class="list-group-header">
+                <span>今天</span>
+                <div class="list-group-line"></div>
+              </div>
+              <div class="list-item active">
+                <div class="list-item-icon">PKM</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">Building a Second Brain: The Definitive Guide</div>
+                  <div class="list-item-meta">
+                    <span>fortelabs.com</span>
+                    <span>·</span>
+                    <span>3 小时前</span>
+                  </div>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">AI</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">The Future of Semantic Search in Knowledge Management</div>
+                  <div class="list-item-meta">
+                    <span>towardsdatascience.com</span>
+                    <span>·</span>
+                    <span>5 小时前</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="list-group">
+              <div class="list-group-header">
+                <span>本周</span>
+                <div class="list-group-line"></div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">笔记</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">The Art of Taking Smart Notes: Complete Guide</div>
+                  <div class="list-item-meta">
+                    <span>zettelkasten.de</span>
+                    <span>·</span>
+                    <span>3 天前</span>
+                  </div>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">架构</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">Local-First Software: You Own Your Data</div>
+                  <div class="list-item-meta">
+                    <span>inkandswitch.com</span>
+                    <span>·</span>
+                    <span>5 天前</span>
+                  </div>
+                </div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">设计</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">Designing for Delight: Micro-interactions That Matter</div>
+                  <div class="list-item-meta">
+                    <span>nngroup.com</span>
+                    <span>·</span>
+                    <span>6 天前</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="list-group">
+              <div class="list-group-header">
+                <span>更早</span>
+                <div class="list-group-line"></div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">开发</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">Tauri vs Electron: Building Modern Desktop Apps</div>
+                  <div class="list-item-meta">
+                    <span>tauri.app</span>
+                    <span>·</span>
+                    <span>2 周前</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content Panel -->
+        <div class="combined-content" id="content-panel">
+          <div class="content-toolbar">
+            <div class="content-breadcrumb">
+              全部收藏 <span>/</span> <span>Building a Second Brain</span>
+            </div>
+            <div class="content-actions">
+              <button class="content-action-btn">⭐ 星标</button>
+              <button class="content-action-btn">🏷️ 标签</button>
+              <button class="content-action-btn">📤 分享</button>
+              <button class="content-action-btn maximize-btn" id="maximize-btn" title="最大化 (⌘M)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="content-main">
+            <article class="article">
+              <header class="article-header">
+                <h1 class="article-title">Building a Second Brain: The Definitive Guide</h1>
+                <div class="article-meta">
+                  <span class="article-meta-item">
+                    <span>🌐</span> fortelabs.com
+                  </span>
+                  <span class="article-meta-item">
+                    <span>👤</span> Tiago Forte
+                  </span>
+                  <span class="article-meta-item">
+                    <span>📅</span> 2024-12-19
+                  </span>
+                  <span class="article-meta-item">
+                    <span>⏱️</span> 8 分钟阅读
+                  </span>
+                </div>
+              </header>
+
+              <div class="article-body">
+                <p>In the digital age, we consume more information than ever before. Yet most of this knowledge slips
+                  through our fingers, lost to the chaos of daily life. What if you could capture, organize, and
+                  retrieve everything you learn?</p>
+
+                <p>A Second Brain is a personal knowledge management system that helps you save your best ideas, connect
+                  them meaningfully, and surface them exactly when you need them. It's not about remembering
+                  everything—it's about trusting your external system so your mind can focus on creativity and insight.
+                </p>
+
+                <h2>The PARA Method</h2>
+
+                <p>The PARA method (Projects, Areas, Resources, Archive) provides a simple yet powerful framework for
+                  organizing your digital life. Combined with progressive summarization, you can distill complex
+                  information into its essence.</p>
+
+                <blockquote>
+                  "Your brain is for having ideas, not storing them. By offloading the burden of remembering to a
+                  trusted external system, you free up mental bandwidth for higher-order thinking."
+                </blockquote>
+
+                <p>The key insight is that organization should follow action. Instead of organizing information by
+                  topic, organize it by project—the outcomes you're actively working toward. This ensures that your
+                  notes are always actionable and relevant.</p>
+
+                <h2>Progressive Summarization</h2>
+
+                <p>Progressive summarization is a technique for distilling notes over time. Each time you revisit a
+                  note, you add another layer of highlighting, gradually surfacing the most valuable insights. This
+                  creates a hierarchy of importance that makes notes scannable and retrievable.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction A: Classic Cubox (simplified) -->
+    <div class="mockup-container" id="view-a">
+      <div class="direction-combined">
+        <aside class="combined-sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-logo">
+              <span class="sidebar-logo-icon">🧠</span>
+              <span class="sidebar-logo-text">Memory</span>
+            </div>
+          </div>
+          <nav class="sidebar-nav">
+            <div class="nav-section">
+              <div class="nav-item active"><span class="nav-item-icon">📦</span><span class="nav-item-text">全部收藏</span>
+              </div>
+              <div class="nav-item"><span class="nav-item-icon">⭐</span><span class="nav-item-text">星标</span></div>
+              <div class="nav-item"><span class="nav-item-icon">🕐</span><span class="nav-item-text">稍后阅读</span></div>
+              <div class="nav-item"><span class="nav-item-icon">🏷️</span><span class="nav-item-text">标签</span></div>
+              <div class="nav-item"><span class="nav-item-icon">📁</span><span class="nav-item-text">文件夹</span></div>
+            </div>
+          </nav>
+        </aside>
+        <div class="combined-list">
+          <div class="list-toolbar"><span class="list-title">全部收藏</span></div>
+          <div class="list-content">
+            <div class="list-item active">
+              <div class="list-item-icon">PKM</div>
+              <div class="list-item-content">
+                <div class="list-item-title">Building a Second Brain</div>
+                <div class="list-item-meta"><span>fortelabs.com</span><span>·</span><span>3天前</span></div>
+              </div>
+            </div>
+            <div class="list-item">
+              <div class="list-item-icon">笔记</div>
+              <div class="list-item-content">
+                <div class="list-item-title">The Art of Taking Smart Notes</div>
+                <div class="list-item-meta"><span>zettelkasten.de</span><span>·</span><span>1周前</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="combined-content">
+          <div class="content-toolbar">
+            <div class="content-breadcrumb">全部收藏 / Building a Second Brain</div>
+            <div class="content-actions">
+              <button class="content-action-btn">⭐ 星标</button>
+              <button class="content-action-btn">🏷️ 标签</button>
+            </div>
+          </div>
+          <div class="content-main">
+            <article class="article">
+              <header class="article-header">
+                <h1 class="article-title">Building a Second Brain: The Definitive Guide</h1>
+                <div class="article-meta">
+                  <span>fortelabs.com · Tiago Forte · 2024-12-19</span>
+                </div>
+              </header>
+              <div class="article-body">
+                <p>Classic Cubox 风格：标准三栏布局，无折叠功能。</p>
+                <p>侧边栏固定 220px，列表区固定 320px，内容区自适应。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction B: Minimal Reader (simplified) -->
+    <div class="mockup-container" id="view-b">
+      <div class="direction-combined">
+        <aside class="combined-sidebar collapsed">
+          <div class="sidebar-header">
+            <div class="sidebar-logo">
+              <span class="sidebar-logo-icon">🧠</span>
+            </div>
+          </div>
+          <nav class="sidebar-nav">
+            <div class="nav-section">
+              <div class="nav-item active"><span class="nav-item-icon">📦</span></div>
+              <div class="nav-item"><span class="nav-item-icon">⭐</span></div>
+              <div class="nav-item"><span class="nav-item-icon">🕐</span></div>
+              <div class="nav-item"><span class="nav-item-icon">🔍</span></div>
+              <div class="nav-item"><span class="nav-item-icon">⚙️</span></div>
+            </div>
+          </nav>
+        </aside>
+        <div class="combined-content" style="flex: 1;">
+          <div class="content-toolbar">
+            <div class="content-breadcrumb">全部收藏 / Building a Second Brain</div>
+            <div class="content-actions">
+              <button class="content-action-btn">⭐ 星标</button>
+              <button class="content-action-btn">📤 分享</button>
+            </div>
+          </div>
+          <div class="content-main">
+            <article class="article">
+              <header class="article-header">
+                <h1 class="article-title">Building a Second Brain: The Definitive Guide</h1>
+                <div class="article-meta">
+                  <span>fortelabs.com · Tiago Forte · 2024-12-19 · 8 分钟阅读</span>
+                </div>
+              </header>
+              <div class="article-body">
+                <p>Minimal Reader 风格：极简阅读体验。</p>
+                <p>侧边栏折叠为图标，隐藏列表区，内容区最大化，专注阅读。</p>
+                <p>适合深度阅读场景。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Direction D: Hybrid Flow (simplified) -->
+    <div class="mockup-container" id="view-d">
+      <div class="direction-combined">
+        <aside class="combined-sidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-logo">
+              <span class="sidebar-logo-icon">🧠</span>
+              <span class="sidebar-logo-text">Memory</span>
+            </div>
+          </div>
+          <nav class="sidebar-nav">
+            <div class="nav-section">
+              <div class="nav-section-title">收藏</div>
+              <div class="nav-item active"><span class="nav-item-icon">📦</span><span
+                  class="nav-item-text">全部</span><span class="nav-item-count">128</span></div>
+              <div class="nav-item"><span class="nav-item-icon">⭐</span><span class="nav-item-text">星标</span><span
+                  class="nav-item-count">24</span></div>
+            </div>
+            <div class="nav-section">
+              <div class="nav-section-title">标签</div>
+              <div class="nav-item"><span class="nav-item-icon">🤖</span><span class="nav-item-text">AI/ML</span><span
+                  class="nav-item-count">45</span></div>
+              <div class="nav-item"><span class="nav-item-icon">🎨</span><span class="nav-item-text">设计</span><span
+                  class="nav-item-count">32</span></div>
+            </div>
+          </nav>
+        </aside>
+        <div class="combined-list">
+          <div class="list-toolbar">
+            <span class="list-title">全部收藏</span>
+            <div class="list-actions">
+              <button class="list-action-btn active">☰</button>
+              <button class="list-action-btn">⊞</button>
+            </div>
+          </div>
+          <div class="list-content">
+            <div class="list-group">
+              <div class="list-group-header"><span>今天</span>
+                <div class="list-group-line"></div>
+              </div>
+              <div class="list-item active">
+                <div class="list-item-icon">PKM</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">Building a Second Brain</div>
+                  <div class="list-item-meta"><span>fortelabs.com</span><span>·</span><span>3小时前</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="list-group">
+              <div class="list-group-header"><span>本周</span>
+                <div class="list-group-line"></div>
+              </div>
+              <div class="list-item">
+                <div class="list-item-icon">笔记</div>
+                <div class="list-item-content">
+                  <div class="list-item-title">The Art of Taking Smart Notes</div>
+                  <div class="list-item-meta"><span>zettelkasten.de</span><span>·</span><span>3天前</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="combined-content">
+          <div class="content-toolbar">
+            <div class="content-breadcrumb">全部收藏 / Building a Second Brain</div>
+            <div class="content-actions">
+              <button class="content-action-btn">⭐</button>
+              <button class="content-action-btn">🏷️</button>
+            </div>
+          </div>
+          <div class="content-main">
+            <article class="article">
+              <header class="article-header">
+                <h1 class="article-title">Building a Second Brain</h1>
+              </header>
+              <div class="article-body">
+                <p>Hybrid Flow 风格：智能分组 + 可切换视图。</p>
+                <p>按时间智能分组（今天/本周/更早），支持列表/网格视图切换。</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Search Overlay -->
+  <div class="search-overlay" id="search-overlay">
+    <div class="search-modal">
+      <div class="search-input-wrapper">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        <input type="text" placeholder="搜索你的记忆..." autofocus value="second brain">
+        <span class="search-kbd">ESC</span>
+      </div>
+      <div class="search-results">
+        <div class="search-result selected">
+          <div class="search-result-icon">PKM</div>
+          <div class="search-result-content">
+            <div class="search-result-title">Building a <span class="search-result-highlight">Second Brain</span>: The
+              Definitive Guide</div>
+            <div class="search-result-excerpt">A <span class="search-result-highlight">Second Brain</span> is a personal
+              knowledge management system that helps you save your best ideas...</div>
+          </div>
+        </div>
+        <div class="search-result">
+          <div class="search-result-icon">笔记</div>
+          <div class="search-result-content">
+            <div class="search-result-title">The Art of Taking Smart Notes</div>
+            <div class="search-result-excerpt">...considered the "<span class="search-result-highlight">second
+                brain</span>" approach to note-taking...</div>
+          </div>
+        </div>
+        <div class="search-result">
+          <div class="search-result-icon">AI</div>
+          <div class="search-result-content">
+            <div class="search-result-title">Semantic Search for Personal Knowledge</div>
+            <div class="search-result-excerpt">How to build a <span class="search-result-highlight">second brain</span>
+              with AI-powered semantic search...</div>
+          </div>
+        </div>
+      </div>
+      <div class="search-footer">
+        <div class="search-footer-actions">
+          <span class="search-footer-action"><kbd>↵</kbd> 打开</span>
+          <span class="search-footer-action"><kbd>⌘↵</kbd> 预览</span>
+          <span class="search-footer-action"><kbd>↑↓</kbd> 导航</span>
+        </div>
+        <span>语义搜索 · 3 个结果</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- State Badge -->
+  <div class="state-badge" id="state-badge">
+    侧边栏: <strong id="sidebar-state">展开</strong> ｜
+    内容区: <strong id="content-state">正常</strong>
+  </div>
+
+  <div class="info-panel">
+    <span>按 <kbd>⌘K</kbd> 搜索</span>
+    <span>按 <kbd>⌘\</kbd> 切换侧边栏</span>
+    <span>按 <kbd>⌘M</kbd> 最大化阅读</span>
+  </div>
+
+  <script>
+    // Sidebar states: expanded -> collapsed -> hidden -> expanded
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const listPanel = document.getElementById('list-panel');
+    const contentPanel = document.getElementById('content-panel');
+    const maximizeBtn = document.getElementById('maximize-btn');
+    const sidebarStateEl = document.getElementById('sidebar-state');
+    const contentStateEl = document.getElementById('content-state');
+
+    let sidebarState = 'expanded'; // expanded, collapsed, hidden
+    let isMaximized = false;
+
+    function updateSidebarState() {
+      sidebar.classList.remove('collapsed', 'hidden');
+      if (sidebarState === 'collapsed') {
+        sidebar.classList.add('collapsed');
+        sidebarStateEl.textContent = '图标';
+      } else if (sidebarState === 'hidden') {
+        sidebar.classList.add('hidden');
+        listPanel.classList.add('hidden');
+        sidebarStateEl.textContent = '隐藏';
+      } else {
+        listPanel.classList.remove('hidden');
+        sidebarStateEl.textContent = '展开';
+      }
+    }
+
+    function toggleSidebar() {
+      if (sidebarState === 'expanded') {
+        sidebarState = 'collapsed';
+      } else if (sidebarState === 'collapsed') {
+        sidebarState = 'hidden';
+      } else {
+        sidebarState = 'expanded';
+      }
+      updateSidebarState();
+    }
+
+    function toggleMaximize() {
+      isMaximized = !isMaximized;
+      contentPanel.classList.toggle('maximized', isMaximized);
+      maximizeBtn.classList.toggle('active', isMaximized);
+      contentStateEl.textContent = isMaximized ? '最大化' : '正常';
+    }
+
+    sidebarToggle.addEventListener('click', toggleSidebar);
+    maximizeBtn.addEventListener('click', toggleMaximize);
+
+    // Tab navigation
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mockup-container').forEach(v => v.classList.remove('active'));
+
+        tab.classList.add('active');
+        const viewId = `view-${tab.dataset.view}`;
+        document.getElementById(viewId).classList.add('active');
+      });
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // ⌘K - Search
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        document.getElementById('search-overlay').classList.toggle('active');
+      }
+      // ESC - Close search
+      if (e.key === 'Escape') {
+        document.getElementById('search-overlay').classList.remove('active');
+        if (isMaximized) {
+          toggleMaximize();
+        }
+      }
+      // ⌘\ - Toggle sidebar
+      if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+      // ⌘M - Maximize content
+      if (e.key === 'm' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleMaximize();
+      }
+    });
+
+    // Close search on backdrop click
+    document.getElementById('search-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'search-overlay') {
+        e.target.classList.remove('active');
+      }
+    });
+  </script>
+</body>
+
+</html>

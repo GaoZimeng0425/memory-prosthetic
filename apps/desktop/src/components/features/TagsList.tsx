@@ -5,11 +5,17 @@
  */
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Hash, Plus, SortAsc } from 'lucide-react'
+import { ChevronDown, ChevronRight, Hash, Pencil, Plus, SortAsc, Trash2 } from 'lucide-react'
 
 import type { Tag } from '@memory-prosthetic/shared'
 import type { TagSortOrder } from '@memory-prosthetic/shared/apis'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@memory-prosthetic/ui/components/ui/context-menu'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { EditTagDialog } from '@/components/features/EditTagDialog'
+import { useCollections } from '@/hooks/use-collections'
 import { useTags } from '@/hooks/use-tags'
 
 interface TagsListProps {
@@ -24,9 +32,10 @@ interface TagsListProps {
   activeTagId?: number | null
   onTagClick: (tagId: number | null) => void
   onCreateClick: () => void
+  onTagChange?: () => void
 }
 
-export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick }: TagsListProps) {
+export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick, onTagChange }: TagsListProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [sortOrder, setSortOrder] = useState<TagSortOrder>('name')
   const { tags, isLoading } = useTags(sortOrder)
@@ -87,10 +96,11 @@ export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick }
             <div className="px-2 py-1 text-muted-foreground text-xs">暂无标签</div>
           ) : (
             tags.map((tag) => (
-              <TagItem
+              <TagItemWithCount
                 active={activeTagId === tag.id}
                 key={tag.id}
                 onClick={() => onTagClick(activeTagId === tag.id ? null : tag.id)}
+                onTagChange={onTagChange}
                 tag={tag}
               />
             ))
@@ -101,27 +111,88 @@ export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick }
   )
 }
 
-interface TagItemProps {
+interface TagItemWithCountProps {
   tag: Tag
   active: boolean
   onClick: () => void
+  onTagChange?: () => void
 }
 
-function TagItem({ tag, active, onClick }: TagItemProps) {
+function TagItemWithCount({ tag, active, onClick, onTagChange }: TagItemWithCountProps) {
+  const { collections } = useCollections({ tagIds: [tag.id], status: 'active' })
+  const { deleteTag } = useTags()
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const count = collections.length
+
+  const handleDelete = async () => {
+    setIsDeleting(true)
+    try {
+      const hasContent = count > 0
+      if (hasContent) {
+        const confirmed = window.confirm(
+          `标签"${tag.name}"被 ${count} 条内容使用。删除后，这些内容的标签关联将被移除。确定要删除吗？`
+        )
+        if (!confirmed) {
+          return
+        }
+      }
+
+      await deleteTag(tag.id)
+      onTagChange?.()
+    } catch (error) {
+      console.error('Failed to delete tag:', error)
+      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
-    <Button
-      className={cn(
-        'w-full justify-start gap-2 text-xs',
-        active && 'bg-sidebar-accent text-sidebar-accent-foreground',
-        !active && 'text-muted-foreground hover:text-foreground'
-      )}
-      onClick={onClick}
-      size="sm"
-      variant="ghost"
-    >
-      <Hash className="h-3 w-3 shrink-0" />
-      <span className="flex-1 truncate text-left">{tag.name}</span>
-      {/* TODO: Show usage count when we have tag usage API */}
-    </Button>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <Button
+            className={cn(
+              'w-full justify-start gap-2 text-xs',
+              active && 'bg-sidebar-accent text-sidebar-accent-foreground',
+              !active && 'text-muted-foreground hover:text-foreground'
+            )}
+            onClick={onClick}
+            size="sm"
+            variant="ghost"
+          >
+            <Hash className="h-3 w-3 shrink-0" />
+            <span className="flex-1 truncate text-left">{tag.name}</span>
+            {count > 0 && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
+                {count}
+              </span>
+            )}
+          </Button>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => setIsEditDialogOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            重命名
+          </ContextMenuItem>
+          <ContextMenuItem className="text-destructive" disabled={isDeleting} onClick={handleDelete}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            删除
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      <EditTagDialog
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open)
+          if (!open) {
+            onTagChange?.()
+          }
+        }}
+        open={isEditDialogOpen}
+        tag={tag}
+      />
+    </>
   )
 }

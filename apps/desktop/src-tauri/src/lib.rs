@@ -2,6 +2,7 @@
 //!
 //! Tauri backend for the Memory Prosthetic app.
 
+mod cleanup;
 mod db;
 mod embedding;
 mod server;
@@ -28,8 +29,8 @@ use tracing::info;
 
 /// Application state shared across commands
 pub struct AppState {
-    pub db: Database,
-    pub settings: Mutex<SettingsManager>,
+    pub db: Arc<Database>,
+    pub settings: Arc<Mutex<SettingsManager>>,
 }
 
 /// Command result wrapper for success responses
@@ -353,6 +354,27 @@ fn update_theme(
     info!("Theme updated to: {:?}", theme);
 
     Ok(CommandResult { data: theme })
+}
+
+/// Update auto cleanup deleted setting
+#[tauri::command]
+fn update_auto_cleanup_deleted(
+    state: State<'_, Arc<AppState>>,
+    cleanup: settings::AutoCleanupDeleted,
+) -> Result<CommandResult<settings::AutoCleanupDeleted>, CommandError> {
+    let mut settings = state.settings.lock().map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    settings.update_auto_cleanup_deleted(cleanup.clone()).map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    info!("Auto cleanup deleted updated to: {:?}", cleanup);
+
+    Ok(CommandResult { data: cleanup })
 }
 
 /// Convert ShortcutConfig to Shortcut
@@ -898,9 +920,10 @@ pub fn run() {
 
             // Create app state
             let db_arc = Arc::new(db.clone());
+            let settings_arc = Arc::new(Mutex::new(settings_manager));
             let state = Arc::new(AppState {
-                db,
-                settings: Mutex::new(settings_manager),
+                db: db_arc.clone(),
+                settings: settings_arc.clone(),
             });
 
             // Register global shortcut from settings
@@ -914,6 +937,28 @@ pub fn run() {
             // Clone state for HTTP server
             let server_state = Arc::clone(&state);
             let db_for_embedding = Arc::clone(&db_arc);
+            let db_for_cleanup = Arc::clone(&db_arc);
+            let settings_for_cleanup = Arc::clone(&settings_arc);
+
+            // Start cleanup service in a separate thread with its own runtime
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new()
+                    .expect("Failed to create Tokio runtime");
+
+                rt.block_on(async move {
+                    let cleanup_service = cleanup::service::CleanupService::new(
+                        db_for_cleanup,
+                        settings_for_cleanup,
+                    );
+                    cleanup_service.start();
+                    info!("Cleanup service started");
+
+                    // Keep the runtime alive
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+                    }
+                });
+            });
 
             // Start HTTP server and embedding service in a separate thread with its own runtime
             std::thread::spawn(move || {
@@ -982,6 +1027,7 @@ pub fn run() {
             update_shortcut,
             set_auto_start,
             update_theme,
+            update_auto_cleanup_deleted,
             // Favorites
             create_favorite,
             update_favorite,

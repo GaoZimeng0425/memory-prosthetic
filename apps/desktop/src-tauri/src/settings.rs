@@ -81,6 +81,38 @@ pub enum Theme {
     System,
 }
 
+/// Auto cleanup deleted items setting
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum AutoCleanupDeleted {
+    /// Disabled
+    Disabled,
+    /// 1 day
+    OneDay,
+    /// 7 days
+    SevenDays,
+    /// 30 days (1 month)
+    ThirtyDays,
+}
+
+impl Default for AutoCleanupDeleted {
+    fn default() -> Self {
+        Self::Disabled
+    }
+}
+
+impl AutoCleanupDeleted {
+    /// Get the number of days, or None if disabled
+    pub fn days(&self) -> Option<u32> {
+        match self {
+            Self::Disabled => None,
+            Self::OneDay => Some(1),
+            Self::SevenDays => Some(7),
+            Self::ThirtyDays => Some(30),
+        }
+    }
+}
+
 /// Application settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,6 +127,9 @@ pub struct AppSettings {
     /// Theme preference
     #[serde(default)]
     pub theme: Theme,
+    /// Auto cleanup deleted items after specified days
+    #[serde(default)]
+    pub auto_cleanup_deleted: AutoCleanupDeleted,
 }
 
 impl Default for AppSettings {
@@ -104,6 +139,7 @@ impl Default for AppSettings {
             server_port: 21890,
             auto_start: false,
             theme: Theme::default(),
+            auto_cleanup_deleted: AutoCleanupDeleted::default(),
         }
     }
 }
@@ -152,6 +188,12 @@ impl SettingsManager {
     /// Update theme
     pub fn update_theme(&mut self, theme: Theme) -> Result<(), SettingsError> {
         self.settings.theme = theme;
+        self.save()
+    }
+
+    /// Update auto cleanup deleted setting
+    pub fn update_auto_cleanup_deleted(&mut self, cleanup: AutoCleanupDeleted) -> Result<(), SettingsError> {
+        self.settings.auto_cleanup_deleted = cleanup;
         self.save()
     }
 

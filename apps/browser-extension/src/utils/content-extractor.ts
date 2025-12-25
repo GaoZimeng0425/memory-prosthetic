@@ -33,28 +33,6 @@ turndownService.addRule('removeEmptyLinks', {
   replacement: () => '',
 })
 
-// Handle anchor links (hash fragments) - preserve them for in-page navigation
-// This must come before other link rules to handle anchor links properly
-turndownService.addRule('anchorLinks', {
-  filter: (node: HTMLElement) => {
-    if (node.nodeName !== 'A') return false
-    const href = (node as HTMLAnchorElement).getAttribute('href') || ''
-    // Match links that start with # (anchor links)
-    return href.startsWith('#')
-  },
-  replacement: (content: string, node: HTMLElement) => {
-    const link = node as HTMLAnchorElement
-    const href = link.getAttribute('href') || ''
-    const text = content.trim() || link.textContent?.trim() || href
-
-    console.log('🚀 : anchorLinks : Found anchor link, href:', href, 'text:', text)
-
-    // Return markdown anchor link format: [text](#anchor-id)
-    // The # is already in href, so we can use it directly
-    return `[${text}](${href})`
-  },
-})
-
 // Handle links containing images - extract image, ignore link wrapper
 // This must come before the default link rule to prevent link from processing the image
 turndownService.addRule('linksWithImages', {
@@ -102,6 +80,68 @@ turndownService.addRule('linksWithImages', {
 
     // Return just the image, ignore the link wrapper
     return `![${alt}](${src})`
+  },
+})
+
+// Handle all links - convert relative URLs to absolute URLs, preserve anchor links
+// This must come after linksWithImages to handle remaining links
+turndownService.addRule('allLinks', {
+  filter: (node: HTMLElement) => {
+    if (node.nodeName !== 'A') return false
+    const href = (node as HTMLAnchorElement).getAttribute('href') || ''
+    // Match all links except those with images (handled by linksWithImages)
+    // and empty links (handled by removeEmptyLinks)
+    return href.length > 0
+  },
+  replacement: (content: string, node: HTMLElement) => {
+    const link = node as HTMLAnchorElement
+    let href = link.getAttribute('href') || ''
+    const text = content.trim() || link.textContent?.trim() || href
+
+    // Handle anchor links (#) - preserve as-is
+    if (href.startsWith('#')) {
+      console.log('🚀 : allLinks : Found anchor link, href:', href, 'text:', text)
+      return `[${text}](${href})`
+    }
+
+    // Handle absolute URLs - preserve as-is
+    if (
+      href.startsWith('http://') ||
+      href.startsWith('https://') ||
+      href.startsWith('mailto:') ||
+      href.startsWith('tel:') ||
+      href.startsWith('javascript:') ||
+      href.startsWith('data:')
+    ) {
+      console.log('🚀 : allLinks : Found absolute URL, href:', href, 'text:', text)
+      return `[${text}](${href})`
+    }
+
+    // Handle relative URLs - convert to absolute
+    console.log('🚀 : allLinks : Found relative link, href:', href, 'text:', text)
+
+    // Convert relative URLs to absolute URLs using URL constructor
+    try {
+      // Use URL constructor to handle all relative URL cases reliably
+      const absoluteUrl = new URL(href, window.location.href)
+      href = absoluteUrl.href
+      console.log('🚀 : allLinks : Converted relative URL to absolute:', href)
+    } catch (error) {
+      console.error('🚀 : allLinks : Error converting URL:', error, 'original href:', href)
+      // Fallback to manual conversion if URL constructor fails
+      const baseUrl = window.location.origin
+      if (href.startsWith('//')) {
+        href = `${window.location.protocol}${href}`
+      } else if (href.startsWith('/')) {
+        href = `${baseUrl}${href}`
+      } else {
+        const currentPath = window.location.pathname
+        const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1)
+        href = `${baseUrl}${basePath}${href}`
+      }
+    }
+
+    return `[${text}](${href})`
   },
 })
 

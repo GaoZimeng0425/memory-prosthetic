@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { ExternalLink, Trash2 } from 'lucide-react'
+import { ExternalLink, Folder, Trash2 } from 'lucide-react'
 
 import { formatDateTime } from '@memory-prosthetic/shared'
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import { CollectionDetail } from '@/components/CollectionDetail'
+import { useFavorites } from '@/hooks/use-favorites'
 import type { Collection, CollectionListItem, CollectionStats, CommandResult } from '@/types/api'
 
 interface CollectionListProps {
@@ -19,6 +20,7 @@ export function CollectionList({ collections, stats, onRefresh }: CollectionList
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [loadingId, setLoadingId] = useState<number | null>(null)
+  const { favorites } = useFavorites()
 
   const handleItemClick = async (id: number) => {
     setLoadingId(id)
@@ -93,10 +95,16 @@ export function CollectionList({ collections, stats, onRefresh }: CollectionList
                         item.title
                       )}
                     </CardTitle>
-                    <CardDescription className="mt-1 flex items-center gap-2">
+                    <CardDescription className="mt-1 flex flex-wrap items-center gap-2">
                       <Badge className="text-xs" variant="outline">
                         {item.domain}
                       </Badge>
+                      {item.favoriteId && (
+                        <Badge className="flex items-center gap-1 text-xs" variant="secondary">
+                          <Folder className="h-3 w-3" />
+                          {favorites.find((f) => f.id === item.favoriteId)?.name ?? '收藏夹'}
+                        </Badge>
+                      )}
                       <span className="text-xs">{formatDateTime(item.createdAt)}</span>
                     </CardDescription>
                   </div>

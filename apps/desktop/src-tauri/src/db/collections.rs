@@ -478,6 +478,23 @@ impl<'a> CollectionRepository<'a> {
         })
     }
 
+    /// Cleanup deleted collections older than specified days
+    pub fn cleanup_deleted_older_than(&self, days: u32) -> Result<usize, DbError> {
+        self.db.with_connection(|conn| {
+            let sql = format!(
+                "DELETE FROM collections WHERE status = 'deleted' AND updated_at < datetime('now', '-{} days')",
+                days
+            );
+
+            let rows_affected = conn.execute(&sql, [])?;
+            if rows_affected > 0 {
+                info!("Cleaned up {} deleted collections older than {} days", rows_affected, days);
+            }
+
+            Ok(rows_affected as usize)
+        })
+    }
+
     /// Archive a collection (set status to 'archived')
     pub fn archive(&self, id: i64) -> Result<(), DbError> {
         self.db.with_connection(|conn| {

@@ -24,6 +24,7 @@ import { SearchOverlay } from '@/components/SearchOverlay'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
 import { useCollections } from '@/hooks/use-collections'
+import { useFavorites } from '@/hooks/use-favorites'
 import { useTags } from '@/hooks/use-tags'
 import type { Collection, CommandResult, SearchResult } from '@/types/api'
 
@@ -90,6 +91,8 @@ function App() {
   }, [activeNav, activeFavoriteId, activeTagId])
 
   const { collections, stats, isLoading: collectionsLoading, refresh } = useCollections(collectionParams)
+  const { favorites } = useFavorites()
+  const { tags } = useTags()
 
   // Load article when selected
   const handleSelectArticle = useCallback(async (id: number) => {
@@ -319,6 +322,66 @@ function App() {
     deleted: stats?.deleted ?? 0,
   }
 
+  // Calculate filter hint
+  const filterHint = useMemo(() => {
+    if (activeNav === 'favorite' && activeFavoriteId !== null) {
+      const favorite = favorites.find((f) => f.id === activeFavoriteId)
+      return {
+        type: 'favorite' as const,
+        label: favorite ? `收藏夹: ${favorite.name}` : '收藏夹',
+        count: filteredCollections.length,
+        onClear: () => {
+          setActiveNav('all')
+          setActiveFavoriteId(null)
+        },
+      }
+    }
+    if (activeNav === 'favorite' && activeFavoriteId === null) {
+      return {
+        type: 'favorite' as const,
+        label: '未分类',
+        count: filteredCollections.length,
+        onClear: () => {
+          setActiveNav('all')
+          setActiveFavoriteId(null)
+        },
+      }
+    }
+    if (activeNav === 'tag' && activeTagId !== null) {
+      const tag = tags.find((t) => t.id === activeTagId)
+      return {
+        type: 'tag' as const,
+        label: tag ? `标签: #${tag.name}` : '标签',
+        count: filteredCollections.length,
+        onClear: () => {
+          setActiveNav('all')
+          setActiveTagId(null)
+        },
+      }
+    }
+    if (activeNav === 'archived') {
+      return {
+        type: 'archived' as const,
+        label: '已归档',
+        count: filteredCollections.length,
+        onClear: () => {
+          setActiveNav('all')
+        },
+      }
+    }
+    if (activeNav === 'deleted') {
+      return {
+        type: 'deleted' as const,
+        label: '最近删除',
+        count: filteredCollections.length,
+        onClear: () => {
+          setActiveNav('all')
+        },
+      }
+    }
+    return null
+  }, [activeNav, activeFavoriteId, activeTagId, favorites, tags, filteredCollections.length])
+
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <DragRegion className="h-8 shrink-0 cursor-move" />
@@ -362,6 +425,7 @@ function App() {
       <ArticleList
         className="pt-4"
         collections={filteredCollections}
+        filterHint={filterHint ?? undefined}
         isLoading={collectionsLoading}
         onArchive={handleArchive}
         onDelete={handleDelete}

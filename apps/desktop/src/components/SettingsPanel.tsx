@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { Check, ExternalLink, Info, Keyboard, Monitor, Moon, Palette, Power, Sun, X } from 'lucide-react'
+import { Check, ExternalLink, Info, Keyboard, Monitor, Moon, Palette, Power, Sun, Trash2, X } from 'lucide-react'
 
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@memory-prosthetic/ui/components/ui/select'
 import { Switch } from '@memory-prosthetic/ui/components/ui/switch'
 import { type Theme, useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
-import type { AppSettings, CommandResult, ShortcutConfig } from '@/types/api'
+import type { AppSettings, AutoCleanupDeleted, CommandResult, ShortcutConfig } from '@/types/api'
 import { formatShortcut } from '@/types/settings'
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: React.ReactNode }[] = [
@@ -226,6 +233,61 @@ export function SettingsPanel() {
               }}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Auto Cleanup Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Trash2 className="h-5 w-5" />
+            自动清理
+          </CardTitle>
+          <CardDescription>自动永久删除"最近删除"中的过期内容</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-sm">自动清理已删除内容</p>
+              <p className="text-muted-foreground text-xs">定期清理超过指定时间的已删除内容</p>
+            </div>
+            <Select
+              onValueChange={async (value: AutoCleanupDeleted) => {
+                try {
+                  await invoke<CommandResult<AutoCleanupDeleted>>('update_auto_cleanup_deleted', {
+                    cleanup: value,
+                  })
+                  setSettings((prev) => (prev ? { ...prev, autoCleanupDeleted: value } : null))
+                } catch (err) {
+                  setError(String(err))
+                }
+              }}
+              value={settings.autoCleanupDeleted ?? 'disabled'}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="disabled">禁用</SelectItem>
+                <SelectItem value="oneDay">1 天</SelectItem>
+                <SelectItem value="sevenDays">7 天</SelectItem>
+                <SelectItem value="thirtyDays">1 个月</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {settings.autoCleanupDeleted && settings.autoCleanupDeleted !== 'disabled' && (
+            <div className="rounded-md bg-muted/50 p-3 text-muted-foreground text-xs">
+              <p>
+                已启用自动清理。超过{' '}
+                {settings.autoCleanupDeleted === 'oneDay'
+                  ? '1 天'
+                  : settings.autoCleanupDeleted === 'sevenDays'
+                    ? '7 天'
+                    : '1 个月'}{' '}
+                的已删除内容将被永久删除。
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

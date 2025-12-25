@@ -27,9 +27,12 @@ export interface ShortcutConfig {
   key: string
 }
 
+export type AutoCleanupDeleted = 'disabled' | 'oneDay' | 'sevenDays' | 'thirtyDays'
+
 export interface AppSettings {
   searchShortcut: ShortcutConfig
   serverPort: number
   autoStart: boolean
   theme: Theme
+  autoCleanupDeleted?: AutoCleanupDeleted
 }

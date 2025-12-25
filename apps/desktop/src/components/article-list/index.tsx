@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import leven from 'leven'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 
+import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
+import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import type { CollectionListItem } from '@/types/api'
@@ -48,6 +50,12 @@ interface ArticleListProps {
   onOpenFavoriteDialog?: (id: number) => void
   onArchive?: (id: number) => void
   isLoading?: boolean
+  filterHint?: {
+    type: 'favorite' | 'tag' | 'archived' | 'deleted' | null
+    label: string
+    count: number
+    onClear?: () => void
+  }
 }
 
 export function ArticleList({
@@ -63,6 +71,7 @@ export function ArticleList({
   onOpenFavoriteDialog,
   onArchive,
   isLoading,
+  filterHint,
 }: ArticleListProps) {
   const [filter, setFilter] = useState('')
 
@@ -98,6 +107,24 @@ export function ArticleList({
 
   return (
     <div className={cn('flex h-full w-80 flex-col overflow-hidden border-border border-r bg-card', className)}>
+      {/* Filter Hint */}
+      {filterHint?.type && (
+        <div className="border-border border-b bg-muted/30 px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Badge className="text-xs" variant="secondary">
+                {filterHint.label} ({filterHint.count} 条)
+              </Badge>
+            </div>
+            {filterHint.onClear && (
+              <Button className="h-5 w-5 p-0" onClick={filterHint.onClear} size="icon" title="清除筛选" variant="ghost">
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Filter Input */}
       <div className="border-border border-b p-3">
         <div className="relative">

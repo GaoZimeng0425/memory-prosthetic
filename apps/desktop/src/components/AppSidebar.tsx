@@ -175,6 +175,9 @@ export const AppSidebar = ({
               activeFavoriteId={activeFavoriteId ?? undefined}
               isCollapsed={isCollapsed}
               onCreateClick={() => setIsCreateFavoriteOpen(true)}
+              onFavoriteChange={() => {
+                // Refresh favorites list
+              }}
               onFavoriteClick={(favoriteId) => {
                 onFavoriteChange?.(favoriteId)
                 onNavChange('favorite')
@@ -190,6 +193,9 @@ export const AppSidebar = ({
               activeTagId={activeTagId}
               isCollapsed={isCollapsed}
               onCreateClick={() => setIsCreateTagOpen(true)}
+              onTagChange={() => {
+                // Refresh tags list
+              }}
               onTagClick={(tagId) => {
                 onTagChange?.(tagId)
                 onNavChange('tag')

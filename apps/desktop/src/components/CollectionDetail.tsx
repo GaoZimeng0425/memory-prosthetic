@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import { Calendar, ExternalLink, Trash2 } from 'lucide-react'
+import { Archive, Calendar, ExternalLink, RotateCcw, Trash2 } from 'lucide-react'
 
 import {
   AlertDialog,
@@ -24,6 +24,8 @@ import {
   DialogTitle,
 } from '@memory-prosthetic/ui/components/ui/dialog'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
+import { collections } from '@/apis'
+import { FavoriteSelector } from '@/components/features/FavoriteSelector'
 import { TagBadge } from '@/components/features/TagBadge'
 import { TagSelector } from '@/components/features/TagSelector'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
@@ -39,7 +41,10 @@ interface CollectionDetailProps {
 
 export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: CollectionDetailProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showPermanentDeleteConfirm, setShowPermanentDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [isRestoring, setIsRestoring] = useState(false)
   const { tags: collectionTags, addTags, removeTag } = useCollectionTags(collection?.id ?? null)
   const { createTag } = useTags()
 
@@ -69,6 +74,7 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
+      // Soft delete (status = 'deleted')
       await invoke<CommandResult<boolean>>('delete_collection', { id: collection.id })
       onOpenChange(false)
       onDeleted()
@@ -77,6 +83,55 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
     } finally {
       setIsDeleting(false)
       setShowDeleteConfirm(false)
+    }
+  }
+
+  const handlePermanentDelete = async () => {
+    setIsDeleting(true)
+    try {
+      await collections.api.permanentlyDelete(collection.id)
+      onOpenChange(false)
+      onDeleted()
+    } catch (err) {
+      console.error('Failed to permanently delete collection:', err)
+    } finally {
+      setIsDeleting(false)
+      setShowPermanentDeleteConfirm(false)
+    }
+  }
+
+  const handleArchive = async () => {
+    setIsArchiving(true)
+    try {
+      await collections.api.archive(collection.id)
+      onOpenChange(false)
+      onDeleted()
+    } catch (err) {
+      console.error('Failed to archive collection:', err)
+    } finally {
+      setIsArchiving(false)
+    }
+  }
+
+  const handleRestore = async () => {
+    setIsRestoring(true)
+    try {
+      await collections.api.restore(collection.id)
+      onOpenChange(false)
+      onDeleted()
+    } catch (err) {
+      console.error('Failed to restore collection:', err)
+    } finally {
+      setIsRestoring(false)
+    }
+  }
+
+  const handleFavoriteChange = async (favoriteId: number | null) => {
+    try {
+      await collections.api.setFavorite(collection.id, favoriteId)
+      onDeleted() // Refresh the list
+    } catch (err) {
+      console.error('Failed to set favorite:', err)
     }
   }
 
@@ -115,6 +170,10 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
                     <Calendar className="h-3 w-3" />
                     {formatDate(collection.createdAt)}
                   </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-xs">收藏夹：</span>
+                  <FavoriteSelector currentFavoriteId={collection.favoriteId ?? null} onSelect={handleFavoriteChange} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-muted-foreground text-xs">标签：</span>
@@ -186,10 +245,42 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
               <ExternalLink className="mr-2 h-4 w-4" />
               打开原文
             </Button>
-            <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              删除
-            </Button>
+            {collection.status === 'active' && (
+              <>
+                <Button disabled={isArchiving} onClick={handleArchive} variant="outline">
+                  <Archive className="mr-2 h-4 w-4" />
+                  {isArchiving ? '归档中...' : '归档'}
+                </Button>
+                <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  删除
+                </Button>
+              </>
+            )}
+            {collection.status === 'archived' && (
+              <>
+                <Button disabled={isRestoring} onClick={handleRestore} variant="outline">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {isRestoring ? '恢复中...' : '恢复'}
+                </Button>
+                <Button onClick={() => setShowDeleteConfirm(true)} variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  删除
+                </Button>
+              </>
+            )}
+            {collection.status === 'deleted' && (
+              <>
+                <Button disabled={isRestoring} onClick={handleRestore} variant="outline">
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  {isRestoring ? '恢复中...' : '恢复'}
+                </Button>
+                <Button onClick={() => setShowPermanentDeleteConfirm(true)} variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  永久删除
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -197,13 +288,28 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
       <AlertDialog onOpenChange={setShowDeleteConfirm} open={showDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确定删除这篇内容？</AlertDialogTitle>
-            <AlertDialogDescription>此操作无法撤销。内容及其向量数据将被永久删除。</AlertDialogDescription>
+            <AlertDialogTitle>确定要删除此内容吗？</AlertDialogTitle>
+            <AlertDialogDescription>删除后可在"最近删除"中恢复。</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction disabled={isDeleting} onClick={handleDelete}>
               {isDeleting ? '删除中...' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog onOpenChange={setShowPermanentDeleteConfirm} open={showPermanentDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确定要永久删除吗？</AlertDialogTitle>
+            <AlertDialogDescription>此操作不可恢复，内容及其向量数据将被永久删除。</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction disabled={isDeleting} onClick={handlePermanentDelete}>
+              {isDeleting ? '删除中...' : '确认永久删除'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button } from '@memory-prosthetic/ui/components/ui/button'
-import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { invoke } from '@tauri-apps/api/core'
 import { ArrowRight, Clock, FileText, Search, X } from 'lucide-react'
 
+import { Button } from '@memory-prosthetic/ui/components/ui/button'
+import { cn } from '@memory-prosthetic/ui/utils/tw'
 import type { CommandResult, SearchResult } from '@/types/api'
 
 interface SearchOverlayProps {
@@ -37,17 +37,6 @@ export function SearchOverlay({ isOpen, onClose, onSelectResult, onOpenUrl }: Se
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Focus input when opened
-  useEffect(() => {
-    if (isOpen) {
-      setQuery('')
-      setResults([])
-      setSelectedIndex(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
-      void loadRecentItems()
-    }
-  }, [isOpen])
-
   // Load recent items
   const loadRecentItems = async () => {
     try {
@@ -57,6 +46,16 @@ export function SearchOverlay({ isOpen, onClose, onSelectResult, onOpenUrl }: Se
       setRecentItems([])
     }
   }
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      setQuery('')
+      setResults([])
+      setSelectedIndex(0)
+      setTimeout(() => inputRef.current?.focus(), 50)
+      void loadRecentItems()
+    }
+  }, [isOpen, loadRecentItems])
 
   // Search with debounce
   useEffect(() => {
@@ -237,11 +236,11 @@ export function SearchOverlay({ isOpen, onClose, onSelectResult, onOpenUrl }: Se
                       <h4 className="mb-1 truncate font-medium text-sm">{item.title}</h4>
                       <div className="flex items-center gap-2 text-muted-foreground text-xs">
                         <span className="truncate">{getDomain(item.url)}</span>
-                        {isSearchResult && (item as SearchResult).score && (
+                        {isSearchResult && (item as SearchResult).similarity != null && (
                           <>
                             <span>·</span>
                             <span className="shrink-0 text-primary">
-                              {Math.round(((item as SearchResult).score || 0) * 100)}% 匹配
+                              {Math.round(((item as SearchResult).similarity || 0) * 100)}% 匹配
                             </span>
                           </>
                         )}

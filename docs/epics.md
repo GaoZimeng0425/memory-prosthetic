@@ -1,11 +1,13 @@
 ---
-stepsCompleted: [1, 2, 3, 4]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7]
 inputDocuments:
   - docs/prd.md
   - docs/architecture.md
 workflowType: 'epics-and-stories'
-lastStep: 4
+lastStep: 7
 status: 'complete'
+revision: 2
+revisionDate: '2025-12-22'
 completedAt: '2025-12-22'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
@@ -66,11 +68,45 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 - FR25: 用户可以查看已收集内容的数量统计
 - FR26: 用户可以管理（查看/删除）已收集的内容
 
+**内容组织 (Content Organization)**
+
+**收藏夹管理 (Favorites Management)**
+
+- FR31: 用户可以创建、重命名和删除收藏夹（文件夹）
+- FR32: 用户可以将收集的内容添加到收藏夹中
+- FR33: 用户可以将内容从收藏夹中移除
+- FR34: 用户可以查看每个收藏夹中的内容数量和列表
+- FR35: 用户可以查看"未分类"收藏夹（默认收藏夹，包含所有未分配到其他收藏夹的内容）
+- FR36: 用户可以在侧边栏中折叠/展开收藏夹列表
+- FR37: 用户可以在收集内容时选择目标收藏夹（P1）
+
+**标签管理 (Tags Management)**
+
+- FR38: 用户可以创建、重命名和删除标签
+- FR39: 用户可以为收集的内容添加一个或多个标签
+- FR40: 用户可以移除内容上的标签
+- FR41: 用户可以查看"无标签"分类（包含所有未添加标签的内容）
+- FR42: 用户可以按标签筛选和查看内容
+- FR43: 用户可以在侧边栏中查看所有标签列表
+- FR44: 用户可以对标签进行排序（P1）
+- FR45: 系统可以为收集的内容自动生成标签（Alpha，与FR29合并）
+
+**归档和删除 (Archive & Delete)**
+
+- FR46: 用户可以将内容归档（移动到归档状态，不显示在正常列表中）
+- FR47: 用户可以查看"已归档"分类中的所有归档内容
+- FR48: 用户可以将归档的内容恢复（取消归档）
+- FR49: 用户可以删除内容（移动到"最近删除"）
+- FR50: 用户可以查看"最近删除"分类中的所有已删除内容
+- FR51: 用户可以永久删除内容（从"最近删除"中彻底删除）
+- FR52: 系统可以自动清理"最近删除"中超过30天的内容（可选，P2）
+- FR53: 归档和删除功能统一放置在"其他"分类下（UI组织）
+
 **搜索增强 (Search Enhancement) - 后续版本**
 
-- FR27: 用户可以为收集的内容添加手动备注/标签（Alpha）
+- FR27: 用户可以为收集的内容添加手动备注/标签（Alpha，已整合到FR39）
 - FR28: 系统可以为收集的内容自动生成摘要（Alpha）
-- FR29: 系统可以为收集的内容自动生成标签（Alpha）
+- FR29: 系统可以为收集的内容自动生成标签（Alpha，已整合到FR45）
 - FR30: 系统可以在搜索时提供搜索建议（Beta）
 
 ### NonFunctional Requirements
@@ -193,11 +229,34 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 | FR23 | Epic 1 | 健康检查端点 |
 | FR24 | Epic 5 | 配置 HTTP Server 端口 |
 | FR25 | Epic 5 | 内容数量统计 |
-| FR26 | Epic 5 | 管理（查看/删除）内容 |
-| FR27 | Epic 6 | 手动备注/标签 |
+| FR26 | Epic 5 | 管理（查看/删除）内容（已扩展为FR49-FR52） |
+| FR27 | Epic 6 | 手动备注/标签（已整合到FR39） |
 | FR28 | Epic 6 | 自动生成摘要 |
-| FR29 | Epic 6 | 自动生成标签 |
+| FR29 | Epic 6 | 自动生成标签（已整合到FR45） |
 | FR30 | Epic 6 | 搜索建议 |
+| FR31 | Epic 7 | 创建、重命名、删除收藏夹 |
+| FR32 | Epic 7 | 将内容添加到收藏夹 |
+| FR33 | Epic 7 | 从收藏夹移除内容 |
+| FR34 | Epic 7 | 查看收藏夹内容数量和列表 |
+| FR35 | Epic 7 | "未分类"收藏夹 |
+| FR36 | Epic 7 | 侧边栏折叠/展开收藏夹列表 |
+| FR37 | Epic 7 | 收集时选择目标收藏夹 |
+| FR38 | Epic 7 | 创建、重命名、删除标签 |
+| FR39 | Epic 7 | 为内容添加一个或多个标签 |
+| FR40 | Epic 7 | 移除内容上的标签 |
+| FR41 | Epic 7 | "无标签"分类 |
+| FR42 | Epic 7 | 按标签筛选和查看内容 |
+| FR43 | Epic 7 | 侧边栏查看所有标签列表 |
+| FR44 | Epic 7 | 标签排序 |
+| FR45 | Epic 7 | AI 自动生成标签 |
+| FR46 | Epic 7 | 归档内容 |
+| FR47 | Epic 7 | 查看"已归档"分类 |
+| FR48 | Epic 7 | 恢复归档内容 |
+| FR49 | Epic 7 | 删除内容（移动到"最近删除"） |
+| FR50 | Epic 7 | 查看"最近删除"分类 |
+| FR51 | Epic 7 | 永久删除内容 |
+| FR52 | Epic 7 | 自动清理"最近删除"（可选） |
+| FR53 | Epic 7 | 归档和删除功能统一在"其他"分类下 |
 
 ## Epic List
 
@@ -255,9 +314,19 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 
 **目标:** 更智能的搜索体验，支持备注、标签、自动摘要，应用未运行时友好提示。
 
-**FRs covered:** FR4, FR5, FR27, FR28, FR29, FR30
+**FRs covered:** FR4, FR5, FR28, FR30
 
 **技术实现:** AI 增强、插件 UI 增强
+
+---
+
+### Epic 7: 内容组织与生命周期管理 (Alpha)
+
+**目标:** 用户可以通过收藏夹、标签组织内容，支持归档和删除功能，提供完整的侧边栏导航体验。
+
+**FRs covered:** FR31, FR32, FR33, FR34, FR35, FR36, FR37, FR38, FR39, FR40, FR41, FR42, FR43, FR44, FR45, FR46, FR47, FR48, FR49, FR50, FR51, FR52, FR53
+
+**技术实现:** 数据库 Schema 扩展（favorites, tags, collection_tags 表）、侧边栏 UI、筛选功能、状态管理
 
 ---
 
@@ -1186,3 +1255,577 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 - React: `components/features/SearchSuggestions.tsx`
 - 数据来源: 搜索历史表、标签表、标题模糊匹配
 - 防抖: 300ms 延迟请求
+
+---
+
+## Epic 7: 内容组织与生命周期管理
+
+用户可以通过收藏夹、标签组织内容，支持归档和删除功能，提供完整的侧边栏导航体验。
+
+### Story 7.1: 数据库 Schema 扩展
+
+**As a** 开发者,
+**I want** 数据库支持收藏夹、标签和内容状态管理,
+**So that** 可以实现内容组织功能。
+
+**Acceptance Criteria:**
+
+**Given** 数据库已初始化
+**When** 运行 Schema 迁移
+**Then** 创建以下表：
+
+- `favorites` 表（id, name, icon, created_at, updated_at）
+- `tags` 表（id, name, color, created_at, updated_at）
+- `collection_tags` 关联表（collection_id, tag_id, created_at）
+- `collections` 表添加字段：`favorite_id`, `status`
+
+**Given** Schema 已更新
+**When** 查询数据库
+**Then** 所有表都有正确的索引和外键约束
+**And** 默认创建"未分类"收藏夹（name = '未分类'）
+
+**技术细节:**
+
+- Rust: `db/migrations/` - Schema 迁移脚本
+- SQLite: 外键约束、索引优化
+- 默认数据: 系统启动时创建"未分类"收藏夹
+
+---
+
+### Story 7.2: 收藏夹管理
+
+**As a** 用户,
+**I want** 创建、重命名和删除收藏夹,
+**So that** 可以按主题组织收集的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏
+**When** 点击收藏夹区域的"+"按钮
+**Then** 显示创建收藏夹对话框
+**And** 用户可以输入收藏夹名称
+
+**Given** 用户输入收藏夹名称
+**When** 点击"创建"
+**Then** 收藏夹出现在侧边栏列表中
+**And** 显示内容数量为 0
+
+**Given** 用户已创建收藏夹
+**When** 右键点击收藏夹
+**Then** 显示上下文菜单：重命名、删除
+
+**Given** 用户选择重命名
+**When** 输入新名称并确认
+**Then** 收藏夹名称更新
+**And** 侧边栏立即反映更改
+
+**Given** 用户选择删除收藏夹
+**When** 收藏夹中有内容
+**Then** 显示确认对话框："删除后，内容将移动到'未分类'"
+**And** 用户确认后，收藏夹被删除，内容移动到"未分类"
+
+**Given** 用户选择删除收藏夹
+**When** 收藏夹为空
+**Then** 直接删除，无需确认
+
+**技术细节:**
+
+- React: `components/features/FavoritesList.tsx`
+- React: `components/features/CreateFavoriteDialog.tsx`
+- Tauri Commands: `create_favorite()`, `update_favorite()`, `delete_favorite()`
+- Rust: `db/favorites.rs` - CRUD 操作
+- 事件: `favorite:created`, `favorite:updated`, `favorite:deleted`
+
+---
+
+### Story 7.3: 将内容添加到收藏夹
+
+**As a** 用户,
+**I want** 将收集的内容添加到收藏夹中,
+**So that** 可以按主题组织内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户查看内容列表或详情
+**When** 点击内容项的"添加到收藏夹"按钮
+**Then** 显示收藏夹选择菜单
+**And** 显示所有收藏夹列表（包括"未分类"）
+
+**Given** 用户选择收藏夹
+**When** 点击某个收藏夹
+**Then** 内容被添加到该收藏夹
+**And** 侧边栏中该收藏夹的内容数量更新
+**And** 显示成功提示
+
+**Given** 内容已在某个收藏夹中
+**When** 用户选择另一个收藏夹
+**Then** 内容从原收藏夹移除，添加到新收藏夹
+**And** 两个收藏夹的内容数量都更新
+
+**技术细节:**
+
+- React: `components/features/CollectionItem.tsx` - 添加到收藏夹按钮
+- React: `components/features/FavoriteSelector.tsx` - 收藏夹选择器
+- Tauri Command: `update_collection()` - 更新 `favorite_id`
+- Rust: `db/collections.rs` - 更新收藏夹关联
+- 事件: `collection:updated`
+
+---
+
+### Story 7.4: 查看收藏夹内容
+
+**As a** 用户,
+**I want** 查看每个收藏夹中的内容列表,
+**So that** 可以快速找到特定主题的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏
+**When** 点击某个收藏夹
+**Then** 主内容区显示该收藏夹的所有内容
+**And** 显示内容数量（如"5 条内容"）
+
+**Given** 用户查看收藏夹内容
+**When** 收藏夹为空
+**Then** 显示空状态提示："此收藏夹还没有内容"
+**And** 提供"添加内容"按钮
+
+**Given** 用户查看"未分类"收藏夹
+**When** 点击它
+**Then** 显示所有未分配到其他收藏夹的内容
+**And** 显示内容数量
+
+**Given** 用户在收藏夹内容列表中
+**When** 执行搜索
+**Then** 搜索结果限定在当前收藏夹内
+
+**技术细节:**
+
+- React: `components/features/CollectionList.tsx` - 支持 `favorite_id` 筛选
+- TanStack Query: `useCollections({ favoriteId })`
+- Tauri Command: `get_collections({ favorite_id })`
+- Rust: `db/collections.rs` - 按收藏夹查询
+
+---
+
+### Story 7.5: 侧边栏收藏夹列表
+
+**As a** 用户,
+**I want** 在侧边栏中查看和管理收藏夹列表,
+**So that** 可以快速导航到不同主题的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户在应用主界面
+**When** 查看侧边栏
+**Then** 显示"收藏夹"区域
+**And** 显示折叠/展开按钮（chevron 图标）
+
+**Given** 收藏夹区域已展开
+**When** 点击折叠按钮
+**Then** 收藏夹列表隐藏
+**And** 只显示"收藏夹"标题和"+"按钮
+
+**Given** 收藏夹区域已折叠
+**When** 点击展开按钮
+**Then** 显示所有收藏夹列表
+**And** 每个收藏夹显示名称和内容数量（如"未分类 5"）
+
+**Given** 用户有多个收藏夹
+**When** 查看侧边栏
+**Then** 收藏夹按创建时间或名称排序显示
+**And** "未分类"始终显示在第一位
+
+**技术细节:**
+
+- React: `components/features/Sidebar.tsx` - 侧边栏主组件
+- React: `components/features/FavoritesList.tsx` - 收藏夹列表
+- Zustand: `stores/use-sidebar-store.ts` - 展开/折叠状态
+- TanStack Query: `useFavorites()` - 获取收藏夹列表
+
+---
+
+### Story 7.6: 标签管理
+
+**As a** 用户,
+**I want** 创建、重命名和删除标签,
+**So that** 可以为内容添加分类标记。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏标签区域
+**When** 点击"+"按钮
+**Then** 显示创建标签对话框
+**And** 用户可以输入标签名称
+
+**Given** 用户输入标签名称
+**When** 标签名称已存在
+**Then** 显示错误提示："标签已存在"
+**And** 不允许创建重复标签
+
+**Given** 用户输入唯一标签名称
+**When** 点击"创建"
+**Then** 标签出现在侧边栏标签列表中
+**And** 显示使用该标签的内容数量（初始为 0）
+
+**Given** 用户已创建标签
+**When** 右键点击标签
+**Then** 显示上下文菜单：重命名、删除
+
+**Given** 用户选择重命名标签
+**When** 输入新名称并确认
+**Then** 标签名称更新
+**And** 所有使用该标签的内容关联保持不变
+
+**Given** 用户选择删除标签
+**When** 标签被内容使用
+**Then** 显示确认对话框："删除后，内容将失去此标签"
+**And** 用户确认后，标签被删除，内容关联被移除
+
+**技术细节:**
+
+- React: `components/features/TagsList.tsx`
+- React: `components/features/CreateTagDialog.tsx`
+- Tauri Commands: `create_tag()`, `update_tag()`, `delete_tag()`
+- Rust: `db/tags.rs` - CRUD 操作
+- 事件: `tag:created`, `tag:updated`, `tag:deleted`
+
+---
+
+### Story 7.7: 为内容添加标签
+
+**As a** 用户,
+**I want** 为收集的内容添加一个或多个标签,
+**So that** 可以通过标签快速筛选和查找内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户查看内容详情或列表项
+**When** 点击"添加标签"按钮
+**Then** 显示标签选择器
+**And** 显示所有已有标签列表
+**And** 显示标签输入框（支持创建新标签）
+
+**Given** 用户在标签选择器中
+**When** 输入标签名称
+**Then** 显示匹配的已有标签建议（自动补全）
+**And** 如果输入新标签名称，显示"创建新标签"选项
+
+**Given** 用户选择已有标签或创建新标签
+**When** 点击确认
+**Then** 标签被添加到内容
+**And** 内容项显示标签徽章
+**And** 标签的使用数量更新
+
+**Given** 内容已有多个标签
+**When** 用户查看内容
+**Then** 显示所有标签徽章
+**And** 可以点击标签徽章快速筛选
+
+**技术细节:**
+
+- React: `components/features/TagSelector.tsx` - 标签选择器
+- React: `components/features/TagBadge.tsx` - 标签徽章
+- Tauri Command: `update_collection()` - 更新标签关联
+- Rust: `db/collection_tags.rs` - 多对多关联管理
+- 事件: `collection:tags_updated`
+
+---
+
+### Story 7.8: 按标签筛选内容
+
+**As a** 用户,
+**I want** 按标签筛选和查看内容,
+**So that** 可以快速找到特定主题的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏
+**When** 点击某个标签
+**Then** 主内容区显示所有包含该标签的内容
+**And** 显示筛选提示："标签: #标签名 (5 条)"
+
+**Given** 用户查看标签内容列表
+**When** 点击"清除筛选"
+**Then** 显示所有内容（取消标签筛选）
+
+**Given** 用户在内容列表中
+**When** 点击内容项的标签徽章
+**Then** 应用该标签筛选
+**And** 显示该标签的所有内容
+
+**Given** 用户按标签筛选
+**When** 执行搜索
+**Then** 搜索结果限定在包含该标签的内容中
+
+**Given** 用户查看"无标签"分类
+**When** 点击它
+**Then** 显示所有未添加标签的内容
+
+**技术细节:**
+
+- React: `components/features/CollectionList.tsx` - 支持 `tagIds` 筛选
+- TanStack Query: `useCollections({ tagIds })`
+- Tauri Command: `get_collections({ tag_ids })`
+- Rust: `db/collections.rs` - JOIN 查询标签关联
+
+---
+
+### Story 7.9: 标签排序
+
+**As a** 用户,
+**I want** 对标签进行排序,
+**So that** 可以按使用频率或字母顺序组织标签。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏标签区域
+**When** 点击排序图标
+**Then** 显示排序选项菜单：
+
+- 按名称排序（A-Z）
+- 按使用频率排序（最常用在前）
+- 按创建时间排序（最新在前）
+
+**Given** 用户选择排序方式
+**When** 点击某个选项
+**Then** 标签列表立即按选择的方式排序
+**And** 排序偏好被保存（下次打开应用时保持）
+
+**技术细节:**
+
+- React: `components/features/TagsList.tsx` - 排序功能
+- Zustand: `stores/use-settings-store.ts` - 保存排序偏好
+- Tauri Command: `get_tags({ sort })` - 支持排序参数
+- Rust: `db/tags.rs` - ORDER BY 查询
+
+---
+
+### Story 7.10: AI 自动生成标签
+
+**As a** 用户,
+**I want** 系统自动为收集的内容生成标签,
+**So that** 无需手动添加就能获得基础分类。
+
+**Acceptance Criteria:**
+
+**Given** 用户收集了新内容
+**When** 内容处理完成
+**Then** 系统自动分析内容
+**And** 生成 2-5 个相关标签（如"React", "状态管理", "前端"）
+
+**Given** 自动标签已生成
+**When** 用户查看内容
+**Then** 自动标签以不同样式显示（与手动标签区分，如灰色背景）
+**And** 显示"自动"标识
+
+**Given** 用户不认可某个自动标签
+**When** 点击标签的"移除"按钮
+**Then** 该标签被移除
+**And** 不再显示
+
+**Given** 用户认可自动标签
+**When** 点击标签的"确认"按钮
+**Then** 标签样式变为手动标签样式
+**And** 不再显示"自动"标识
+
+**技术细节:**
+
+- Rust: `embedding/tag_generation.rs` - 标签生成逻辑
+- 实现选项: 关键词提取（TF-IDF）、预定义分类匹配
+- 数据库: 标签表 `is_auto` 字段标识自动标签
+- 事件: `collection:auto_tags_generated`
+
+---
+
+### Story 7.11: 归档内容
+
+**As a** 用户,
+**I want** 将内容归档,
+**So that** 可以隐藏不再需要但不想删除的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户查看内容列表或详情
+**When** 点击"归档"按钮
+**Then** 内容状态变为"已归档"
+**And** 内容从正常列表中消失
+**And** 显示成功提示："已归档"
+
+**Given** 内容已归档
+**When** 用户查看正常内容列表
+**Then** 归档内容不显示
+**And** 内容数量统计不包含归档内容
+
+**Given** 用户在侧边栏"其他"分类下
+**When** 点击"已归档"
+**Then** 显示所有归档内容列表
+**And** 显示归档内容数量
+
+**技术细节:**
+
+- React: `components/features/CollectionItem.tsx` - 归档按钮
+- Tauri Command: `archive_collection({ id })`
+- Rust: `db/collections.rs` - 更新 `status = 'archived'`
+- 事件: `collection:archived`
+
+---
+
+### Story 7.12: 恢复归档内容
+
+**As a** 用户,
+**I want** 将归档的内容恢复,
+**So that** 可以重新在正常列表中查看。
+
+**Acceptance Criteria:**
+
+**Given** 用户在"已归档"分类中
+**When** 查看归档内容列表
+**Then** 每个内容项显示"恢复"按钮
+
+**Given** 用户点击"恢复"按钮
+**When** 确认操作
+**Then** 内容状态变为"active"
+**And** 内容从归档列表移除
+**And** 出现在正常内容列表中
+**And** 显示成功提示："已恢复"
+
+**技术细节:**
+
+- React: `components/features/CollectionList.tsx` - 归档内容列表
+- Tauri Command: `restore_collection({ id })`
+- Rust: `db/collections.rs` - 更新 `status = 'active'`
+- 事件: `collection:restored`
+
+---
+
+### Story 7.13: 删除内容到"最近删除"
+
+**As a** 用户,
+**I want** 删除内容,
+**So that** 可以清理不需要的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户查看内容列表或详情
+**When** 点击"删除"按钮
+**Then** 显示确认对话框："确定要删除此内容吗？"
+**And** 提示："删除后可在'最近删除'中恢复"
+
+**Given** 用户确认删除
+**When** 点击"确定"
+**Then** 内容状态变为"deleted"
+**And** 内容从正常列表和归档列表中消失
+**And** 移动到"最近删除"分类
+**And** 显示成功提示："已删除"
+
+**Given** 用户在侧边栏"其他"分类下
+**When** 点击"最近删除"
+**Then** 显示所有已删除内容列表
+**And** 显示删除时间
+**And** 显示"恢复"和"永久删除"按钮
+
+**技术细节:**
+
+- React: `components/features/CollectionItem.tsx` - 删除按钮
+- React: `components/features/DeleteConfirmDialog.tsx` - 删除确认对话框
+- Tauri Command: `delete_collection({ id, permanent: false })`
+- Rust: `db/collections.rs` - 更新 `status = 'deleted'`
+- 事件: `collection:deleted`
+
+---
+
+### Story 7.14: 永久删除内容
+
+**As a** 用户,
+**I want** 永久删除内容,
+**So that** 可以彻底清理不需要的内容。
+
+**Acceptance Criteria:**
+
+**Given** 用户在"最近删除"分类中
+**When** 查看已删除内容列表
+**Then** 每个内容项显示"永久删除"按钮
+
+**Given** 用户点击"永久删除"
+**When** 显示确认对话框："此操作不可恢复，确定要永久删除吗？"
+**And** 用户确认
+**Then** 内容从数据库中彻底删除
+**And** 关联的向量嵌入也被删除
+**And** 内容从"最近删除"列表移除
+**And** 显示成功提示："已永久删除"
+
+**技术细节:**
+
+- React: `components/features/CollectionList.tsx` - 永久删除按钮
+- Tauri Command: `delete_collection({ id, permanent: true })`
+- Rust: `db/collections.rs` - DELETE 操作（CASCADE 删除关联）
+- Rust: `db/vectors.rs` - 删除向量嵌入
+- 事件: `collection:permanently_deleted`
+
+---
+
+### Story 7.15: 自动清理"最近删除"
+
+**As a** 用户,
+**I want** 系统自动清理"最近删除"中超过30天的内容,
+**So that** 避免占用过多存储空间。
+
+**Acceptance Criteria:**
+
+**Given** 系统已启动
+**When** 每天首次启动时
+**Then** 检查"最近删除"中的内容
+**And** 自动永久删除超过30天的内容
+
+**Given** 自动清理执行
+**When** 有内容被清理
+**Then** 在日志中记录清理数量
+**And** 可选：显示通知"已清理 X 条过期内容"
+
+**Given** 用户查看设置
+**When** 查看"自动清理"选项
+**Then** 可以启用/禁用自动清理
+**And** 可以自定义清理天数（默认30天）
+
+**技术细节:**
+
+- Rust: `db/collections.rs` - 清理任务
+- Tauri: 后台任务或启动时检查
+- 设置: `auto_cleanup_enabled`, `auto_cleanup_days`
+- 事件: `cleanup:completed`
+
+---
+
+### Story 7.16: 侧边栏"其他"分类
+
+**As a** 用户,
+**I want** 归档和删除功能统一在"其他"分类下,
+**So that** 侧边栏组织清晰，易于导航。
+
+**Acceptance Criteria:**
+
+**Given** 用户在侧边栏
+**When** 查看"其他"分类
+**Then** 显示以下子项：
+
+- "已归档"（显示归档内容数量）
+- "最近删除"（显示删除内容数量）
+
+**Given** "其他"分类已展开
+**When** 点击"已归档"
+**Then** 主内容区显示所有归档内容
+**And** 显示筛选提示："已归档 (3 条)"
+
+**Given** "其他"分类已展开
+**When** 点击"最近删除"
+**Then** 主内容区显示所有已删除内容
+**And** 显示筛选提示："最近删除 (2 条)"
+
+**技术细节:**
+
+- React: `components/features/Sidebar.tsx` - "其他"分类区域
+- React: `components/features/OtherSection.tsx` - "其他"分类组件
+- 状态管理: 与收藏夹和标签区域独立的展开/折叠状态
+
+---

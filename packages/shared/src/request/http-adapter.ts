@@ -42,8 +42,8 @@ export function createHttpAdapter(config?: AdapterConfig): RequestAdapter {
       return response.data
     },
 
-    delete: async <T>(url: string): Promise<T> => {
-      const response = await instance.delete<T>(url)
+    delete: async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
+      const response = await instance.delete<T>(url, { params })
       return response.data
     },
   }

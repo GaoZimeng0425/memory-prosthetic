@@ -37,12 +37,11 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         ],
     )?;
 
-    // Create a simple purple square icon (32x32 pixels, RGBA format)
-    // Each pixel is 4 bytes: R, G, B, A
-    let purple_pixel: [u8; 4] = [128, 90, 213, 255]; // Purple color
-    let icon_size = 32u32;
-    let icon_data: Vec<u8> = purple_pixel.repeat((icon_size * icon_size) as usize);
-    let icon = Image::new_owned(icon_data, icon_size, icon_size);
+    // Load tray icon from app's default icon (set in tauri.conf.json)
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .expect("Failed to get default window icon for tray");
 
     // Build tray with icon
     let _tray = TrayIconBuilder::new()
@@ -99,8 +98,37 @@ fn handle_menu_event(app: &AppHandle, menu_id: &str) {
 fn toggle_search_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("search") {
         if window.is_visible().unwrap_or(false) {
+            // Before hiding search window, check if main window should receive focus
+            let main_window_was_focused = if let Some(main_window) = app.get_webview_window("main") {
+                main_window.is_focused().unwrap_or(false)
+            } else {
+                false
+            };
+
+            // If main window was not focused (user was using other apps),
+            // temporarily make it non-focusable to prevent macOS from auto-focusing it
+            if !main_window_was_focused {
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let _ = main_window.set_focusable(false);
+                }
+            }
+
             let _ = window.hide();
+
+            // Restore main window focusability after a short delay
+            // This prevents macOS from auto-focusing it when search window closes
+            if !main_window_was_focused {
+                let app_handle = app.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    if let Some(main_window) = app_handle.get_webview_window("main") {
+                        let _ = main_window.set_focusable(true);
+                    }
+                });
+            }
         } else {
+            // Disable shadow to remove macOS focus ring
+            let _ = window.set_shadow(false);
             let _ = window.show();
             let _ = window.set_focus();
         }

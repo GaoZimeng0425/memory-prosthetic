@@ -24,6 +24,10 @@ import {
   DialogTitle,
 } from '@memory-prosthetic/ui/components/ui/dialog'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
+import { TagBadge } from '@/components/features/TagBadge'
+import { TagSelector } from '@/components/features/TagSelector'
+import { useCollectionTags } from '@/hooks/use-collection-tags'
+import { useTags } from '@/hooks/use-tags'
 import type { Collection, CommandResult } from '@/types/api'
 
 interface CollectionDetailProps {
@@ -36,6 +40,8 @@ interface CollectionDetailProps {
 export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: CollectionDetailProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const { tags: collectionTags, addTags, removeTag } = useCollectionTags(collection?.id ?? null)
+  const { createTag } = useTags()
 
   if (!collection) return null
 
@@ -97,17 +103,45 @@ export function CollectionDetail({ collection, open, onOpenChange, onDeleted }: 
           <DialogHeader>
             <DialogTitle className="line-clamp-2 pr-8 text-xl">{collection.title}</DialogTitle>
             <DialogDescription asChild>
-              <div className="flex flex-wrap items-center gap-2 pt-2">
-                <Badge variant="outline">{new URL(collection.url).hostname}</Badge>
-                {collection.embeddingStatus && (
-                  <Badge variant={statusVariant[collection.embeddingStatus]}>
-                    {statusLabel[collection.embeddingStatus]}
-                  </Badge>
-                )}
-                <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                  <Calendar className="h-3 w-3" />
-                  {formatDate(collection.createdAt)}
-                </span>
+              <div className="space-y-2 pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline">{new URL(collection.url).hostname}</Badge>
+                  {collection.embeddingStatus && (
+                    <Badge variant={statusVariant[collection.embeddingStatus]}>
+                      {statusLabel[collection.embeddingStatus]}
+                    </Badge>
+                  )}
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                    <Calendar className="h-3 w-3" />
+                    {formatDate(collection.createdAt)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-xs">标签：</span>
+                  {collectionTags.map((tag) => (
+                    <TagBadge key={tag.id} onRemove={() => removeTag(tag.id)} tag={tag} />
+                  ))}
+                  <TagSelector
+                    onCreateTag={async (name) => {
+                      const newTagId = await createTag({ name })
+                      await addTags([newTagId])
+                      return newTagId
+                    }}
+                    onSelectionChange={async (tagIds) => {
+                      const currentTagIds = collectionTags.map((t) => t.id)
+                      const toAdd = tagIds.filter((id) => !currentTagIds.includes(id))
+                      const toRemove = currentTagIds.filter((id) => !tagIds.includes(id))
+
+                      if (toAdd.length > 0) {
+                        await addTags(toAdd)
+                      }
+                      for (const tagId of toRemove) {
+                        await removeTag(tagId)
+                      }
+                    }}
+                    selectedTagIds={collectionTags.map((t) => t.id)}
+                  />
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>

@@ -87,6 +87,7 @@ impl Database {
                     title TEXT NOT NULL,
                     content TEXT NOT NULL,
                     summary TEXT,
+                    starred INTEGER NOT NULL DEFAULT 0,
                     embedding_status TEXT NOT NULL DEFAULT 'pending',
                     created_at TEXT NOT NULL DEFAULT (datetime('now')),
                     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -114,7 +115,95 @@ impl Database {
                 -- Index for collection lookups
                 CREATE INDEX IF NOT EXISTS idx_embeddings_collection_id ON embeddings(collection_id);
                 "#,
-            )
+            )?;
+
+            // Migration: Add starred column if not exists (ignore error if already exists)
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN starred INTEGER NOT NULL DEFAULT 0",
+                [],
+            );
+
+            // Migration: Add favorite_id and status columns to collections table
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN favorite_id INTEGER",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
+                [],
+            );
+
+            // Create favorites table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    icon TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_favorites_name ON favorites(name);
+                CREATE INDEX IF NOT EXISTS idx_favorites_created_at ON favorites(created_at DESC);
+                "#,
+            )?;
+
+            // Create tags table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS tags (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    color TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name);
+                CREATE INDEX IF NOT EXISTS idx_tags_created_at ON tags(created_at DESC);
+                "#,
+            )?;
+
+            // Create collection_tags junction table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS collection_tags (
+                    collection_id INTEGER NOT NULL,
+                    tag_id INTEGER NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    PRIMARY KEY (collection_id, tag_id),
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_collection_tags_collection_id ON collection_tags(collection_id);
+                CREATE INDEX IF NOT EXISTS idx_collection_tags_tag_id ON collection_tags(tag_id);
+                "#,
+            )?;
+
+            // Add foreign key constraint for collections.favorite_id
+            let _ = conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_collections_favorite_id ON collections(favorite_id)",
+                [],
+            );
+
+            // Create default "未分类" (Uncategorized) favorite if it doesn't exist
+            let default_favorite_exists: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                [],
+                |row| row.get(0),
+            ).unwrap_or(0);
+
+            if default_favorite_exists == 0 {
+                conn.execute(
+                    "INSERT INTO favorites (name) VALUES ('未分类')",
+                    [],
+                )?;
+                info!("Created default '未分类' favorite");
+            }
+
+            Ok(())
         })?;
 
         info!("Database migrations completed");

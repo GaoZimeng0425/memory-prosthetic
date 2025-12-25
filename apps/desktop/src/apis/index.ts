@@ -14,7 +14,7 @@ const adapter = createTauriAdapter()
 const apis = createApis(adapter)
 
 // Export individual APIs for convenience
-export const { health, collections, search } = apis
+export const { health, collections, favorites, tags, search } = apis
 
 // Export the bundle
 export { apis }

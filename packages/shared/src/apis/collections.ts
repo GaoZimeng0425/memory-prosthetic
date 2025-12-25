@@ -8,7 +8,7 @@ import { type MutationOptions, queryOptions } from '@tanstack/react-query'
 
 import type { RequestAdapter } from '../request/adapter'
 import type { CollectRequest, CollectResponse } from '../types/api'
-import type { Collection, CollectionListItem, CollectionStats } from '../types/collection'
+import type { Collection, CollectionListItem, CollectionStats, Tag } from '../types/collection'
 
 const ENDPOINTS = {
   collections: '/api/collections',
@@ -20,7 +20,17 @@ const ENDPOINTS = {
 const KEYS = {
   all: ['collections'] as const,
   lists: () => [...KEYS.all, 'list'] as const,
-  list: (limit?: number, offset?: number) => [...KEYS.lists(), { limit, offset }] as const,
+  list: (params?: GetCollectionsParams) =>
+    [
+      ...KEYS.lists(),
+      {
+        limit: params?.limit,
+        offset: params?.offset,
+        favoriteId: params?.favoriteId,
+        tagIds: params?.tagIds,
+        status: params?.status,
+      },
+    ] as const,
   stats: () => [...KEYS.all, 'stats'] as const,
   details: () => [...KEYS.all, 'detail'] as const,
   detail: (id: number) => [...KEYS.details(), id] as const,
@@ -29,6 +39,10 @@ const KEYS = {
 export interface GetCollectionsParams {
   limit?: number
   offset?: number
+  favoriteId?: number
+  uncategorized?: boolean
+  tagIds?: number[]
+  status?: 'active' | 'archived' | 'deleted'
 }
 
 export function createCollectionsApi(adapter: RequestAdapter) {
@@ -48,13 +62,41 @@ export function createCollectionsApi(adapter: RequestAdapter) {
 
     /** Delete a collection */
     delete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collection}/${id}`),
+
+    /** Set collection favorite */
+    setFavorite: (id: number, favoriteId: number | null) =>
+      adapter.patch<void>(`${ENDPOINTS.collection}/${id}`, { favoriteId }),
+
+    /** Get tags for a collection */
+    getCollectionTags: (id: number) =>
+      adapter.get<Tag[]>(`${ENDPOINTS.collection}/tags`, { collection_id: id } as Record<string, unknown>),
+
+    /** Add tags to a collection */
+    addCollectionTags: (id: number, tagIds: number[]) =>
+      adapter.post<void>(`${ENDPOINTS.collection}/tags`, { collection_id: id, tag_ids: tagIds }),
+
+    /** Remove a tag from a collection */
+    removeCollectionTag: (id: number, tagId: number) =>
+      adapter.delete<void>(`${ENDPOINTS.collection}/tag`, { collection_id: id, tag_id: tagId } as Record<
+        string,
+        unknown
+      >),
+
+    /** Archive a collection */
+    archive: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/archive`, { id }),
+
+    /** Restore an archived collection */
+    restore: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/restore`, { id }),
+
+    /** Permanently delete a collection */
+    permanentlyDelete: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/permanently-delete`, { id }),
   }
 
   const queries = {
     /** List collections query options */
     list: (params?: GetCollectionsParams) =>
       queryOptions({
-        queryKey: KEYS.list(params?.limit, params?.offset),
+        queryKey: KEYS.list(params),
         queryFn: () => api.getList(params),
       }),
 

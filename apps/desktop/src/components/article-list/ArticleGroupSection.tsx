@@ -9,6 +9,10 @@ interface ArticleGroupSectionProps {
   onDelete: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
+  onManageTags?: (id: number) => void
+  onSetFavorite?: (id: number, favoriteId: number | null) => void
+  onOpenFavoriteDialog?: (id: number) => void
+  onArchive?: (id: number) => void
 }
 
 export function ArticleGroupSection({
@@ -18,6 +22,10 @@ export function ArticleGroupSection({
   onDelete,
   onOpenUrl,
   onToggleStar,
+  onManageTags,
+  onSetFavorite,
+  onOpenFavoriteDialog,
+  onArchive,
 }: ArticleGroupSectionProps) {
   return (
     <div className="mb-4">
@@ -36,9 +44,13 @@ export function ArticleGroupSection({
             isSelected={selectedId === item.id}
             item={item}
             key={item.id}
+            onArchive={onArchive}
             onDelete={onDelete}
+            onManageTags={onManageTags}
+            onOpenFavoriteDialog={onOpenFavoriteDialog}
             onOpenUrl={onOpenUrl}
             onSelect={onSelect}
+            onSetFavorite={onSetFavorite}
             onToggleStar={onToggleStar}
           />
         ))}

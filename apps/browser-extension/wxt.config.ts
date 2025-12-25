@@ -44,8 +44,8 @@ export default defineConfig({
     presets: ['react'],
   },
   manifest: {
-    name: 'Contract Extension',
-    description: 'Manage contract placeholders with ease.',
+    name: 'Memory Prosthetic',
+    description: 'Your personal memory assistant - collect, search, and recall information effortlessly.',
     permissions: ['storage', 'tabs', 'scripting', 'activeTab', 'notifications', 'sidePanel'],
     // biome-ignore lint/style/useNamingConvention: ignore
     host_permissions: ['*://*/*'],

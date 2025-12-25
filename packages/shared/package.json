@@ -37,5 +37,8 @@
     "@tauri-apps/api": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "@date-fns/tz": "^1.4.1"
   }
 }

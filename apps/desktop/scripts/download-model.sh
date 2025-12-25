@@ -5,7 +5,8 @@
 set -e
 
 MODEL_NAME="all-MiniLM-L6-v2"
-MODEL_DIR="$HOME/Library/Application Support/com.tauri-apps.desktop/models/$MODEL_NAME"
+APP_ID="com.aa00930.memory-prosthetic"
+MODEL_DIR="$HOME/Library/Application Support/$APP_ID/models/$MODEL_NAME"
 
 echo "Downloading $MODEL_NAME model..."
 echo "Target directory: $MODEL_DIR"

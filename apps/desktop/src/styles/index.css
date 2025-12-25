@@ -2,5 +2,10 @@
 
 html,
 body {
-  @apply bg-background text-foreground antialiased overflow-hidden h-screen w-screen;
+  @apply text-foreground antialiased overflow-hidden h-screen w-screen;
+}
+
+/* Enable drag region for Tauri windows */
+*[data-tauri-drag-region] {
+  -webkit-app-region: drag;
 }

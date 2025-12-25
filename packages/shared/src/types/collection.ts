@@ -6,6 +6,11 @@
  */
 
 /**
+ * Collection status
+ */
+export type CollectionStatus = 'active' | 'archived' | 'deleted'
+
+/**
  * Collection entity as stored in the database
  *
  * SQLite table: collections
@@ -14,16 +19,21 @@
  * - title: TEXT NOT NULL
  * - content: TEXT NOT NULL
  * - summary: TEXT (nullable, for AI-generated summary)
+ * - favorite_id: INTEGER (nullable, foreign key to favorites)
+ * - status: TEXT NOT NULL DEFAULT 'active'
  * - created_at: TEXT NOT NULL (ISO 8601)
  * - updated_at: TEXT NOT NULL (ISO 8601)
  */
-export interface Collection {
+export type Collection = {
   id: number
   url: string
   title: string
   content: string
   summary?: string
+  starred: boolean
   embeddingStatus?: EmbeddingStatus
+  favoriteId?: number
+  status: CollectionStatus
   createdAt: string
   updatedAt: string
 }
@@ -47,24 +57,28 @@ export type EmbeddingStatus = 'pending' | 'processing' | 'completed' | 'failed'
 export interface CollectionStats {
   total: number
   thisWeek: number
+  archived: number
+  deleted: number
   lastCollectedAt?: string
 }
 
 /**
  * Collection list item (lightweight for list display)
  */
-export interface CollectionListItem {
+export type CollectionListItem = {
   id: number
   url: string
   title: string
   domain: string
+  starred: boolean
+  favoriteId?: number | null
   createdAt: string
 }
 
 /**
  * Input for creating a new collection (from browser extension)
  */
-export interface CreateCollectionInput {
+export type CreateCollectionInput = {
   url: string
   title: string
   content: string
@@ -73,9 +87,31 @@ export interface CreateCollectionInput {
 /**
  * Input for updating an existing collection
  */
-export interface UpdateCollectionInput {
+export type UpdateCollectionInput = {
   id: number
   title?: string
   content?: string
   summary?: string
+}
+
+/**
+ * Favorite (folder) entity
+ */
+export type Favorite = {
+  id: number
+  name: string
+  icon?: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Tag entity
+ */
+export type Tag = {
+  id: number
+  name: string
+  color?: string
+  createdAt: string
+  updatedAt: string
 }

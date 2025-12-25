@@ -8,6 +8,8 @@ inputDocuments:
 workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
+revision: 2
+revisionDate: '2025-12-22'
 completedAt: '2025-12-22'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
@@ -26,16 +28,18 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 **Functional Requirements:**
 
-项目包含 30 个功能需求，覆盖 6 个核心领域：
+项目包含 53 个功能需求，覆盖 8 个核心领域：
 
 | 领域 | 需求 | MVP 优先级 |
 |------|------|-----------|
 | 内容收集 | FR1-FR5 | P0 |
 | 内容搜索 | FR6-FR12 | P0 |
 | 内容存储 | FR13-FR16 | P0 |
+| 内容组织 | FR31-FR53 | Alpha |
 | 系统集成 | FR17-FR20 | P0-P1 |
 | 应用通信 | FR21-FR23 | P0 |
 | 用户设置 | FR24-FR26 | P1 |
+| 搜索增强 | FR27-FR30 | Alpha-Beta |
 
 **Non-Functional Requirements:**
 
@@ -97,6 +101,9 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | **shadcn/ui** | ✅ 优秀 | 50+ 可定制组件、Radix UI 基础、TailwindCSS |
 | **TailwindCSS 4.x** | ✅ 优秀 | 原子化 CSS、零运行时、与 shadcn 配合 |
 | **date-fns 4.x** | ✅ 优秀 | 模块化时间处理、Tree-shaking 友好、TypeScript 支持 |
+| **@mozilla/readability** | ✅ 优秀 | 提取网页主要内容、移除导航广告等噪音 |
+| **turndown** | ✅ 优秀 | HTML 转 Markdown、可定制规则 |
+| **streamdown** | ✅ 优秀 | 流式 Markdown 渲染、React 组件 |
 
 ### Selected Starter: 现有技术栈（无需更换）
 
@@ -204,10 +211,82 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | 存储位置 | `~/Library/Application Support/memory-prosthetic/` |
 | 备份策略 | 单文件复制 |
 
+**数据库 Schema 设计:**
+
+```sql
+-- 收集内容表
+CREATE TABLE collections (
+    id TEXT PRIMARY KEY,
+    url TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,  -- Markdown 格式
+    favorite_id TEXT,       -- 外键: favorites.id (可为 NULL)
+    status TEXT NOT NULL DEFAULT 'active',  -- 'active', 'archived', 'deleted'
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (favorite_id) REFERENCES favorites(id) ON DELETE SET NULL
+);
+
+-- 收藏夹表
+CREATE TABLE favorites (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    icon TEXT,  -- 图标标识符（可选）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    UNIQUE(name)
+);
+
+-- 标签表
+CREATE TABLE tags (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,  -- 标签颜色（可选）
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+-- 内容-标签关联表（多对多）
+CREATE TABLE collection_tags (
+    collection_id TEXT NOT NULL,
+    tag_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (collection_id, tag_id),
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+-- 向量嵌入表（sqlite-vec）
+CREATE TABLE collection_vectors (
+    rowid INTEGER PRIMARY KEY,
+    collection_id TEXT NOT NULL UNIQUE,
+    embedding BLOB NOT NULL,  -- 384 维向量
+    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_collections_favorite_id ON collections(favorite_id);
+CREATE INDEX idx_collections_status ON collections(status);
+CREATE INDEX idx_collections_created_at ON collections(created_at);
+CREATE INDEX idx_collection_tags_collection_id ON collection_tags(collection_id);
+CREATE INDEX idx_collection_tags_tag_id ON collection_tags(tag_id);
+```
+
+**默认数据:**
+
+- 默认收藏夹: `favorites` 表中 `name = '未分类'` 的记录（系统自动创建）
+- 默认状态: `collections.status = 'active'`
+
+**Content Extraction Pipeline:**
+
+```
+网页 HTML → @mozilla/readability → 主要内容 HTML → turndown → Markdown → 存储
+```
+
 **Embedding Pipeline:**
 
 ```
-网页内容 → 文本提取 → 分块 → all-MiniLM-L6-v2 → 向量 → sqlite-vec
+Markdown 内容 → 文本分块 → all-MiniLM-L6-v2 → 向量 → sqlite-vec
 ```
 
 | 属性 | 值 |
@@ -261,6 +340,71 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | `/api/collect` | POST | 收集内容 |
 | `/api/search` | GET | 搜索（可选，供插件预览） |
 
+**Tauri Commands 设计:**
+
+| 命令 | 说明 | 参数 |
+|------|------|------|
+| `search` | 语义搜索 | `{ query: string, filters?: SearchFilters }` |
+| `get_collections` | 获取收集列表 | `{ favorite_id?: string, tag_id?: string, status?: string, limit?: number, offset?: number }` |
+| `create_collection` | 创建收集 | `{ url: string, title: string, content: string, favorite_id?: string, tags?: string[] }` |
+| `update_collection` | 更新收集 | `{ id: string, title?: string, favorite_id?: string, tags?: string[], status?: string }` |
+| `delete_collection` | 删除收集 | `{ id: string, permanent?: boolean }` |
+| `archive_collection` | 归档收集 | `{ id: string }` |
+| `restore_collection` | 恢复收集 | `{ id: string }` |
+| `get_favorites` | 获取收藏夹列表 | `{}` |
+| `create_favorite` | 创建收藏夹 | `{ name: string, icon?: string }` |
+| `update_favorite` | 更新收藏夹 | `{ id: string, name?: string, icon?: string }` |
+| `delete_favorite` | 删除收藏夹 | `{ id: string }` |
+| `get_tags` | 获取标签列表 | `{ sort?: 'name' \| 'created_at' }` |
+| `create_tag` | 创建标签 | `{ name: string, color?: string }` |
+| `update_tag` | 更新标签 | `{ id: string, name?: string, color?: string }` |
+| `delete_tag` | 删除标签 | `{ id: string }` |
+| `get_settings` | 获取设置 | `{}` |
+| `set_settings` | 保存设置 | `{ key: string, value: unknown }` |
+
+**类型定义 (TypeScript):**
+
+```typescript
+// packages/shared/src/types/collection.ts
+type CollectionStatus = 'active' | 'archived' | 'deleted'
+
+type Collection = {
+  id: string
+  url: string
+  title: string
+  content: string
+  favoriteId: string | null
+  status: CollectionStatus
+  tags: Tag[]
+  createdAt: number
+  updatedAt: number
+}
+
+type Favorite = {
+  id: string
+  name: string
+  icon?: string
+  count?: number  // 内容数量（计算字段）
+  createdAt: number
+  updatedAt: number
+}
+
+type Tag = {
+  id: string
+  name: string
+  color?: string
+  count?: number  // 使用该标签的内容数量（计算字段）
+  createdAt: number
+  updatedAt: number
+}
+
+type SearchFilters = {
+  favoriteId?: string
+  tagIds?: string[]
+  status?: CollectionStatus
+}
+```
+
 ### Frontend Architecture
 
 **技术栈:**
@@ -280,14 +424,17 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ┌─────────────────────────────────────────┐
 │ Zustand Store                           │
 │  ├─ UI State (搜索输入、加载状态)        │
+│  ├─ Sidebar State (收藏夹/标签展开状态)  │
 │  └─ App Settings (快捷键、端口配置)      │
 └─────────────────────────────────────────┘
                     │
                     ▼
 ┌─────────────────────────────────────────┐
 │ TanStack Query                          │
-│  ├─ useSearch(query) → Tauri Command    │
-│  ├─ useCollections() → Tauri Command    │
+│  ├─ useSearch(query, filters)           │
+│  ├─ useCollections(filters)             │
+│  ├─ useFavorites()                       │
+│  ├─ useTags()                            │
 │  └─ 自动缓存、重试、状态同步             │
 └─────────────────────────────────────────┘
 ```
@@ -473,25 +620,56 @@ apps/desktop/src/
 ├── components/          # React 组件
 │   ├── ui/              # shadcn/ui 组件 (deprecated, 使用 packages/ui)
 │   └── features/        # 功能组件
+│       ├── SearchBox.tsx
+│       ├── ResultList.tsx
+│       ├── Sidebar.tsx      # 侧边栏（收藏夹/标签/其他）
+│       ├── FavoritesList.tsx
+│       ├── TagsList.tsx
+│       └── SettingsPanel.tsx
 ├── hooks/               # 自定义 Hooks
+│   ├── use-search.ts
+│   ├── use-collections.ts
+│   ├── use-favorites.ts
+│   ├── use-tags.ts
+│   └── use-tauri-events.ts
 ├── lib/                 # 工具函数
 ├── stores/              # Zustand stores
+│   ├── use-search-store.ts
+│   ├── use-sidebar-store.ts  # 侧边栏展开/折叠状态
+│   └── use-settings-store.ts
 ├── routes/              # TanStack Router 路由
 └── types/               # TypeScript 类型
 
 apps/desktop/src-tauri/src/
 ├── commands/            # Tauri Commands
+│   ├── search.rs        # 搜索命令
+│   ├── collect.rs       # 收集命令
+│   ├── favorites.rs     # 收藏夹命令
+│   ├── tags.rs          # 标签命令
+│   └── settings.rs      # 设置命令
 ├── db/                  # SQLite + sqlite-vec
+│   ├── connection.rs    # 数据库连接
+│   ├── collections.rs   # 收集内容操作
+│   ├── favorites.rs     # 收藏夹操作
+│   ├── tags.rs          # 标签操作
+│   └── vectors.rs       # 向量操作
 ├── embedding/           # AI Embedding 逻辑
 ├── server/              # Axum HTTP Server
 └── lib.rs               # 入口
 
 packages/shared/src/
 ├── types/               # 共享类型
+│   ├── collection.ts    # Collection, CollectionStatus
+│   ├── favorite.ts      # Favorite
+│   ├── tag.ts           # Tag
+│   ├── search.ts        # SearchFilters, SearchResult
+│   └── api.ts           # API 响应类型
 └── constants/           # 共享常量
 
 packages/ui/src/
-├── components/ui/       # 50+ shadcn/ui 组件
+├── components/
+│   ├── ui/              # 50+ shadcn/ui 组件
+│   └── markdown-ui/     # Markdown 渲染组件 (streamdown)
 ├── hooks/               # UI 相关 Hooks
 ├── styles/              # 全局样式
 └── utils/               # tailwind-merge 等工具
@@ -573,10 +751,27 @@ interface EventPayload<T> {
 const queryKeys = {
   collections: {
     all: ["collections"] as const,
-    list: () => [...queryKeys.collections.all, "list"] as const,
+    list: (filters?: SearchFilters) =>
+      [...queryKeys.collections.all, "list", filters] as const,
+    detail: (id: string) =>
+      [...queryKeys.collections.all, "detail", id] as const,
+  },
+  favorites: {
+    all: ["favorites"] as const,
+    list: () => [...queryKeys.favorites.all, "list"] as const,
+    detail: (id: string) =>
+      [...queryKeys.favorites.all, "detail", id] as const,
+  },
+  tags: {
+    all: ["tags"] as const,
+    list: (sort?: string) =>
+      [...queryKeys.tags.all, "list", sort] as const,
+    detail: (id: string) =>
+      [...queryKeys.tags.all, "detail", id] as const,
   },
   search: {
-    results: (query: string) => ["search", query] as const,
+    results: (query: string, filters?: SearchFilters) =>
+      ["search", query, filters] as const,
   },
 };
 ```
@@ -873,7 +1068,8 @@ memory-prosthetic/
 |---------|----------|----------|
 | **内容收集 (FR1-FR5)** | `browser-extension/` | `commands/collect.rs` |
 | **内容搜索 (FR6-FR12)** | `routes/index.tsx`, `features/` | `commands/search.rs`, `embedding/` |
-| **内容存储 (FR13-FR16)** | - | `db/` |
+| **内容存储 (FR13-FR16)** | - | `db/collections.rs` |
+| **内容组织 (FR31-FR53)** | `features/Sidebar.tsx`, `hooks/use-*.ts` | `commands/favorites.rs`, `commands/tags.rs`, `db/favorites.rs`, `db/tags.rs` |
 | **系统集成 (FR17-FR20)** | - | `src-tauri/` |
 | **应用通信 (FR21-FR23)** | `lib/api.ts` (插件) | `server/` |
 | **用户设置 (FR24-FR26)** | `routes/settings.tsx` | `commands/settings.rs` |
@@ -883,23 +1079,27 @@ memory-prosthetic/
 **收集流程：**
 
 ```
-浏览器网页 → Content Script → Background → HTTP POST /api/collect
-                                                    │
-                                                    ▼
-                                    Rust: collect_command()
-                                                    │
-                        ┌───────────────────────────┼───────────────────────┐
-                        ▼                           ▼                       ▼
-                db::insert()               embedding::encode()      emit("collection:completed")
-                        │                           │
-                        ▼                           ▼
-                   SQLite                      sqlite-vec
+浏览器网页 → Content Script (Readability + Turndown)
+                    │
+                    ▼ Markdown
+          Background → HTTP POST /api/collect
+                                    │
+                                    ▼
+                    Rust: collect_command()
+                                    │
+        ┌───────────────────────────┼───────────────────────┐
+        ▼                           ▼                       ▼
+    db::insert()           embedding::encode()      emit("collection:completed")
+    (Markdown)                      │
+        │                           ▼
+        ▼                      sqlite-vec
+    SQLite
 ```
 
 **搜索流程：**
 
 ```
-用户输入 → SearchBox → useSearch() → invoke("search")
+用户输入 → SearchBox → useSearch() → invoke("search", { query, filters })
                                            │
                                            ▼
                                    embedding::encode(query)
@@ -911,7 +1111,40 @@ memory-prosthetic/
                                db::collections::get_by_ids()
                                            │
                                            ▼
+                               db::apply_filters(filters)  // 收藏夹/标签/状态筛选
+                                           │
+                                           ▼
                                    Return results → ResultList
+```
+
+**内容组织流程：**
+
+```
+用户操作 → Sidebar UI → useFavorites()/useTags() → invoke("create_favorite"/"create_tag")
+                                           │
+                                           ▼
+                                   db::favorites::create() / db::tags::create()
+                                           │
+                                           ▼
+                                   emit("favorite:created") / emit("tag:created")
+                                           │
+                                           ▼
+                                   TanStack Query 自动刷新
+```
+
+**归档/删除流程：**
+
+```
+用户操作 → ResultList → invoke("archive_collection"/"delete_collection")
+                                           │
+                                           ▼
+                                   db::collections::update_status()
+                                           │
+                                           ▼
+                                   emit("collection:archived"/"collection:deleted")
+                                           │
+                                           ▼
+                                   TanStack Query 自动刷新
 ```
 
 ---
@@ -945,8 +1178,9 @@ memory-prosthetic/
 
 **Functional Requirements:**
 
-- FR1-FR26: 100% 架构覆盖
+- FR1-FR53: 100% 架构覆盖
 - 每个 FR 类别映射到具体模块
+- 新增内容组织功能（FR31-FR53）完整架构设计
 
 **Non-Functional Requirements:**
 
@@ -957,8 +1191,9 @@ memory-prosthetic/
 ### Implementation Readiness ✅
 
 **Decision Completeness:** 8 个 ADR 完整记录
-**Structure Completeness:** 60+ 文件/目录定义
+**Structure Completeness:** 70+ 文件/目录定义（新增收藏夹/标签模块）
 **Pattern Completeness:** 5 大类模式全覆盖
+**Data Model Completeness:** 完整数据库 Schema 设计（collections, favorites, tags, collection_tags）
 
 ### Gap Analysis Results
 
@@ -1072,6 +1307,16 @@ cd apps/desktop
 bun add zustand @tanstack/query @tanstack/router
 ```
 
+**内容组织功能实现顺序（Alpha 阶段）:**
+
+1. **数据库 Schema 迁移** - 添加 `favorites`, `tags`, `collection_tags` 表
+2. **共享类型定义** - `packages/shared/src/types/` 添加 Collection, Favorite, Tag 类型
+3. **Rust 数据层** - `db/favorites.rs`, `db/tags.rs` 实现 CRUD 操作
+4. **Tauri Commands** - `commands/favorites.rs`, `commands/tags.rs` 实现命令
+5. **前端 Hooks** - `hooks/use-favorites.ts`, `hooks/use-tags.ts` 实现数据获取
+6. **UI 组件** - `features/Sidebar.tsx`, `features/FavoritesList.tsx`, `features/TagsList.tsx`
+7. **状态管理** - `stores/use-sidebar-store.ts` 管理侧边栏展开/折叠状态
+
 **Development Sequence:**
 
 1. 创建 `packages/shared` 共享类型
@@ -1081,6 +1326,16 @@ bun add zustand @tanstack/query @tanstack/router
 5. 创建 Tauri Commands (`commands/`)
 6. 构建 React UI (`components/`, `routes/`)
 7. 完善浏览器插件 (`browser-extension/`)
+
+**Alpha 阶段新增内容组织功能：**
+
+1. 数据库 Schema 迁移（添加收藏夹/标签表）
+2. 实现收藏夹和标签数据层 (`db/favorites.rs`, `db/tags.rs`)
+3. 实现收藏夹和标签 Commands (`commands/favorites.rs`, `commands/tags.rs`)
+4. 实现归档/删除功能（更新 `db/collections.rs`）
+5. 构建侧边栏 UI (`features/Sidebar.tsx`)
+6. 实现收藏夹/标签管理 UI
+7. 集成到搜索和列表筛选
 
 ### Quality Assurance Checklist
 

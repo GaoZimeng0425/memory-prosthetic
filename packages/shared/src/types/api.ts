@@ -81,7 +81,9 @@ export interface SearchResultItem {
   url: string
   title: string
   snippet?: string
+  /** @deprecated Use similarity instead. Backend returns similarity field. */
   score?: number
+  /** Similarity score from semantic search (0-1 range) */
   similarity?: number
   domain?: string
   createdAt?: string

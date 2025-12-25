@@ -6,6 +6,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 
+import type { GetCollectionsParams } from '@memory-prosthetic/shared/apis'
 import type { CollectionListItem, CollectionStats } from '@memory-prosthetic/shared/types'
 import { collections } from '@/apis'
 
@@ -17,11 +18,11 @@ interface UseCollectionsReturn {
   refresh: () => Promise<void>
 }
 
-export function useCollections(): UseCollectionsReturn {
+export function useCollections(params?: GetCollectionsParams): UseCollectionsReturn {
   const queryClient = useQueryClient()
 
   const listQuery = useQuery({
-    ...collections.queries.list({ limit: 50, offset: 0 }),
+    ...collections.queries.list({ limit: 50, offset: 0, ...params }),
     refetchInterval: 5000, // Poll every 5 seconds
   })
 

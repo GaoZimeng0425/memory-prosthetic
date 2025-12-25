@@ -26,9 +26,12 @@ export type {
   Collection,
   CollectionListItem,
   CollectionStats,
+  CollectionStatus,
   CollectionWithStatus,
   CreateCollectionInput,
   EmbeddingStatus,
+  Favorite,
+  Tag,
   UpdateCollectionInput,
 } from './collection'
 // Tauri IPC types

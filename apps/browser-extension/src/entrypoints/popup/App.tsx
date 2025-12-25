@@ -6,7 +6,15 @@ import { useConnection } from '@/hooks/use-connection'
 
 function App() {
   const { status: connectionStatus, healthData, checkConnection, isConnected, isChecking } = useConnection()
-  const { status: collectStatus, error: collectError, preview, confirmCollect, cancelPreview, reset } = useCollect()
+  const {
+    status: collectStatus,
+    error: collectError,
+    preview,
+    collect,
+    confirmCollect,
+    cancelPreview,
+    reset,
+  } = useCollect()
 
   const isExtracting = collectStatus === 'extracting'
   const isPreviewing = collectStatus === 'previewing'
@@ -129,11 +137,9 @@ function App() {
               </Button>
             </>
           ) : (
-            <Button className="w-full" disabled={isExtracting || isSuccess}>
+            <Button className="w-full" disabled={isExtracting || isSuccess} onClick={collect}>
               {isExtracting && <Loader2 className="mr-2 size-4 animate-spin" />}
-              {isExtracting && '提取内容中...'}
-              {isSuccess && '已收集 ✓'}
-              {collectStatus === 'idle' && '正在加载...'}
+              {isExtracting ? '提取内容中...' : isSuccess ? '已收集 ✓' : '收集此页面'}
             </Button>
           )
         ) : (

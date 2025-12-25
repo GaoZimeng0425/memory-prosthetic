@@ -1,40 +1,87 @@
 import { useMemo, useState } from 'react'
-import { Input } from '@memory-prosthetic/ui/components/ui/input'
-import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
+import leven from 'leven'
 import { Search } from 'lucide-react'
 
+import { Input } from '@memory-prosthetic/ui/components/ui/input'
+import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import type { CollectionListItem } from '@/types/api'
+import { cn } from '../../../../../packages/ui/src/utils/tw'
 import { ArticleGroupSection } from './ArticleGroupSection'
 import { EmptyState } from './EmptyState'
 import { groupByTime } from './utils'
 
+/** 计算模糊匹配得分 (越小越匹配) */
+const getFuzzyScore = (text: string, query: string): number => {
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+
+  // 完全包含: 最高优先级
+  if (lowerText.includes(lowerQuery)) {
+    return 0
+  }
+
+  // 计算每个单词与 query 的最小 Levenshtein 距离
+  const words = lowerText.split(/\s+/)
+  let minDistance = Number.POSITIVE_INFINITY
+
+  for (const word of words) {
+    const distance = leven(word, lowerQuery)
+    // 允许的最大编辑距离 = query 长度的 40%
+    if (distance <= Math.ceil(lowerQuery.length * 0.4)) {
+      minDistance = Math.min(minDistance, distance)
+    }
+  }
+
+  return minDistance
+}
+
 interface ArticleListProps {
+  className?: string
   collections: CollectionListItem[]
   selectedId: number | null
   onSelect: (id: number) => void
   onDelete: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
+  onManageTags?: (id: number) => void
+  onSetFavorite?: (id: number, favoriteId: number | null) => void
+  onOpenFavoriteDialog?: (id: number) => void
+  onArchive?: (id: number) => void
   isLoading?: boolean
 }
 
 export function ArticleList({
+  className,
   collections,
   selectedId,
   onSelect,
   onDelete,
   onOpenUrl,
   onToggleStar,
+  onManageTags,
+  onSetFavorite,
+  onOpenFavoriteDialog,
+  onArchive,
   isLoading,
 }: ArticleListProps) {
   const [filter, setFilter] = useState('')
 
   const filteredCollections = useMemo(() => {
-    if (!filter.trim()) return collections
-    const lowerFilter = filter.toLowerCase()
-    return collections.filter(
-      (item) => item.title.toLowerCase().includes(lowerFilter) || item.url.toLowerCase().includes(lowerFilter)
-    )
+    const query = filter.trim()
+    if (!query) return collections
+
+    // 计算每个 item 的匹配得分
+    const scored = collections
+      .map((item) => {
+        const titleScore = getFuzzyScore(item.title, query)
+        const urlScore = getFuzzyScore(item.url, query)
+        const score = Math.min(titleScore, urlScore)
+        return { item, score }
+      })
+      .filter(({ score }) => score < Number.POSITIVE_INFINITY) // 过滤掉完全不匹配的
+      .sort((a, b) => a.score - b.score) // 按相关度排序
+
+    return scored.map(({ item }) => item)
   }, [collections, filter])
 
   const groups = useMemo(() => groupByTime(filteredCollections), [filteredCollections])
@@ -50,7 +97,7 @@ export function ArticleList({
   }
 
   return (
-    <div className="flex h-full w-80 flex-col overflow-hidden border-border border-r bg-card">
+    <div className={cn('flex h-full w-80 flex-col overflow-hidden border-border border-r bg-card', className)}>
       {/* Filter Input */}
       <div className="border-border border-b p-3">
         <div className="relative">
@@ -74,9 +121,13 @@ export function ArticleList({
               <ArticleGroupSection
                 group={group}
                 key={group.label}
+                onArchive={onArchive}
                 onDelete={onDelete}
+                onManageTags={onManageTags}
+                onOpenFavoriteDialog={onOpenFavoriteDialog}
                 onOpenUrl={onOpenUrl}
                 onSelect={onSelect}
+                onSetFavorite={onSetFavorite}
                 onToggleStar={onToggleStar}
                 selectedId={selectedId}
               />

@@ -1,10 +1,17 @@
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Clock, Library, Search, Settings, Star } from 'lucide-react'
+
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
-import { Archive, ChevronLeft, ChevronRight, Clock, Library, Search, Settings, Star } from 'lucide-react'
+import { CreateFavoriteDialog } from '@/components/features/CreateFavoriteDialog'
+import { CreateTagDialog } from '@/components/features/CreateTagDialog'
+import { FavoritesList } from '@/components/features/FavoritesList'
+import { OtherSection } from '@/components/features/OtherSection'
+import { TagsList } from '@/components/features/TagsList'
 
 export type SidebarState = 'expanded' | 'collapsed' | 'hidden'
 
-interface NavItem {
+type NavItem = {
   id: string
   label: string
   icon: React.ElementType
@@ -16,33 +23,46 @@ const navItems: NavItem[] = [
   { id: 'all', label: '全部', icon: Library, count: 0 },
   { id: 'starred', label: '星标', icon: Star, count: 0, color: 'text-yellow-500' },
   { id: 'recent', label: '最近', icon: Clock, count: 0 },
-  { id: 'archive', label: '归档', icon: Archive, count: 0 },
 ]
 
-interface AppSidebarProps {
+type AppSidebarProps = {
+  className?: string
   state: SidebarState
   onStateChange: (state: SidebarState) => void
   activeNav: string
   onNavChange: (nav: string) => void
   onSearchClick: () => void
   onSettingsClick: () => void
+  activeFavoriteId?: number | null
+  onFavoriteChange?: (favoriteId: number | null) => void
+  activeTagId?: number | null
+  onTagChange?: (tagId: number | null) => void
   stats?: {
     total: number
     starred: number
     recent: number
     archived: number
+    deleted: number
   }
 }
 
-export function AppSidebar({
+export const AppSidebar = ({
+  className,
   state,
   onStateChange,
   activeNav,
   onNavChange,
   onSearchClick,
   onSettingsClick,
+  activeFavoriteId,
+  onFavoriteChange,
+  activeTagId,
+  onTagChange,
   stats,
-}: AppSidebarProps) {
+}: AppSidebarProps) => {
+  const [isCreateFavoriteOpen, setIsCreateFavoriteOpen] = useState(false)
+  const [isCreateTagOpen, setIsCreateTagOpen] = useState(false)
+
   if (state === 'hidden') {
     return null
   }
@@ -71,6 +91,7 @@ export function AppSidebar({
     <aside
       className={cn(
         'flex h-full flex-col border-sidebar-border border-r bg-sidebar transition-all duration-200',
+        className,
         width
       )}
     >
@@ -80,15 +101,15 @@ export function AppSidebar({
       >
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-pink-500 to-rose-600">
-              <span className="font-bold text-sm text-white">M</span>
+            <div className="flex size-8 items-center justify-center rounded-lg">
+              <img alt="Memory Prosthetic" className="size-8" src="/logo-icon.svg" />
             </div>
             <span className="font-semibold text-sidebar-foreground">Memory</span>
           </div>
         )}
         {isCollapsed && (
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-pink-500 to-rose-600">
-            <span className="font-bold text-sm text-white">M</span>
+          <div className="flex size-8 items-center justify-center rounded-lg">
+            <img alt="Memory Prosthetic" className="size-8" src="/logo-icon.svg" />
           </div>
         )}
       </div>
@@ -113,7 +134,7 @@ export function AppSidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {navItems.map((item) => {
           const isActive = activeNav === item.id
           const count = counts[item.id as keyof typeof counts]
@@ -146,7 +167,56 @@ export function AppSidebar({
             </Button>
           )
         })}
+
+        {/* Favorites Section */}
+        {!isCollapsed && (
+          <div className="mt-4 border-sidebar-border border-t pt-2">
+            <FavoritesList
+              activeFavoriteId={activeFavoriteId ?? undefined}
+              isCollapsed={isCollapsed}
+              onCreateClick={() => setIsCreateFavoriteOpen(true)}
+              onFavoriteClick={(favoriteId) => {
+                onFavoriteChange?.(favoriteId)
+                onNavChange('favorite')
+              }}
+            />
+          </div>
+        )}
+
+        {/* Tags Section */}
+        {!isCollapsed && (
+          <div className="mt-2 border-sidebar-border border-t pt-2">
+            <TagsList
+              activeTagId={activeTagId}
+              isCollapsed={isCollapsed}
+              onCreateClick={() => setIsCreateTagOpen(true)}
+              onTagClick={(tagId) => {
+                onTagChange?.(tagId)
+                onNavChange('tag')
+              }}
+            />
+          </div>
+        )}
+
+        {/* Other Section */}
+        {!isCollapsed && (
+          <div className="mt-2 border-sidebar-border border-t pt-2">
+            <OtherSection
+              activeNav={activeNav}
+              archivedCount={stats?.archived ?? 0}
+              deletedCount={stats?.deleted ?? 0}
+              isCollapsed={isCollapsed}
+              onNavChange={onNavChange}
+            />
+          </div>
+        )}
       </nav>
+
+      {/* Create Favorite Dialog */}
+      <CreateFavoriteDialog onOpenChange={setIsCreateFavoriteOpen} open={isCreateFavoriteOpen} />
+
+      {/* Create Tag Dialog */}
+      <CreateTagDialog onOpenChange={setIsCreateTagOpen} open={isCreateTagOpen} />
 
       {/* Footer */}
       <div className={cn('border-sidebar-border border-t p-2', isCollapsed && 'px-1')}>

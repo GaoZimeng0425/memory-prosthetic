@@ -2,7 +2,7 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "assist": {
-    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**", "!**/.next"],
+    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**"],
     "actions": {
       "source": {
         "organizeImports": {
@@ -58,7 +58,6 @@
       "**",
       "!**/*.svg",
       "!**/.vscode",
-      "!**/.next",
       "!**/pnpm-lock.yaml",
       "!**/node_modules",
       "!**/packages/ui/src/components/ui"
@@ -72,7 +71,6 @@
       ".vscode",
       "!**/*/generated-new.ts",
       "!**/*/generated-v2.ts",
-      "!**/.next",
       "!**/node_modules",
       "!**/packages/ui/src/components/ui/**"
     ],
@@ -102,7 +100,8 @@
   "linter": {
     "enabled": true,
     "domains": {
-      "next": "recommended"
+      "react": "recommended",
+      "project": "recommended"
     },
     "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**", "!**/.next"],
     "rules": {

@@ -16,7 +16,7 @@ export interface RequestAdapter {
   /** PATCH request */
   patch<T, D = unknown>(endpoint: string, data?: D): Promise<T>
   /** DELETE request */
-  delete<T>(endpoint: string): Promise<T>
+  delete<T>(endpoint: string, params?: Record<string, unknown>): Promise<T>
 }
 
 export interface AdapterConfig {

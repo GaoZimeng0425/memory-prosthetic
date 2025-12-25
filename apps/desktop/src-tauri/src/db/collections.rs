@@ -40,6 +40,36 @@ impl From<String> for EmbeddingStatus {
     }
 }
 
+/// Collection status
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CollectionStatus {
+    Active,
+    Archived,
+    Deleted,
+}
+
+impl CollectionStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CollectionStatus::Active => "active",
+            CollectionStatus::Archived => "archived",
+            CollectionStatus::Deleted => "deleted",
+        }
+    }
+}
+
+impl From<String> for CollectionStatus {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "active" => CollectionStatus::Active,
+            "archived" => CollectionStatus::Archived,
+            "deleted" => CollectionStatus::Deleted,
+            _ => CollectionStatus::Active,
+        }
+    }
+}
+
 /// Collection entity from database
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -49,7 +79,10 @@ pub struct Collection {
     pub title: String,
     pub content: String,
     pub summary: Option<String>,
+    pub starred: bool,
     pub embedding_status: EmbeddingStatus,
+    pub favorite_id: Option<i64>,
+    pub status: CollectionStatus,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -69,6 +102,8 @@ pub struct CreateCollection {
 pub struct CollectionStats {
     pub total: i64,
     pub this_week: i64,
+    pub archived: i64,
+    pub deleted: i64,
     pub last_collected_at: Option<String>,
 }
 
@@ -80,6 +115,8 @@ pub struct CollectionListItem {
     pub url: String,
     pub title: String,
     pub domain: String,
+    pub starred: bool,
+    pub favorite_id: Option<i64>,
     pub created_at: String,
 }
 
@@ -94,43 +131,32 @@ impl<'a> CollectionRepository<'a> {
         Self { db }
     }
 
-    /// Insert a new collection or update if URL exists
+    /// Insert a new collection, replacing existing if URL exists
+    /// This deletes the old record (and its embeddings via CASCADE) and inserts a new one
     pub fn upsert(&self, input: &CreateCollection) -> Result<i64, DbError> {
         self.db.with_connection(|conn| {
-            // Try to find existing by URL
-            let existing_id: Option<i64> = conn
-                .query_row(
-                    "SELECT id FROM collections WHERE url = ?1",
-                    params![&input.url],
-                    |row| row.get(0),
-                )
-                .ok();
+            // Delete existing record with same URL (embeddings deleted via CASCADE)
+            let deleted = conn.execute(
+                "DELETE FROM collections WHERE url = ?1",
+                params![&input.url],
+            )?;
 
-            if let Some(id) = existing_id {
-                // Update existing
-                conn.execute(
-                    r#"
-                    UPDATE collections
-                    SET title = ?1, content = ?2, updated_at = datetime('now')
-                    WHERE id = ?3
-                    "#,
-                    params![&input.title, &input.content, id],
-                )?;
-                info!("Updated collection id={}", id);
-                Ok(id)
-            } else {
-                // Insert new
-                conn.execute(
-                    r#"
-                    INSERT INTO collections (url, title, content)
-                    VALUES (?1, ?2, ?3)
-                    "#,
-                    params![&input.url, &input.title, &input.content],
-                )?;
-                let id = conn.last_insert_rowid();
-                info!("Inserted new collection id={}", id);
-                Ok(id)
+            if deleted > 0 {
+                info!("Deleted existing collection with url={}", &input.url);
             }
+
+            // Insert new record
+            conn.execute(
+                r#"
+                INSERT INTO collections (url, title, content)
+                VALUES (?1, ?2, ?3)
+                "#,
+                params![&input.url, &input.title, &input.content],
+            )?;
+
+            let id = conn.last_insert_rowid();
+            info!("Inserted new collection id={} url={}", id, &input.url);
+            Ok(id)
         })
     }
 
@@ -139,7 +165,7 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let result = conn.query_row(
                 r#"
-                SELECT id, url, title, content, summary, embedding_status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
                 FROM collections
                 WHERE id = ?1
                 "#,
@@ -160,7 +186,7 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let result = conn.query_row(
                 r#"
-                SELECT id, url, title, content, summary, embedding_status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
                 FROM collections
                 WHERE url = ?1
                 "#,
@@ -181,9 +207,9 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let mut stmt = conn.prepare(
                 r#"
-                SELECT id, url, title, content, summary, embedding_status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
                 FROM collections
-                WHERE embedding_status = 'pending'
+                WHERE embedding_status = 'pending' AND status = 'active'
                 ORDER BY created_at ASC
                 LIMIT ?1
                 "#,
@@ -210,42 +236,234 @@ impl<'a> CollectionRepository<'a> {
         })
     }
 
-    /// List all collections (paginated)
-    pub fn list(&self, limit: i64, offset: i64) -> Result<Vec<CollectionListItem>, DbError> {
+    /// List collections with optional filters (paginated)
+    pub fn list(
+        &self,
+        limit: i64,
+        offset: i64,
+        favorite_id: Option<i64>,
+        uncategorized: bool,
+        tag_ids: Option<&[i64]>,
+        status: Option<CollectionStatus>,
+    ) -> Result<Vec<CollectionListItem>, DbError> {
         self.db.with_connection(|conn| {
-            let mut stmt = conn.prepare(
-                r#"
-                SELECT id, url, title, created_at
-                FROM collections
-                ORDER BY created_at DESC
-                LIMIT ?1 OFFSET ?2
-                "#,
-            )?;
+            let status_filter = status.unwrap_or(CollectionStatus::Active);
+            let status_str = status_filter.as_str();
 
-            let rows = stmt.query_map(params![limit, offset], |row| {
+            // Build query based on filters
+            // For tag filtering, we'll use a simpler approach with a JOIN
+            if let Some(tag_ids) = tag_ids {
+                if !tag_ids.is_empty() {
+                    // Use EXISTS for tag filtering - simpler and more efficient
+                    // This will match collections that have ANY of the specified tags
+                    let sql = if uncategorized {
+                        r#"
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        FROM collections c
+                        WHERE c.status = ?1
+                          AND c.favorite_id IS NULL
+                          AND EXISTS (
+                              SELECT 1 FROM collection_tags ct
+                              WHERE ct.collection_id = c.id
+                                AND ct.tag_id IN (SELECT value FROM json_each(?2))
+                          )
+                        ORDER BY c.created_at DESC
+                        LIMIT ?3 OFFSET ?4
+                        "#
+                    } else if let Some(fav_id) = favorite_id {
+                        r#"
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        FROM collections c
+                        WHERE c.status = ?1
+                          AND c.favorite_id = ?2
+                          AND EXISTS (
+                              SELECT 1 FROM collection_tags ct
+                              WHERE ct.collection_id = c.id
+                                AND ct.tag_id IN (SELECT value FROM json_each(?3))
+                          )
+                        ORDER BY c.created_at DESC
+                        LIMIT ?4 OFFSET ?5
+                        "#
+                    } else {
+                        r#"
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        FROM collections c
+                        WHERE c.status = ?1
+                          AND EXISTS (
+                              SELECT 1 FROM collection_tags ct
+                              WHERE ct.collection_id = c.id
+                                AND ct.tag_id IN (SELECT value FROM json_each(?2))
+                          )
+                        ORDER BY c.created_at DESC
+                        LIMIT ?3 OFFSET ?4
+                        "#
+                    };
+
+                    // Convert tag_ids to JSON array for json_each
+                    let tag_ids_json = serde_json::to_string(tag_ids).map_err(|e| {
+                        rusqlite::Error::SqliteFailure(
+                            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_MISUSE),
+                            Some(format!("Failed to serialize tag_ids: {}", e)),
+                        )
+                    })?;
+
+                    // Helper closure to map rows
+                    let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
+                        let url: String = row.get(1)?;
+                        let domain = extract_domain(&url);
+                        let starred: i64 = row.get(3)?;
+                        let favorite_id: Option<i64> = row.get(4)?;
+
+                        Ok(CollectionListItem {
+                            id: row.get(0)?,
+                            url,
+                            title: row.get(2)?,
+                            domain,
+                            starred: starred != 0,
+                            favorite_id,
+                            created_at: row.get(5)?,
+                        })
+                    };
+
+                    let mut stmt = conn.prepare(sql)?;
+                    let rows = if uncategorized {
+                        stmt.query_map(
+                            params![status_str, tag_ids_json, limit, offset],
+                            map_row,
+                        )?
+                    } else if let Some(fav_id) = favorite_id {
+                        stmt.query_map(
+                            params![status_str, fav_id, tag_ids_json, limit, offset],
+                            map_row,
+                        )?
+                    } else {
+                        stmt.query_map(
+                            params![status_str, tag_ids_json, limit, offset],
+                            map_row,
+                        )?
+                    };
+
+                    let mut collections = Vec::new();
+                    for row in rows {
+                        collections.push(row?);
+                    }
+                    return Ok(collections);
+                }
+            }
+
+            // Simple query without tag filtering
+            // Helper function to map rows
+            let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
                 let url: String = row.get(1)?;
                 let domain = extract_domain(&url);
+                let starred: i64 = row.get(3)?;
+                let favorite_id: Option<i64> = row.get(4)?;
 
                 Ok(CollectionListItem {
                     id: row.get(0)?,
                     url,
                     title: row.get(2)?,
                     domain,
-                    created_at: row.get(3)?,
+                    starred: starred != 0,
+                    favorite_id,
+                    created_at: row.get(5)?,
                 })
-            })?;
+            };
 
             let mut collections = Vec::new();
-            for row in rows {
-                collections.push(row?);
+
+            if uncategorized {
+                // Query for collections with favorite_id IS NULL
+                let sql = r#"
+                    SELECT id, url, title, starred, favorite_id, created_at
+                    FROM collections
+                    WHERE status = ?1 AND favorite_id IS NULL
+                    ORDER BY created_at DESC
+                    LIMIT ?2 OFFSET ?3
+                    "#;
+                let mut stmt = conn.prepare(sql)?;
+                let rows = stmt.query_map(params![status_str, limit, offset], map_row)?;
+                for row in rows {
+                    collections.push(row?);
+                }
+            } else {
+                match favorite_id {
+                    Some(fav_id) => {
+                        let sql = r#"
+                            SELECT id, url, title, starred, favorite_id, created_at
+                            FROM collections
+                            WHERE status = ?1 AND favorite_id = ?2
+                            ORDER BY created_at DESC
+                            LIMIT ?3 OFFSET ?4
+                            "#;
+                        let mut stmt = conn.prepare(sql)?;
+                        let rows = stmt.query_map(params![status_str, fav_id, limit, offset], map_row)?;
+                        for row in rows {
+                            collections.push(row?);
+                        }
+                    }
+                    None => {
+                        // No favorite filter - return all collections
+                        let sql = r#"
+                            SELECT id, url, title, starred, favorite_id, created_at
+                            FROM collections
+                            WHERE status = ?1
+                            ORDER BY created_at DESC
+                            LIMIT ?2 OFFSET ?3
+                            "#;
+                        let mut stmt = conn.prepare(sql)?;
+                        let rows = stmt.query_map(params![status_str, limit, offset], map_row)?;
+                        for row in rows {
+                            collections.push(row?);
+                        }
+                    }
+                }
             }
 
             Ok(collections)
         })
     }
 
-    /// Delete a collection by ID
+    /// Toggle starred status for a collection
+    pub fn toggle_star(&self, id: i64) -> Result<bool, DbError> {
+        self.db.with_connection(|conn| {
+            // Get current starred status
+            let current: i64 = conn.query_row(
+                "SELECT starred FROM collections WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )?;
+
+            let new_status = if current != 0 { 0 } else { 1 };
+
+            conn.execute(
+                "UPDATE collections SET starred = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![new_status, id],
+            )?;
+
+            info!("Toggled star for collection id={} to {}", id, new_status != 0);
+            Ok(new_status != 0)
+        })
+    }
+
+    /// Soft delete a collection (set status to 'deleted')
     pub fn delete(&self, id: i64) -> Result<bool, DbError> {
+        self.db.with_connection(|conn| {
+            let rows_affected = conn.execute(
+                "UPDATE collections SET status = 'deleted', updated_at = datetime('now') WHERE id = ?1",
+                params![id],
+            )?;
+
+            if rows_affected > 0 {
+                info!("Soft deleted collection id={}", id);
+            }
+
+            Ok(rows_affected > 0)
+        })
+    }
+
+    /// Permanently delete a collection (hard delete)
+    pub fn permanently_delete(&self, id: i64) -> Result<bool, DbError> {
         self.db.with_connection(|conn| {
             let rows_affected = conn.execute(
                 "DELETE FROM collections WHERE id = ?1",
@@ -253,42 +471,100 @@ impl<'a> CollectionRepository<'a> {
             )?;
 
             if rows_affected > 0 {
-                info!("Deleted collection id={}", id);
+                info!("Permanently deleted collection id={}", id);
             }
 
             Ok(rows_affected > 0)
         })
     }
 
+    /// Archive a collection (set status to 'archived')
+    pub fn archive(&self, id: i64) -> Result<(), DbError> {
+        self.db.with_connection(|conn| {
+            conn.execute(
+                "UPDATE collections SET status = 'archived', updated_at = datetime('now') WHERE id = ?1",
+                params![id],
+            )?;
+
+            info!("Archived collection id={}", id);
+            Ok(())
+        })
+    }
+
+    /// Restore a collection (set status to 'active')
+    pub fn restore(&self, id: i64) -> Result<(), DbError> {
+        self.db.with_connection(|conn| {
+            conn.execute(
+                "UPDATE collections SET status = 'active', updated_at = datetime('now') WHERE id = ?1",
+                params![id],
+            )?;
+
+            info!("Restored collection id={}", id);
+            Ok(())
+        })
+    }
+
+    /// Update collection favorite
+    pub fn set_favorite(&self, id: i64, favorite_id: Option<i64>) -> Result<(), DbError> {
+        self.db.with_connection(|conn| {
+            conn.execute(
+                "UPDATE collections SET favorite_id = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![favorite_id, id],
+            )?;
+
+            info!("Updated collection id={} favorite_id={:?}", id, favorite_id);
+            Ok(())
+        })
+    }
+
     /// Get collection statistics
     pub fn get_stats(&self) -> Result<CollectionStats, DbError> {
         self.db.with_connection(|conn| {
+            // Total count should only include active collections
             let total: i64 = conn.query_row(
-                "SELECT COUNT(*) FROM collections",
+                "SELECT COUNT(*) FROM collections WHERE status = 'active'",
                 [],
                 |row| row.get(0),
             )?;
 
+            // This week count should only include active collections
             let this_week: i64 = conn.query_row(
                 r#"
                 SELECT COUNT(*) FROM collections
-                WHERE created_at >= datetime('now', '-7 days')
+                WHERE status = 'active' AND created_at >= datetime('now', '-7 days')
                 "#,
                 [],
                 |row| row.get(0),
             )?;
 
+            // Last collected at should only consider active collections
             let last_collected_at: Option<String> = conn
                 .query_row(
-                    "SELECT created_at FROM collections ORDER BY created_at DESC LIMIT 1",
+                    "SELECT created_at FROM collections WHERE status = 'active' ORDER BY created_at DESC LIMIT 1",
                     [],
                     |row| row.get(0),
                 )
                 .ok();
 
+            // Get archived count
+            let archived: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM collections WHERE status = 'archived'",
+                [],
+                |row| row.get(0),
+            )?;
+
+            // Get deleted count
+            let deleted: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM collections WHERE status = 'deleted'",
+                [],
+                |row| row.get(0),
+            )?;
+
             Ok(CollectionStats {
                 total,
                 this_week,
+                archived,
+                deleted,
                 last_collected_at,
             })
         })
@@ -303,16 +579,22 @@ impl<'a> CollectionRepository<'a> {
 
     /// Helper to convert a row to Collection
     fn row_to_collection(row: &Row<'_>) -> rusqlite::Result<Collection> {
-        let status_str: String = row.get(5)?;
+        let starred: i64 = row.get(5)?;
+        let embedding_status_str: String = row.get(6)?;
+        let favorite_id: Option<i64> = row.get(7)?;
+        let status_str: String = row.get(8)?;
         Ok(Collection {
             id: row.get(0)?,
             url: row.get(1)?,
             title: row.get(2)?,
             content: row.get(3)?,
             summary: row.get(4)?,
-            embedding_status: EmbeddingStatus::from(status_str),
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
+            starred: starred != 0,
+            embedding_status: EmbeddingStatus::from(embedding_status_str),
+            favorite_id,
+            status: CollectionStatus::from(status_str),
+            created_at: row.get(9)?,
+            updated_at: row.get(10)?,
         })
     }
 }
@@ -326,6 +608,7 @@ fn extract_domain(url: &str) -> String {
         .unwrap_or(url)
         .to_string()
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -359,7 +642,7 @@ mod tests {
     }
 
     #[test]
-    fn test_upsert_updates_existing() {
+    fn test_upsert_replaces_existing() {
         let db = setup_test_db();
         let repo = CollectionRepository::new(&db);
 
@@ -379,11 +662,16 @@ mod tests {
 
         let id2 = repo.upsert(&input2).unwrap();
 
-        // Should be same ID (updated, not inserted)
-        assert_eq!(id1, id2);
+        // Should be different ID (old deleted, new inserted)
+        assert_ne!(id1, id2);
 
-        let collection = repo.get_by_id(id1).unwrap().unwrap();
+        // Old record should not exist
+        assert!(repo.get_by_id(id1).unwrap().is_none());
+
+        // New record should have updated content
+        let collection = repo.get_by_id(id2).unwrap().unwrap();
         assert_eq!(collection.title, "Updated Title");
+        assert_eq!(collection.content, "Updated content.");
     }
 
     #[test]
@@ -398,12 +686,20 @@ mod tests {
         };
 
         let id = repo.upsert(&input).unwrap();
-        assert!(repo.get_by_id(id).unwrap().is_some());
+        let collection = repo.get_by_id(id).unwrap().unwrap();
+        assert_eq!(collection.status, CollectionStatus::Active);
 
+        // Soft delete
         let deleted = repo.delete(id).unwrap();
         assert!(deleted);
 
-        assert!(repo.get_by_id(id).unwrap().is_none());
+        // Collection still exists but with deleted status
+        let deleted_collection = repo.get_by_id(id).unwrap().unwrap();
+        assert_eq!(deleted_collection.status, CollectionStatus::Deleted);
+
+        // Should not appear in active list
+        let active_list = repo.list(10, 0, None, false, None, Some(CollectionStatus::Active)).unwrap();
+        assert!(!active_list.iter().any(|c| c.id == id));
     }
 
     #[test]

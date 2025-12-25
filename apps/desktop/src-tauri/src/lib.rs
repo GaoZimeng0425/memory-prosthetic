@@ -8,13 +8,21 @@ mod server;
 mod settings;
 mod tray;
 
-use db::{Collection, CollectionListItem, CollectionRepository, CollectionStats, CreateCollection, Database, DbError, EmbeddingsRepository};
+use db::{
+    Collection, CollectionListItem, CollectionRepository, CollectionStats, CollectionStatus,
+    CreateCollection, Database, DbError, EmbeddingsRepository,
+    Favorite, FavoriteRepository, CreateFavorite, UpdateFavorite,
+    Tag, TagRepository, CreateTag, UpdateTag, TagSortOrder,
+    CollectionTagRepository,
+};
 use embedding::get_embedding_model;
 use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
 use settings::{AppSettings, SettingsManager, ShortcutConfig, Theme};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, RunEvent, State, WindowEvent};
+#[cfg(target_os = "macos")]
+use tauri::window::Color;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 use tracing::info;
 
@@ -108,10 +116,38 @@ fn toggle_search_window(app: AppHandle) -> Result<(), CommandError> {
 #[tauri::command]
 fn hide_search_window(app: AppHandle) -> Result<(), CommandError> {
     if let Some(window) = app.get_webview_window("search") {
+        // Before hiding search window, check if main window should receive focus
+        let main_window_was_focused = if let Some(main_window) = app.get_webview_window("main") {
+            main_window.is_focused().unwrap_or(false)
+        } else {
+            false
+        };
+
+        // If main window was not focused (user was using other apps),
+        // temporarily make it non-focusable to prevent macOS from auto-focusing it
+        if !main_window_was_focused {
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.set_focusable(false);
+            }
+        }
+
+        // Hide search window
         window.hide().map_err(|e| CommandError {
             code: "WINDOW_ERROR".to_string(),
             message: e.to_string(),
         })?;
+
+        // Restore main window focusability after a short delay
+        // This prevents macOS from auto-focusing it when search window closes
+        if !main_window_was_focused {
+            if let Some(main_window) = app.get_webview_window("main") {
+                // Use a small delay to ensure search window is fully hidden first
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    let _ = main_window.set_focusable(true);
+                });
+            }
+        }
     }
     Ok(())
 }
@@ -120,7 +156,29 @@ fn hide_search_window(app: AppHandle) -> Result<(), CommandError> {
 #[tauri::command]
 fn show_search_window(app: AppHandle) -> Result<(), CommandError> {
     if let Some(window) = app.get_webview_window("search") {
+        // Disable shadow to remove macOS focus ring
+        let _ = window.set_shadow(false);
         window.show().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+        window.set_focus().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+    Ok(())
+}
+
+/// Show and focus the main window (handles both hidden and minimized states)
+#[tauri::command]
+fn show_main_window(app: AppHandle) -> Result<(), CommandError> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.show().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+        window.unminimize().map_err(|e| CommandError {
             code: "WINDOW_ERROR".to_string(),
             message: e.to_string(),
         })?;
@@ -136,8 +194,38 @@ fn show_search_window(app: AppHandle) -> Result<(), CommandError> {
 fn toggle_search(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("search") {
         if window.is_visible().unwrap_or(false) {
+            // Before hiding search window, check if main window should receive focus
+            let main_window_was_focused = if let Some(main_window) = app.get_webview_window("main") {
+                main_window.is_focused().unwrap_or(false)
+            } else {
+                false
+            };
+
+            // If main window was not focused (user was using other apps),
+            // temporarily make it non-focusable to prevent macOS from auto-focusing it
+            if !main_window_was_focused {
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let _ = main_window.set_focusable(false);
+                }
+            }
+
+            // Hide search window
             window.hide().map_err(|e| e.to_string())?;
+
+            // Restore main window focusability after a short delay
+            // This prevents macOS from auto-focusing it when search window closes
+            if !main_window_was_focused {
+                let app_handle = app.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    if let Some(main_window) = app_handle.get_webview_window("main") {
+                        let _ = main_window.set_focusable(true);
+                    }
+                });
+            }
         } else {
+            // Disable shadow to remove macOS focus ring
+            let _ = window.set_shadow(false);
             window.show().map_err(|e| e.to_string())?;
             window.set_focus().map_err(|e| e.to_string())?;
         }
@@ -352,20 +440,43 @@ fn get_collection(
     Ok(CommandResult { data: collection })
 }
 
-/// List collections with pagination
+/// List collections with pagination and filters
 #[tauri::command]
 fn get_collections(
     state: State<'_, Arc<AppState>>,
     limit: Option<i64>,
     offset: Option<i64>,
+    favorite_id: Option<i64>,
+    uncategorized: Option<bool>,
+    tag_ids: Option<Vec<i64>>,
+    status: Option<String>,
 ) -> Result<CommandResult<Vec<CollectionListItem>>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    let collections = repo.list(limit.unwrap_or(50), offset.unwrap_or(0))?;
+    let status_enum = status
+        .map(|s| CollectionStatus::from(s))
+        .or_else(|| Some(CollectionStatus::Active));
+    let tag_ids_slice = tag_ids.as_deref();
+
+    // If uncategorized is true, set favorite_id to None to indicate we want NULL values
+    let favorite_id_filter = if uncategorized.unwrap_or(false) {
+        None // This will be handled specially in the repository
+    } else {
+        favorite_id
+    };
+
+    let collections = repo.list(
+        limit.unwrap_or(50),
+        offset.unwrap_or(0),
+        favorite_id_filter,
+        uncategorized.unwrap_or(false),
+        tag_ids_slice,
+        status_enum,
+    )?;
 
     Ok(CommandResult { data: collections })
 }
 
-/// Delete a collection by ID
+/// Delete a collection by ID (soft delete)
 #[tauri::command]
 fn delete_collection(
     state: State<'_, Arc<AppState>>,
@@ -375,6 +486,67 @@ fn delete_collection(
     let deleted = repo.delete(id)?;
 
     Ok(CommandResult { data: deleted })
+}
+
+/// Permanently delete a collection
+#[tauri::command]
+fn permanently_delete_collection(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<bool>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    let deleted = repo.permanently_delete(id)?;
+
+    Ok(CommandResult { data: deleted })
+}
+
+/// Archive a collection
+#[tauri::command]
+fn archive_collection(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    repo.archive(id)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Restore a collection
+#[tauri::command]
+fn restore_collection(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    repo.restore(id)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Set collection favorite
+#[tauri::command]
+fn set_collection_favorite(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+    favorite_id: Option<i64>,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    repo.set_favorite(id, favorite_id)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Toggle starred status for a collection
+#[tauri::command]
+fn toggle_collection_star(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<bool>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    let starred = repo.toggle_star(id)?;
+
+    Ok(CommandResult { data: starred })
 }
 
 /// Get collection statistics
@@ -410,7 +582,7 @@ fn get_search_suggestions(
     }
 
     let repo = CollectionRepository::new(&state.db);
-    let collections = repo.list(100, 0)?;
+    let collections = repo.list(100, 0, None, false, None, Some(CollectionStatus::Active))?;
 
     // Find matching titles (case-insensitive)
     let query_lower = query.to_lowercase();
@@ -486,6 +658,182 @@ fn search(
 }
 
 // ============================================
+// Favorites Commands
+// ============================================
+
+/// Create a new favorite
+#[tauri::command]
+fn create_favorite(
+    state: State<'_, Arc<AppState>>,
+    request: CreateFavorite,
+) -> Result<CommandResult<i64>, CommandError> {
+    let repo = FavoriteRepository::new(&state.db);
+    let id = repo.create(&request)?;
+
+    Ok(CommandResult { data: id })
+}
+
+/// Update a favorite
+#[tauri::command]
+fn update_favorite(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+    request: UpdateFavorite,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = FavoriteRepository::new(&state.db);
+    repo.update(id, &request)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Delete a favorite
+#[tauri::command]
+fn delete_favorite(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<bool>, CommandError> {
+    let repo = FavoriteRepository::new(&state.db);
+    let deleted = repo.delete(id)?;
+
+    Ok(CommandResult { data: deleted })
+}
+
+/// Get all favorites
+#[tauri::command]
+fn get_favorites(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<Vec<Favorite>>, CommandError> {
+    let repo = FavoriteRepository::new(&state.db);
+    let favorites = repo.list()?;
+
+    Ok(CommandResult { data: favorites })
+}
+
+/// Get a favorite by ID
+#[tauri::command]
+fn get_favorite(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<Option<Favorite>>, CommandError> {
+    let repo = FavoriteRepository::new(&state.db);
+    let favorite = repo.get_by_id(id)?;
+
+    Ok(CommandResult { data: favorite })
+}
+
+// ============================================
+// Tags Commands
+// ============================================
+
+/// Create a new tag
+#[tauri::command]
+fn create_tag(
+    state: State<'_, Arc<AppState>>,
+    request: CreateTag,
+) -> Result<CommandResult<i64>, CommandError> {
+    let repo = TagRepository::new(&state.db);
+    let id = repo.create(&request)?;
+
+    Ok(CommandResult { data: id })
+}
+
+/// Update a tag
+#[tauri::command]
+fn update_tag(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+    request: UpdateTag,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = TagRepository::new(&state.db);
+    repo.update(id, &request)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Delete a tag
+#[tauri::command]
+fn delete_tag(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<bool>, CommandError> {
+    let repo = TagRepository::new(&state.db);
+    let deleted = repo.delete(id)?;
+
+    Ok(CommandResult { data: deleted })
+}
+
+/// Get all tags
+#[tauri::command]
+fn get_tags(
+    state: State<'_, Arc<AppState>>,
+    sort: Option<String>,
+) -> Result<CommandResult<Vec<Tag>>, CommandError> {
+    let repo = TagRepository::new(&state.db);
+    let sort_order = match sort.as_deref() {
+        Some("usage") => Some(TagSortOrder::UsageDesc),
+        Some("created") => Some(TagSortOrder::CreatedDesc),
+        _ => Some(TagSortOrder::NameAsc),
+    };
+    let tags = repo.list(sort_order)?;
+
+    Ok(CommandResult { data: tags })
+}
+
+/// Get a tag by ID
+#[tauri::command]
+fn get_tag(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+) -> Result<CommandResult<Option<Tag>>, CommandError> {
+    let repo = TagRepository::new(&state.db);
+    let tag = repo.get_by_id(id)?;
+
+    Ok(CommandResult { data: tag })
+}
+
+// ============================================
+// Collection-Tags Commands
+// ============================================
+
+/// Add tags to a collection
+#[tauri::command]
+fn add_collection_tags(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+    tag_ids: Vec<i64>,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = CollectionTagRepository::new(&state.db);
+    repo.add_tags(collection_id, &tag_ids)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Remove a tag from a collection
+#[tauri::command]
+fn remove_collection_tag(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+    tag_id: i64,
+) -> Result<CommandResult<()>, CommandError> {
+    let repo = CollectionTagRepository::new(&state.db);
+    repo.remove_tag(collection_id, tag_id)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Get all tags for a collection
+#[tauri::command]
+fn get_collection_tags(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+) -> Result<CommandResult<Vec<Tag>>, CommandError> {
+    let repo = CollectionTagRepository::new(&state.db);
+    let tags = repo.get_tags_by_collection(collection_id)?;
+
+    Ok(CommandResult { data: tags })
+}
+
+// ============================================
 // App Initialization
 // ============================================
 
@@ -493,6 +841,11 @@ fn search(
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_denylist(&["search"]) // search window always centered, skip state persistence
+                .build(),
+        )
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -509,6 +862,15 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
+            // Set search window background to transparent on macOS
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(search_window) = app.get_webview_window("search") {
+                    // Set transparent background color (RGBA: 0, 0, 0, 0)
+                    let _ = search_window.set_background_color(Some(Color::from([0, 0, 0, 0])));
+                }
+            }
+
             // Get app data directory
             let app_data_dir = app
                 .path()
@@ -592,6 +954,13 @@ pub fn run() {
                 tracing::error!("Failed to setup system tray: {}", e);
             }
 
+            // Show main window after state restoration (window starts with visible: false)
+            // The window-state plugin restores position/size before we show it
+            if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.show();
+                info!("Main window shown with restored state");
+            }
+
             info!("Application initialized successfully");
 
             Ok(())
@@ -601,17 +970,104 @@ pub fn run() {
             get_collection,
             get_collections,
             delete_collection,
+            toggle_collection_star,
             get_collection_stats,
             search,
             get_search_suggestions,
             toggle_search_window,
             hide_search_window,
             show_search_window,
+            show_main_window,
             get_settings,
             update_shortcut,
             set_auto_start,
             update_theme,
+            // Favorites
+            create_favorite,
+            update_favorite,
+            delete_favorite,
+            get_favorites,
+            get_favorite,
+            // Tags
+            create_tag,
+            update_tag,
+            delete_tag,
+            get_tags,
+            get_tag,
+            // Collection operations
+            archive_collection,
+            restore_collection,
+            permanently_delete_collection,
+            set_collection_favorite,
+            add_collection_tags,
+            remove_collection_tag,
+            get_collection_tags,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            match event {
+                // Handle macOS dock icon click to show main window
+                RunEvent::Reopen { has_visible_windows, .. } => {
+                    if !has_visible_windows {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+                // Handle window close request - hide instead of destroy on macOS
+                #[cfg(target_os = "macos")]
+                RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } => {
+                    if label == "main" {
+                        // Prevent window from being destroyed
+                        api.prevent_close();
+                        // Hide the window instead
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.hide();
+                        }
+                    }
+                }
+                // Handle search window focus loss - auto hide when losing focus
+                RunEvent::WindowEvent { label, event: WindowEvent::Focused(focused), .. } => {
+                    if label == "search" && !focused {
+                        // Search window lost focus, hide it
+                        if let Some(window) = app.get_webview_window("search") {
+                            // Only hide if window is visible (avoid hiding already hidden window)
+                            if window.is_visible().unwrap_or(false) {
+                                // Before hiding search window, check if main window should receive focus
+                                let main_window_was_focused = if let Some(main_window) = app.get_webview_window("main") {
+                                    main_window.is_focused().unwrap_or(false)
+                                } else {
+                                    false
+                                };
+
+                                // If main window was not focused (user was using other apps),
+                                // temporarily make it non-focusable to prevent macOS from auto-focusing it
+                                if !main_window_was_focused {
+                                    if let Some(main_window) = app.get_webview_window("main") {
+                                        let _ = main_window.set_focusable(false);
+                                    }
+                                }
+
+                                let _ = window.hide();
+                                info!("Search window auto-hidden due to focus loss");
+
+                                // Restore main window focusability after a short delay
+                                if !main_window_was_focused {
+                                    let app_handle = app.clone();
+                                    std::thread::spawn(move || {
+                                        std::thread::sleep(std::time::Duration::from_millis(50));
+                                        if let Some(main_window) = app_handle.get_webview_window("main") {
+                                            let _ = main_window.set_focusable(true);
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        });
 }

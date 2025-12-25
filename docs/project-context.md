@@ -26,6 +26,9 @@ status: 'complete'
 | Database | SQLite + sqlite-vec | latest |
 | HTTP | Axum | latest |
 | AI | all-MiniLM-L6-v2 | - |
+| Content Extract | @mozilla/readability | latest |
+| HTML to Markdown | turndown | latest |
+| Markdown Render | streamdown | latest |
 
 ## Critical Implementation Rules
 
@@ -124,6 +127,8 @@ interface ApiError { success: false; error: { code: string; message: string } }
 - ❌ 自己写基础 UI 组件 (优先使用 shadcn/ui)
 - ❌ 使用 moment.js 或原生 Date API (使用 date-fns)
 - ❌ 使用 fetch/axios 直接请求 (使用 @tanstack/react-query)
+- ❌ 直接保存原始 HTML (使用 @mozilla/readability + turndown 转 Markdown)
+- ❌ 使用 dangerouslySetInnerHTML 渲染内容 (使用 MarkdownUI 组件)
 - ❌ 直接修改 `packages/ui/src/components/ui/` (shadcn 组件)
 - ❌ 在 app 目录复制 shadcn 组件 (应从 `@memory-prosthetic/ui` 导入)
 - ❌ 在 React 组件中直接访问 SQLite
@@ -156,7 +161,8 @@ apps/browser-extension/src/
 ├── hooks/
 ├── styles/
 ├── types/
-├── utils/
+├── utils/            # @mozilla/readability, turndown
+├── apis/             # API 请求
 └── constants/
 
 packages/shared/src/
@@ -165,7 +171,9 @@ packages/shared/src/
 └── utils/            # typed.ts 类型检查工具
 
 packages/ui/src/
-├── components/ui/    # 50+ shadcn/ui 组件
+├── components/
+│   ├── ui/           # 50+ shadcn/ui 组件
+│   └── markdown-ui/  # Markdown 渲染组件 (streamdown)
 ├── hooks/            # use-mobile.ts
 ├── styles/           # globals.css
 └── utils/            # tw.ts (tailwind-merge)
@@ -176,6 +184,8 @@ packages/ui/src/
 | 场景 | 做法 |
 |------|------|
 | 使用 shadcn 组件 | 从 `@memory-prosthetic/ui` 导入 |
+| 渲染 Markdown | 使用 `MarkdownUI` 组件 (from `@memory-prosthetic/ui`) |
+| 提取网页内容 | 使用 `@mozilla/readability` + `turndown` 转 Markdown |
 | 添加样式 | 使用 TailwindCSS 类，避免自定义 CSS |
 | 时间处理 | 使用 date-fns，不使用 moment.js 或原生 Date |
 | 网络请求 | 使用 @tanstack/react-query，不直接用 fetch/axios |
@@ -267,6 +277,38 @@ const [data, setData] = useState(null)
 useEffect(() => {
   fetch('/api/collections').then(r => r.json()).then(setData) // ❌
 }, [])
+```
+
+### 内容提取与 Markdown
+
+```typescript
+// ✅ 正确: 使用 @mozilla/readability 提取主要内容
+import { Readability } from '@mozilla/readability'
+import TurndownService from 'turndown'
+
+// 提取网页主要内容 (移除导航、广告等)
+const doc = new DOMParser().parseFromString(html, 'text/html')
+const article = new Readability(doc).parse()
+const mainContent = article?.content // 纯净 HTML
+
+// 转换为 Markdown
+const turndown = new TurndownService()
+const markdown = turndown.turndown(mainContent)
+
+// ❌ 错误: 直接保存原始 HTML
+const rawHtml = document.body.innerHTML // ❌ 包含导航、广告等无关内容
+```
+
+```typescript
+// ✅ 正确: 使用 MarkdownUI 渲染 Markdown
+import { MarkdownUI } from '@memory-prosthetic/ui'
+
+const ArticleView = ({ content }: { content: string }) => {
+  return <MarkdownUI markdown={content} />
+}
+
+// ❌ 错误: 直接渲染 HTML
+<div dangerouslySetInnerHTML={{ __html: rawHtml }} /> // ❌
 ```
 
 ### TypeScript 类型与函数声明

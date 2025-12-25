@@ -32,15 +32,57 @@ async function extractContent(): Promise<ExtractedContent> {
     throw new Error('无法获取当前标签页')
   }
 
-  const response: ContentResponse = await browser.tabs.sendMessage(tab.id, {
-    type: 'EXTRACT_CONTENT',
-  })
-
-  if (!response.success) {
-    throw new Error(response.error)
+  // Check if it's a special page where content scripts can't run
+  const url = tab.url || ''
+  if (
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('moz-extension://') ||
+    url.startsWith('edge://') ||
+    url.startsWith('about:') ||
+    url.startsWith('file://') ||
+    url.startsWith('data:')
+  ) {
+    throw new Error('无法在此页面收集内容')
   }
 
-  return response.data
+  try {
+    // Try to send message to content script
+    const response: ContentResponse = await browser.tabs.sendMessage(tab.id, {
+      type: 'EXTRACT_CONTENT',
+    })
+
+    if (!response.success) {
+      throw new Error(response.error)
+    }
+
+    return response.data
+  } catch (error) {
+    // If content script is not loaded, try to inject it first
+    if (error instanceof Error && error.message.includes('Receiving end does not exist')) {
+      // Inject content script programmatically
+      await browser.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content-scripts/content.js'],
+      })
+
+      // Wait a bit for the script to initialize
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Retry sending message
+      const response: ContentResponse = await browser.tabs.sendMessage(tab.id, {
+        type: 'EXTRACT_CONTENT',
+      })
+
+      if (!response.success) {
+        throw new Error(response.error)
+      }
+
+      return response.data
+    }
+
+    throw error
+  }
 }
 
 /**
@@ -83,9 +125,10 @@ export function useCollect(): UseCollectResult {
         setPreview(content)
         setStatus('previewing')
       })
-      .catch(() => {
-        // Content script may not be loaded, ignore silently
-        setStatus('idle')
+      .catch((err) => {
+        // Show error instead of silently failing
+        setError(err instanceof Error ? err.message : '内容脚本未加载，请刷新页面后重试')
+        setStatus('error')
       })
   }, [])
 

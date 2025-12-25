@@ -10,6 +10,10 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    },
     "windows": [
       {
         "label": "main",
@@ -17,7 +21,12 @@
         "width": 900,
         "height": 700,
         "minWidth": 600,
-        "minHeight": 400
+        "minHeight": 400,
+        "visible": false,
+        "transparent": true,
+        "shadow": false,
+        "hiddenTitle": true,
+        "titleBarStyle": "Overlay"
       },
       {
         "label": "search",
@@ -32,7 +41,9 @@
         "alwaysOnTop": true,
         "visible": false,
         "skipTaskbar": true,
-        "focus": true
+        "focus": true,
+        "shadow": false,
+        "hiddenTitle": true
       }
     ],
     "security": {

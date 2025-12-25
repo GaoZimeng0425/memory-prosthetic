@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
-import { Button } from '@memory-prosthetic/ui/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import { invoke } from '@tauri-apps/api/core'
 import { ExternalLink, Trash2 } from 'lucide-react'
 
+import { formatDateTime } from '@memory-prosthetic/shared'
+import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
+import { Button } from '@memory-prosthetic/ui/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import { CollectionDetail } from '@/components/CollectionDetail'
 import type { Collection, CollectionListItem, CollectionStats, CommandResult } from '@/types/api'
 
@@ -18,17 +19,6 @@ export function CollectionList({ collections, stats, onRefresh }: CollectionList
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [loadingId, setLoadingId] = useState<number | null>(null)
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-  }
 
   const handleItemClick = async (id: number) => {
     setLoadingId(id)
@@ -107,7 +97,7 @@ export function CollectionList({ collections, stats, onRefresh }: CollectionList
                       <Badge className="text-xs" variant="outline">
                         {item.domain}
                       </Badge>
-                      <span className="text-xs">{formatDate(item.createdAt)}</span>
+                      <span className="text-xs">{formatDateTime(item.createdAt)}</span>
                     </CardDescription>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

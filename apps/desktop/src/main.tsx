@@ -4,7 +4,9 @@ import { emit } from '@tauri-apps/api/event'
 import ReactDOM from 'react-dom/client'
 
 import { QueryProvider } from '@memory-prosthetic/shared/request'
+import { Toaster } from '@memory-prosthetic/ui/components/ui/sonner'
 import { type Theme, ThemeProvider } from '@memory-prosthetic/ui/hooks/use-theme'
+import { AiConfigProvider } from '@/providers/AiConfigProvider'
 import App from './App'
 import { SearchWindow } from './pages/SearchWindow'
 import type { AppSettings, CommandResult } from './types/api'
@@ -51,7 +53,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryProvider>
       <ThemeProvider defaultTheme="dark" onThemeChange={handleThemeChange} storage={tauriStorage} storageKey="theme">
-        <Router />
+        <AiConfigProvider>
+          <Router />
+          <Toaster />
+        </AiConfigProvider>
       </ThemeProvider>
     </QueryProvider>
   </React.StrictMode>

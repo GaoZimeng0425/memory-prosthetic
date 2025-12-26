@@ -4,6 +4,18 @@
  * All types used across desktop app and browser extension
  */
 
+// AI Metadata types
+export type {
+  AiMetadata,
+  AiProcessingLog,
+  ContentType,
+  Difficulty,
+  Domain,
+  Keyword,
+  Language,
+  SummaryType,
+  Topic,
+} from './ai'
 // API types (HTTP communication)
 export type {
   ApiError,
@@ -34,6 +46,18 @@ export type {
   Tag,
   UpdateCollectionInput,
 } from './collection'
+// Knowledge Graph types
+export type {
+  Association,
+  AssociationReason,
+  AssociationType,
+  GraphData,
+  GraphEdge,
+  GraphFilters,
+  GraphNode,
+  GraphStatistics,
+  UserFeedback,
+} from './graph'
 // Tauri IPC types
 export type {
   CollectionCompletedPayload,

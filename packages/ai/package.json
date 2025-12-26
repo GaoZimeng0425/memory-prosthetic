@@ -1,0 +1,62 @@
+{
+  "name": "@memory-prosthetic/ai",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./config": {
+      "types": "./src/config.ts",
+      "import": "./src/config.ts"
+    },
+    "./summary": {
+      "types": "./src/summary.ts",
+      "import": "./src/summary.ts"
+    },
+    "./tags": {
+      "types": "./src/tags.ts",
+      "import": "./src/tags.ts"
+    },
+    "./classification": {
+      "types": "./src/classification.ts",
+      "import": "./src/classification.ts"
+    },
+    "./keywords": {
+      "types": "./src/keywords.ts",
+      "import": "./src/keywords.ts"
+    },
+    "./topics": {
+      "types": "./src/topics.ts",
+      "import": "./src/topics.ts"
+    },
+    "./processor": {
+      "types": "./src/processor.ts",
+      "import": "./src/processor.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@ai-sdk/anthropic": "^3.0.1",
+    "@ai-sdk/deepseek": "^2.0.1",
+    "@ai-sdk/google": "^3.0.0",
+    "@ai-sdk/openai": "^3.0.0",
+    "@ai-sdk/react": "^3.0.1",
+    "ai": "^6.0.1"
+  },
+  "peerDependenciesMeta": {
+    "@tauri-apps/api": {
+      "optional": true
+    },
+    "@tauri-apps/plugin-secure-store": {
+      "optional": true
+    }
+  },
+  "dependencies": {}
+}

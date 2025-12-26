@@ -8,6 +8,8 @@ mod embeddings;
 mod favorites;
 mod tags;
 mod collection_tags;
+mod associations;
+mod ai_metadata;
 
 pub use connection::{Database, DbError, init_database};
 pub use collections::{
@@ -40,3 +42,18 @@ pub use tags::{
     TagSortOrder,
 };
 pub use collection_tags::CollectionTagRepository;
+pub use associations::{
+    Association,
+    AssociationRepository,
+    CreateAssociation,
+};
+pub use ai_metadata::{
+    AiMetadataRepository,
+    Keyword,
+    Topic,
+    AiProcessingLog,
+    UpdateAiMetadata,
+    CreateKeyword,
+    CreateTopic,
+    CreateAiLog,
+};

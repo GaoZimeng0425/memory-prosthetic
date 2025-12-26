@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
+import type { GraphFilters } from '@memory-prosthetic/shared'
 import { isWithinDays } from '@memory-prosthetic/shared/utils/date'
 import {
   Dialog,
@@ -20,6 +21,7 @@ import { CreateFavoriteDialog } from '@/components/features/CreateFavoriteDialog
 import { DeleteConfirmDialog } from '@/components/features/DeleteConfirmDialog'
 import { SelectFavoriteDialog } from '@/components/features/SelectFavoriteDialog'
 import { TagDialog } from '@/components/features/TagDialog'
+import { GraphPage } from '@/components/pages/GraphPage'
 import { SearchOverlay } from '@/components/SearchOverlay'
 import { SettingsPanel } from '@/components/SettingsPanel'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
@@ -32,6 +34,7 @@ function App() {
   // Layout state
   const [sidebarState, setSidebarState] = useState<SidebarState>('expanded')
   const [activeNav, setActiveNav] = useState('all')
+  console.log('🚀 : App : activeNav:', activeNav)
   const [activeFavoriteId, setActiveFavoriteId] = useState<number | null>(null)
   const [activeTagId, setActiveTagId] = useState<number | null>(null)
   const [isReaderMaximized, setIsReaderMaximized] = useState(false)
@@ -66,6 +69,12 @@ function App() {
     isPermanent: boolean
   }>({ open: false, id: null, isPermanent: false })
 
+  // Graph view state
+  const [graphFilters, setGraphFilters] = useState<GraphFilters>({
+    minWeight: 0.3,
+    maxNodes: 100,
+  })
+
   // Collections data - filter by favorite, tags, or status if active
   const collectionParams = useMemo(() => {
     if (activeNav === 'favorite') {
@@ -87,10 +96,17 @@ function App() {
     if (activeNav === 'starred' || activeNav === 'recent' || activeNav === 'all') {
       return { status: 'active' as const }
     }
+    if (activeNav === 'graph') {
+      // 图谱视图不需要加载集合列表
+      return { status: 'active' as const, limit: 0 }
+    }
     return { status: 'active' as const }
   }, [activeNav, activeFavoriteId, activeTagId])
 
+  console.log('🚀 : App : collectionParams:', collectionParams)
   const { collections, stats, isLoading: collectionsLoading, refresh } = useCollections(collectionParams)
+  console.log('🚀 : App : collections, stats:', collections, stats)
+  console.log('🚀 : App : collections:', collections)
   const { favorites } = useFavorites()
   const { tags } = useTags()
 
@@ -311,6 +327,7 @@ function App() {
         return collections
     }
   }, [collections, activeNav])
+  console.log('🚀 : App : filteredCollections:', filteredCollections)
 
   // Calculate sidebar stats
   const starredCount = collections.filter((c) => c.starred).length
@@ -421,38 +438,57 @@ function App() {
         stats={sidebarStats}
       />
 
-      {/* Article List */}
-      <ArticleList
-        className="pt-4"
-        collections={filteredCollections}
-        filterHint={filterHint ?? undefined}
-        isLoading={collectionsLoading}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onManageTags={(id) => setTagDialogCollectionId(id)}
-        onOpenFavoriteDialog={(id) => setFavoriteDialogState({ open: true, collectionId: id })}
-        onOpenUrl={handleOpenUrl}
-        onSelect={handleSelectArticle}
-        onSetFavorite={handleSetFavorite}
-        onToggleStar={handleToggleStar}
-        selectedId={selectedId}
-      />
+      {/* Graph View or Article List */}
+      {activeNav === 'graph' ? (
+        <GraphPage
+          filters={graphFilters}
+          onFiltersChange={setGraphFilters}
+          onNodeSelect={(nodeId) => {
+            // 点击节点时，切换到文章列表并选中该文章
+            setActiveNav('all')
+            void handleSelectArticle(nodeId)
+          }}
+        />
+      ) : (
+        <>
+          {/* Article List */}
+          <ArticleList
+            className="pt-4"
+            collections={filteredCollections}
+            filterHint={filterHint ?? undefined}
+            isLoading={collectionsLoading}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onManageTags={(id) => setTagDialogCollectionId(id)}
+            onOpenFavoriteDialog={(id) => setFavoriteDialogState({ open: true, collectionId: id })}
+            onOpenUrl={handleOpenUrl}
+            onSelect={handleSelectArticle}
+            onSetFavorite={handleSetFavorite}
+            onToggleStar={handleToggleStar}
+            selectedId={selectedId}
+          />
 
-      {/* Article Reader */}
-      <ArticleReader
-        article={selectedArticle}
-        className="pt-4"
-        isLoading={isArticleLoading}
-        isMaximized={isReaderMaximized}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onOpenUrl={handleOpenUrl}
-        onPermanentDelete={handlePermanentDelete}
-        onRestore={handleRestore}
-        onSetFavorite={handleSetFavorite}
-        onToggleMaximize={() => setIsReaderMaximized((m) => !m)}
-        onToggleStar={handleToggleStar}
-      />
+          {/* Article Reader */}
+        </>
+      )}
+
+      {/* Article Reader (only show when not in graph view) */}
+      {activeNav !== 'graph' && (
+        <ArticleReader
+          article={selectedArticle}
+          className="pt-4"
+          isLoading={isArticleLoading}
+          isMaximized={isReaderMaximized}
+          onArchive={handleArchive}
+          onDelete={handleDelete}
+          onOpenUrl={handleOpenUrl}
+          onPermanentDelete={handlePermanentDelete}
+          onRestore={handleRestore}
+          onSetFavorite={handleSetFavorite}
+          onToggleMaximize={() => setIsReaderMaximized((m) => !m)}
+          onToggleStar={handleToggleStar}
+        />
+      )}
 
       {/* Select Favorite Dialog */}
       {favoriteDialogState.collectionId !== null && (

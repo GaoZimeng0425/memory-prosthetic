@@ -15,6 +15,7 @@ export type PageContent = {
   url: string
   title: string
   content: string
+  thumbnailUrl?: string
 }
 
 // Configure turndown service
@@ -60,21 +61,14 @@ turndownService.addRule('linksWithImages', {
     }
 
     // Convert relative URLs to absolute URLs
-    if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
-      try {
-        const baseUrl = window.location.origin
-        if (src.startsWith('//')) {
-          src = `${window.location.protocol}${src}`
-        } else if (src.startsWith('/')) {
-          src = `${baseUrl}${src}`
-        } else {
-          const currentPath = window.location.pathname
-          const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1)
-          src = `${baseUrl}${basePath}${src}`
-        }
+    if (!isAbsoluteUrl(src)) {
+      const absoluteUrl = convertToAbsoluteUrl(src, window.location.href)
+      if (absoluteUrl) {
+        src = absoluteUrl
         console.log('🚀 : linksWithImages : Converted relative URL to absolute:', src)
-      } catch (error) {
-        console.error('🚀 : linksWithImages : Error converting URL:', error)
+      } else {
+        console.error('🚀 : linksWithImages : Failed to convert URL:', src)
+        return '' // Don't return invalid relative URL
       }
     }
 
@@ -99,46 +93,29 @@ turndownService.addRule('allLinks', {
     const text = content.trim() || link.textContent?.trim() || href
 
     // Handle anchor links (#) - preserve as-is
-    if (href.startsWith('#')) {
+    if (isAnchorLink(href)) {
       console.log('🚀 : allLinks : Found anchor link, href:', href, 'text:', text)
       return `[${text}](${href})`
     }
 
-    // Handle absolute URLs - preserve as-is
-    if (
-      href.startsWith('http://') ||
-      href.startsWith('https://') ||
-      href.startsWith('mailto:') ||
-      href.startsWith('tel:') ||
-      href.startsWith('javascript:') ||
-      href.startsWith('data:')
-    ) {
-      console.log('🚀 : allLinks : Found absolute URL, href:', href, 'text:', text)
+    // Handle absolute URLs or protocol URLs - preserve as-is
+    if (isAbsoluteUrl(href) || isProtocolUrl(href)) {
+      console.log('🚀 : allLinks : Found absolute/protocol URL, href:', href, 'text:', text)
       return `[${text}](${href})`
     }
 
     // Handle relative URLs - convert to absolute
     console.log('🚀 : allLinks : Found relative link, href:', href, 'text:', text)
 
-    // Convert relative URLs to absolute URLs using URL constructor
-    try {
-      // Use URL constructor to handle all relative URL cases reliably
-      const absoluteUrl = new URL(href, window.location.href)
-      href = absoluteUrl.href
+    // Convert relative URLs to absolute URLs
+    const absoluteUrl = convertToAbsoluteUrl(href, window.location.href)
+    if (absoluteUrl) {
+      href = absoluteUrl
       console.log('🚀 : allLinks : Converted relative URL to absolute:', href)
-    } catch (error) {
-      console.error('🚀 : allLinks : Error converting URL:', error, 'original href:', href)
-      // Fallback to manual conversion if URL constructor fails
-      const baseUrl = window.location.origin
-      if (href.startsWith('//')) {
-        href = `${window.location.protocol}${href}`
-      } else if (href.startsWith('/')) {
-        href = `${baseUrl}${href}`
-      } else {
-        const currentPath = window.location.pathname
-        const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1)
-        href = `${baseUrl}${basePath}${href}`
-      }
+    } else {
+      console.error('🚀 : allLinks : Failed to convert URL:', href)
+      // Return empty string to avoid invalid relative URLs in markdown
+      return ''
     }
 
     return `[${text}](${href})`
@@ -167,20 +144,13 @@ turndownService.addRule('figureContainers', {
     if (!src) return ''
 
     // Convert relative URLs to absolute URLs
-    if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
-      try {
-        const baseUrl = window.location.origin
-        if (src.startsWith('//')) {
-          src = `${window.location.protocol}${src}`
-        } else if (src.startsWith('/')) {
-          src = `${baseUrl}${src}`
-        } else {
-          const currentPath = window.location.pathname
-          const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1)
-          src = `${baseUrl}${basePath}${src}`
-        }
-      } catch (error) {
-        console.error('🚀 : figureContainers : Error converting URL:', error)
+    if (!isAbsoluteUrl(src)) {
+      const absoluteUrl = convertToAbsoluteUrl(src, window.location.href)
+      if (absoluteUrl) {
+        src = absoluteUrl
+      } else {
+        console.error('🚀 : figureContainers : Failed to convert URL:', src)
+        return '' // Don't return invalid relative URL
       }
     }
 
@@ -211,25 +181,15 @@ turndownService.addRule('preserveImages', {
       return ''
     }
 
-    if (src && !src.startsWith('http://') && !src.startsWith('https://') && !src.startsWith('data:')) {
+    if (!isAbsoluteUrl(src)) {
       // Convert relative URLs to absolute URLs
-      try {
-        const baseUrl = window.location.origin
-        // Handle protocol-relative URLs (//example.com/image.jpg)
-        if (src.startsWith('//')) {
-          src = `${window.location.protocol}${src}`
-        } else if (src.startsWith('/')) {
-          // Absolute path from root
-          src = `${baseUrl}${src}`
-        } else {
-          // Relative path
-          const currentPath = window.location.pathname
-          const basePath = currentPath.substring(0, currentPath.lastIndexOf('/') + 1)
-          src = `${baseUrl}${basePath}${src}`
-        }
+      const absoluteUrl = convertToAbsoluteUrl(src, window.location.href)
+      if (absoluteUrl) {
+        src = absoluteUrl
         console.log('🚀 : preserveImages : Converted relative URL to absolute:', src)
-      } catch (error) {
-        console.error('🚀 : preserveImages : Error converting URL:', error, 'original src:', src)
+      } else {
+        console.error('🚀 : preserveImages : Failed to convert URL:', src)
+        return '' // Don't return invalid relative URL
       }
     }
 
@@ -257,8 +217,8 @@ turndownService.addRule('tables', {
       // Create row
       result.push(`| ${cellContents.join(' | ')} |`)
 
-      // Add separator after header row (first row or row with th elements)
-      if (rowIndex === 0 || row.querySelector('th')) {
+      // Add separator after header row (only once, after first row with th elements)
+      if (rowIndex === 0 && row.querySelector('th')) {
         const separator = cells.map(() => '---').join(' | ')
         result.push(`| ${separator} |`)
       }
@@ -405,6 +365,120 @@ const extractSrcFromSrcset = (srcset: string | null): string | null => {
 }
 
 /**
+ * Check if URL starts with any of the given prefixes
+ */
+const startsWithAny = (url: string, prefixes: string[]): boolean => {
+  return prefixes.some((prefix) => url.startsWith(prefix))
+}
+
+/**
+ * Check if URL is an absolute URL (http://, https://, or data:)
+ */
+const isAbsoluteUrl = (url: string): boolean => {
+  return startsWithAny(url, ['http://', 'https://', 'data:'])
+}
+
+/**
+ * Check if URL is an anchor link (#)
+ */
+const isAnchorLink = (url: string): boolean => {
+  return url.startsWith('#')
+}
+
+/**
+ * Check if URL is a protocol URL (mailto:, tel:, javascript:, etc.)
+ */
+const isProtocolUrl = (url: string): boolean => {
+  return startsWithAny(url, ['mailto:', 'tel:', 'javascript:', 'data:'])
+}
+
+/**
+ * Check if URL is an HTTP/HTTPS URL
+ */
+const isHttpUrl = (url: string): boolean => {
+  return startsWithAny(url, ['http://', 'https://'])
+}
+
+/**
+ * Extract thumbnail URL from page metadata and content
+ * Priority:
+ * 1. Open Graph image (og:image)
+ * 2. Twitter Card image (twitter:image)
+ * 3. First image from content
+ * 4. Favicon (as last resort)
+ */
+const extractThumbnailUrl = (document: Document, content: string): string | undefined => {
+  // Use window.location.href as base URL (document.location may not work for cloned documents)
+  const baseUrl = window.location.href
+
+  // 1. Try Open Graph image
+  const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content')
+  if (ogImage) {
+    const absoluteUrl = convertToAbsoluteUrl(ogImage, baseUrl)
+    if (absoluteUrl) {
+      console.log('🚀 : extractThumbnailUrl : Found og:image:', absoluteUrl)
+      return absoluteUrl
+    }
+  }
+
+  // 2. Try Twitter Card image
+  const twitterImage = document.querySelector('meta[name="twitter:image"]')?.getAttribute('content')
+  if (twitterImage) {
+    const absoluteUrl = convertToAbsoluteUrl(twitterImage, baseUrl)
+    if (absoluteUrl) {
+      console.log('🚀 : extractThumbnailUrl : Found twitter:image:', absoluteUrl)
+      return absoluteUrl
+    }
+  }
+
+  // 3. Try to extract first image from markdown content
+  if (content) {
+    // Use non-global regex or match() to avoid state issues
+    const imageRegex = /!\[.*?\]\((.*?)\)/
+    const match = content.match(imageRegex)
+    if (match?.[1]) {
+      const url = match[1].trim()
+      // Filter out data URIs and only accept HTTP/HTTPS URLs
+      if (url && !url.startsWith('data:') && isHttpUrl(url)) {
+        console.log('🚀 : extractThumbnailUrl : Found first image from content:', url)
+        return url
+      }
+    }
+  }
+
+  // 4. Try favicon as last resort
+  const favicon =
+    document.querySelector('link[rel="icon"]')?.getAttribute('href') ||
+    document.querySelector('link[rel="shortcut icon"]')?.getAttribute('href') ||
+    '/favicon.ico'
+  if (favicon) {
+    const absoluteUrl = convertToAbsoluteUrl(favicon, baseUrl)
+    if (absoluteUrl) {
+      console.log('🚀 : extractThumbnailUrl : Using favicon:', absoluteUrl)
+      return absoluteUrl
+    }
+  }
+
+  return undefined
+}
+
+/**
+ * Convert relative URL to absolute URL
+ */
+const convertToAbsoluteUrl = (url: string, baseUrl: string): string | undefined => {
+  if (!url) return undefined
+
+  try {
+    // Use URL constructor to handle all relative URL cases reliably
+    const absoluteUrl = new URL(url, baseUrl)
+    return absoluteUrl.href
+  } catch (error) {
+    console.error('🚀 : convertToAbsoluteUrl : Error converting URL:', error, 'url:', url, 'baseUrl:', baseUrl)
+    return undefined
+  }
+}
+
+/**
  * Check if current page is a GitHub repository homepage
  * Examples:
  * - https://github.com/heroui-inc/heroui ✅ (repository homepage)
@@ -456,10 +530,14 @@ const extractGitHubRepoContent = (url: string): PageContent | null => {
   const markdown = turndownService.turndown(clonedBody.innerHTML)
   const cleanedMarkdown = cleanMarkdown(markdown)
 
+  // Extract thumbnail URL
+  const thumbnailUrl = extractThumbnailUrl(document, cleanedMarkdown)
+
   return {
     url,
     title,
     content: cleanedMarkdown,
+    thumbnailUrl,
   }
 }
 
@@ -509,20 +587,27 @@ export const extractPageContent = (): PageContent => {
     console.log('🚀 : extractPageContent : markdown:', markdown)
     console.log('🚀 : extractPageContent : markdown contains image syntax:', /!\[.*?\]\(.*?\)/.test(markdown))
     const cleanedMarkdown = cleanMarkdown(markdown)
-    console.log('🚀 : extractPageContent : cleanedMarkdown:', cleanedMarkdown)
+
+    // Extract thumbnail URL
+    const thumbnailUrl = extractThumbnailUrl(documentClone, cleanedMarkdown)
 
     return {
       url,
       title: article.title || document.title || url,
       content: cleanedMarkdown,
+      thumbnailUrl,
     }
   }
 
   // Fallback: use manual extraction if Readability fails
+  const fallbackContent = extractFallbackContent()
+  const thumbnailUrl = extractThumbnailUrl(documentClone, fallbackContent)
+
   return {
     url,
     title: document.title || url,
-    content: extractFallbackContent(),
+    content: fallbackContent,
+    thumbnailUrl,
   }
 }
 

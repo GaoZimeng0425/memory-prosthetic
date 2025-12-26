@@ -5,6 +5,7 @@
 mod cleanup;
 mod db;
 mod embedding;
+mod graph;
 mod server;
 mod settings;
 mod tray;
@@ -15,7 +16,10 @@ use db::{
     Favorite, FavoriteRepository, CreateFavorite, UpdateFavorite,
     Tag, TagRepository, CreateTag, UpdateTag, TagSortOrder,
     CollectionTagRepository,
+    AiMetadataRepository, UpdateAiMetadata, CreateKeyword, CreateTopic, CreateAiLog,
+    AiProcessingLog,
 };
+use graph::{GraphBuilder, GraphData};
 use embedding::get_embedding_model;
 use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
@@ -251,6 +255,102 @@ fn get_settings(
     })
 }
 
+/// Get a setting by key (for custom settings like AI config)
+#[tauri::command]
+fn get_setting(
+    app: AppHandle,
+    key: String,
+) -> Result<CommandResult<serde_json::Value>, CommandError> {
+    use std::collections::HashMap;
+    use std::fs;
+
+    // Get app data directory
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| CommandError {
+            code: "PATH_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let custom_settings_path = app_data_dir.join("custom_settings.json");
+
+    let value = if custom_settings_path.exists() {
+        if let Ok(content) = fs::read_to_string(&custom_settings_path) {
+            if let Ok(settings_map) = serde_json::from_str::<HashMap<String, serde_json::Value>>(&content) {
+                settings_map.get(&key).cloned()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    Ok(CommandResult {
+        data: value.unwrap_or(serde_json::Value::Null),
+    })
+}
+
+/// Set a setting by key (for custom settings like AI config)
+#[tauri::command]
+fn set_setting(
+    app: AppHandle,
+    key: String,
+    value: serde_json::Value,
+) -> Result<CommandResult<()>, CommandError> {
+    use std::collections::HashMap;
+    use std::fs;
+
+    // Get app data directory
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| CommandError {
+            code: "PATH_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let custom_settings_path = app_data_dir.join("custom_settings.json");
+
+    // Ensure directory exists
+    if let Some(parent) = custom_settings_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: format!("Failed to create settings directory: {}", e),
+        })?;
+    }
+
+    // Read existing settings
+    let mut settings_map: HashMap<String, serde_json::Value> = if custom_settings_path.exists() {
+        if let Ok(content) = fs::read_to_string(&custom_settings_path) {
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            HashMap::new()
+        }
+    } else {
+        HashMap::new()
+    };
+
+    // Update setting
+    settings_map.insert(key, value);
+
+    // Save settings
+    let content = serde_json::to_string_pretty(&settings_map).map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: format!("Failed to serialize settings: {}", e),
+    })?;
+
+    fs::write(&custom_settings_path, content).map_err(|e| CommandError {
+        code: "SETTINGS_ERROR".to_string(),
+        message: format!("Failed to write settings: {}", e),
+    })?;
+
+    Ok(CommandResult { data: () })
+}
+
 /// Update shortcut configuration
 #[tauri::command]
 fn update_shortcut(
@@ -479,18 +579,20 @@ fn get_collections(
         .or_else(|| Some(CollectionStatus::Active));
     let tag_ids_slice = tag_ids.as_deref();
 
-    // If uncategorized is true, set favorite_id to None to indicate we want NULL values
-    let favorite_id_filter = if uncategorized.unwrap_or(false) {
+    // Only filter by uncategorized if explicitly set to true
+    // If uncategorized is None or false, don't filter by favorite_id at all (show all)
+    let is_uncategorized = uncategorized == Some(true);
+    let favorite_id_filter = if is_uncategorized {
         None // This will be handled specially in the repository
     } else {
         favorite_id
     };
 
     let collections = repo.list(
-        limit.unwrap_or(50),
+        limit.unwrap_or(1000), // Use larger default to match frontend
         offset.unwrap_or(0),
         favorite_id_filter,
-        uncategorized.unwrap_or(false),
+        is_uncategorized, // Only true if explicitly Some(true)
         tag_ids_slice,
         status_enum,
     )?;
@@ -856,6 +958,124 @@ fn get_collection_tags(
 }
 
 // ============================================
+// AI Metadata Commands
+// ============================================
+
+/// Update AI metadata for a collection
+#[tauri::command]
+fn update_collection_ai_metadata(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+    ai_metadata: serde_json::Value,
+) -> Result<CommandResult<()>, CommandError> {
+    // Parse AI metadata from frontend
+    let summary: Option<String> = ai_metadata.get("summary").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let summary_type: Option<String> = ai_metadata.get("summaryType").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let content_type: Option<String> = ai_metadata.get("contentType").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let domain: Option<String> = ai_metadata.get("domain").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let difficulty: Option<String> = ai_metadata.get("difficulty").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let language: Option<String> = ai_metadata.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let quality_score: Option<f64> = ai_metadata.get("qualityScore").and_then(|v| v.as_f64());
+    let processed_at: Option<i64> = ai_metadata.get("processedAt").and_then(|v| v.as_i64());
+
+    // Parse keywords
+    let keywords: Vec<CreateKeyword> = ai_metadata
+        .get("keywords")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    Some(CreateKeyword {
+                        id: item.get("id")?.as_str()?.to_string(),
+                        keyword: item.get("keyword")?.as_str()?.to_string(),
+                        weight: item.get("weight")?.as_f64()?,
+                        extraction_method: item.get("extractionMethod")?.as_str()?.to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Parse topics
+    let topics: Vec<CreateTopic> = ai_metadata
+        .get("topics")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    Some(CreateTopic {
+                        id: item.get("id")?.as_str()?.to_string(),
+                        topic: item.get("topic")?.as_str()?.to_string(),
+                        confidence: item.get("confidence")?.as_f64()?,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let metadata = UpdateAiMetadata {
+        summary,
+        summary_type,
+        content_type,
+        domain,
+        difficulty,
+        language,
+        quality_score,
+        processed_at,
+        keywords,
+        topics,
+    };
+
+    let repo = AiMetadataRepository::new(state.db.clone());
+    repo.update_collection_metadata(id, &metadata)?;
+
+    Ok(CommandResult { data: () })
+}
+
+/// Get AI processing logs for a collection
+#[tauri::command]
+fn get_ai_processing_logs(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+) -> Result<CommandResult<Vec<AiProcessingLog>>, CommandError> {
+    let repo = AiMetadataRepository::new(state.db.clone());
+    let logs = repo.get_logs(collection_id)?;
+
+    Ok(CommandResult { data: logs })
+}
+
+// ============================================
+// Graph Commands
+// ============================================
+
+/// Graph filters request
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphFiltersRequest {
+    pub min_weight: Option<f64>,
+    pub types: Option<Vec<String>>,
+    pub max_nodes: Option<usize>,
+}
+
+/// Get graph data for visualization
+#[tauri::command]
+fn get_graph_data(
+    state: State<'_, Arc<AppState>>,
+    filters: GraphFiltersRequest,
+) -> Result<CommandResult<GraphData>, CommandError> {
+    let builder = GraphBuilder::new(state.db.clone());
+
+    let r#type = filters.types.as_ref().and_then(|t| t.first()).map(|s| s.as_str());
+    let graph_data = builder.build_graph(
+        r#type,
+        filters.min_weight,
+        filters.max_nodes,
+    )?;
+
+    Ok(CommandResult { data: graph_data })
+}
+
+// ============================================
 // App Initialization
 // ============================================
 
@@ -1024,6 +1244,8 @@ pub fn run() {
             show_search_window,
             show_main_window,
             get_settings,
+            get_setting,
+            set_setting,
             update_shortcut,
             set_auto_start,
             update_theme,
@@ -1048,6 +1270,11 @@ pub fn run() {
             add_collection_tags,
             remove_collection_tag,
             get_collection_tags,
+            // AI Metadata
+            update_collection_ai_metadata,
+            get_ai_processing_logs,
+            // Graph
+            get_graph_data,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

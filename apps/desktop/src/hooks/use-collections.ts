@@ -22,7 +22,12 @@ export function useCollections(params?: GetCollectionsParams): UseCollectionsRet
   const queryClient = useQueryClient()
 
   const listQuery = useQuery({
-    ...collections.queries.list({ limit: 50, offset: 0, ...params }),
+    ...collections.queries.list({
+      // Merge params first, then ensure limit and offset are always set
+      ...params,
+      limit: params?.limit ?? 1000,
+      offset: params?.offset ?? 0,
+    }),
     refetchInterval: 5000, // Poll every 5 seconds
   })
 
@@ -32,9 +37,11 @@ export function useCollections(params?: GetCollectionsParams): UseCollectionsRet
   })
 
   const refresh = async () => {
+    await Promise.all([queryClient.invalidateQueries({ queryKey: collections.keys.all })])
+    // Force refetch to ensure data is updated immediately
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: collections.keys.lists() }),
-      queryClient.invalidateQueries({ queryKey: collections.keys.stats() }),
+      queryClient.refetchQueries({ queryKey: collections.keys.lists() }),
+      queryClient.refetchQueries({ queryKey: collections.keys.stats() }),
     ])
   }
 

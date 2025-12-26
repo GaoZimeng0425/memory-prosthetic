@@ -113,23 +113,54 @@ impl<'a> FavoriteRepository<'a> {
             )?;
 
             if name == "未分类" {
-                return Err(rusqlite::Error::SqliteFailure(
-                    rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
-                    Some("Cannot delete default '未分类' favorite".to_string()),
-                ));
+                // Check how many "未分类" favorites exist
+                let uncategorized_count: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                // If there's only one "未分类", don't allow deletion
+                if uncategorized_count <= 1 {
+                    return Err(rusqlite::Error::SqliteFailure(
+                        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
+                        Some("Cannot delete the only '未分类' favorite".to_string()),
+                    ));
+                }
+
+                // If there are multiple "未分类", get the oldest one (the one to keep)
+                let keep_id: i64 = conn.query_row(
+                    "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at ASC LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                // If trying to delete the oldest one, don't allow it
+                if id == keep_id {
+                    return Err(rusqlite::Error::SqliteFailure(
+                        rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
+                        Some("Cannot delete the oldest '未分类' favorite. Please delete duplicate ones instead.".to_string()),
+                    ));
+                }
+
+                // Move all collections from this duplicate "未分类" to the oldest one
+                conn.execute(
+                    "UPDATE collections SET favorite_id = ?1 WHERE favorite_id = ?2",
+                    params![keep_id, id],
+                )?;
+            } else {
+                // For non-"未分类" favorites, move collections to "未分类"
+                let uncategorized_id: i64 = conn.query_row(
+                    "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at ASC LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                )?;
+
+                conn.execute(
+                    "UPDATE collections SET favorite_id = ?1 WHERE favorite_id = ?2",
+                    params![uncategorized_id, id],
+                )?;
             }
-
-            // Move all collections in this favorite to "未分类"
-            let uncategorized_id: i64 = conn.query_row(
-                "SELECT id FROM favorites WHERE name = '未分类'",
-                [],
-                |row| row.get(0),
-            )?;
-
-            conn.execute(
-                "UPDATE collections SET favorite_id = ?1 WHERE favorite_id = ?2",
-                params![uncategorized_id, id],
-            )?;
 
             // Delete the favorite
             let rows_affected = conn.execute("DELETE FROM favorites WHERE id = ?1", params![id])?;

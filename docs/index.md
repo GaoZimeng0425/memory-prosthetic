@@ -85,11 +85,24 @@
 | [project-parts.json](./project-parts.json) | 项目部分元数据 |
 | [bmm-workflow-status.yaml](./bmm-workflow-status.yaml) | BMAD 工作流状态 |
 
+### 技术规范文档
+
+| 文档 | 说明 |
+|------|------|
+| [知识图谱与 AI 分类技术规范](./tech-spec-knowledge-graph-and-ai.md) | 知识图谱构建和 AI 内容理解功能的完整技术规范 |
+| [AI 与图谱架构分离说明](./architecture-ai-graph-separation.md) | AI 处理和图谱算法的职责分离架构决策 |
+
+### Sprint 文档
+
+| 文档 | 说明 |
+|------|------|
+| [知识图谱与 AI 实施计划](./sprint-artifacts/implementation-plan-ai-graph.md) | 知识图谱与 AI 分类功能的实施计划和步骤 |
+
 ### 分析文档
 
 | 文档 | 说明 |
 |------|------|
-| [产品简报 (2025-12-21)](./analysis/product-brief-tauri-app-2025-12-21.md) | 最新产品简报 |
+| [产品简报 (2025-12-21)](./analysis/product-brief-tauri-app-2025-21.md) | 最新产品简报 |
 
 ---
 

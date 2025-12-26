@@ -1,3 +1,15 @@
 {
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@memory-prosthetic/ui/components": ["./src/components"],
+      "@memory-prosthetic/ui/components/*": ["./src/components/*"],
+      "@memory-prosthetic/ui/utils/tw": ["./src/utils/tw"],
+      "@memory-prosthetic/ui/hooks": ["./src/hooks"],
+      "@memory-prosthetic/ui/hooks/*": ["./src/hooks/*"],
+      "@memory-prosthetic/ui/lib": ["./src/lib"],
+      "@memory-prosthetic/ui/lib/*": ["./src/lib/*"]
+    }
+  }
 }

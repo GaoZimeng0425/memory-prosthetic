@@ -12,6 +12,8 @@ export default defineConfig(async () => ({
       '@': path.resolve(__dirname, './src'),
       '@memory-prosthetic/ui': path.resolve(__dirname, '../../packages/ui/src'),
       '@memory-prosthetic/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@memory-prosthetic/ai': path.resolve(__dirname, '../../packages/ai/src'),
+      '@memory-prosthetic/ai/config': path.resolve(__dirname, '../../packages/ai/src/config.ts'),
     },
   },
 

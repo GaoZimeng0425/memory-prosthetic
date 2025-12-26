@@ -27,6 +27,7 @@ const KEYS = {
         limit: params?.limit,
         offset: params?.offset,
         favoriteId: params?.favoriteId,
+        uncategorized: params?.uncategorized,
         tagIds: params?.tagIds,
         status: params?.status,
       },

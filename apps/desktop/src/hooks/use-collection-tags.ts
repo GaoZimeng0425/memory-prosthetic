@@ -38,10 +38,18 @@ export function useCollectionTags(collectionId: number | null): UseCollectionTag
       console.log('Adding tags to collection:', collectionId, 'tags:', tagIds)
       return collections.api.addCollectionTags(collectionId, tagIds)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collectionTags', collectionId] })
-      queryClient.invalidateQueries({ queryKey: ['collections'] })
-      queryClient.invalidateQueries({ queryKey: ['tags'] })
+    onSuccess: async () => {
+      // Invalidate all collection-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['collectionTags', collectionId] }),
+        queryClient.invalidateQueries({ queryKey: collections.keys.all }),
+        queryClient.invalidateQueries({ queryKey: ['tags'] }),
+      ])
+      // Force refetch all collection lists and stats
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: collections.keys.lists() }),
+        queryClient.refetchQueries({ queryKey: collections.keys.stats() }),
+      ])
     },
   })
 
@@ -53,10 +61,18 @@ export function useCollectionTags(collectionId: number | null): UseCollectionTag
       console.log('Removing tag from collection:', collectionId, 'tag:', tagId)
       return collections.api.removeCollectionTag(collectionId, tagId)
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collectionTags', collectionId] })
-      queryClient.invalidateQueries({ queryKey: ['collections'] })
-      queryClient.invalidateQueries({ queryKey: ['tags'] })
+    onSuccess: async () => {
+      // Invalidate all collection-related queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['collectionTags', collectionId] }),
+        queryClient.invalidateQueries({ queryKey: collections.keys.all }),
+        queryClient.invalidateQueries({ queryKey: ['tags'] }),
+      ])
+      // Force refetch all collection lists and stats
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: collections.keys.lists() }),
+        queryClient.refetchQueries({ queryKey: collections.keys.stats() }),
+      ])
     },
   })
 

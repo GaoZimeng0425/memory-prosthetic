@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Folder, Pencil, Plus, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import type { Favorite } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -37,10 +38,6 @@ export function FavoritesList({
 }: FavoritesListProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const { favorites, isLoading } = useFavorites()
-
-  // Get uncategorized count
-  const { collections: uncategorizedCollections } = useCollections({ uncategorized: true, status: 'active' })
-  const uncategorizedCount = uncategorizedCollections.length
 
   if (isCollapsed) {
     return (
@@ -82,39 +79,27 @@ export function FavoritesList({
             <div className="px-2 py-1 text-muted-foreground text-xs">加载中...</div>
           ) : (
             <>
-              {/* 未分类选项 */}
-              <Button
-                className={cn(
-                  'w-full justify-start gap-2 text-xs',
-                  activeFavoriteId === null && 'bg-sidebar-accent text-sidebar-accent-foreground',
-                  activeFavoriteId !== null && 'text-muted-foreground hover:text-foreground'
-                )}
-                onClick={() => onFavoriteClick(null)}
-                size="sm"
-                variant="ghost"
-              >
-                <Folder className="h-3 w-3 shrink-0" />
-                <span className="flex-1 truncate text-left">未分类</span>
-                {uncategorizedCount > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs">
-                    {uncategorizedCount}
-                  </span>
-                )}
-              </Button>
-              {/* 收藏夹列表 */}
-              {favorites.length === 0 ? (
-                <div className="px-2 py-1 text-muted-foreground text-xs">暂无收藏夹</div>
-              ) : (
-                favorites.map((favorite) => (
-                  <FavoriteItemWithCount
-                    active={activeFavoriteId === favorite.id}
-                    favorite={favorite}
-                    key={favorite.id}
-                    onClick={() => onFavoriteClick(favorite.id)}
-                    onFavoriteChange={onFavoriteChange}
-                  />
-                ))
-              )}
+              {/* 收藏夹列表 - 包括"未分类" */}
+              {favorites.map((favorite) => (
+                <FavoriteItemWithCount
+                  active={
+                    favorite.name === '未分类'
+                      ? activeFavoriteId === null || activeFavoriteId === favorite.id
+                      : activeFavoriteId === favorite.id
+                  }
+                  favorite={favorite}
+                  key={favorite.id}
+                  onClick={() => {
+                    // For "未分类", use null to trigger uncategorized query
+                    if (favorite.name === '未分类') {
+                      onFavoriteClick(null)
+                    } else {
+                      onFavoriteClick(favorite.id)
+                    }
+                  }}
+                  onFavoriteChange={onFavoriteChange}
+                />
+              ))}
             </>
           )}
         </div>
@@ -131,16 +116,21 @@ interface FavoriteItemWithCountProps {
 }
 
 function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: FavoriteItemWithCountProps) {
-  const { collections } = useCollections({ favoriteId: favorite.id, status: 'active' })
+  // For "未分类", use uncategorized query; for others, use favoriteId
+  const { collections } = useCollections(
+    favorite.name === '未分类'
+      ? { uncategorized: true, status: 'active' }
+      : { favoriteId: favorite.id, status: 'active' }
+  )
   const { deleteFavorite } = useFavorites()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const count = collections.length
 
   const handleDelete = async () => {
-    if (favorite.name === '未分类') {
-      return // 不能删除默认收藏夹
-    }
+    // if (favorite.name === '未分类') {
+    //   return // 不能删除默认收藏夹
+    // }
 
     setIsDeleting(true)
     try {
@@ -155,10 +145,10 @@ function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: 
       }
 
       await deleteFavorite(favorite.id)
+      toast.success('收藏夹已删除')
       onFavoriteChange?.()
     } catch (error) {
-      console.error('Failed to delete favorite:', error)
-      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast.error(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
     } finally {
       setIsDeleting(false)
     }
@@ -188,7 +178,7 @@ function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: 
           </Button>
         </ContextMenuTrigger>
         <ContextMenuContent>
-          {favorite.name !== '未分类' && (
+          {
             <>
               <ContextMenuItem onClick={() => setIsEditDialogOpen(true)}>
                 <Pencil className="mr-2 h-4 w-4" />
@@ -199,7 +189,7 @@ function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: 
                 删除
               </ContextMenuItem>
             </>
-          )}
+          }
         </ContextMenuContent>
       </ContextMenu>
 

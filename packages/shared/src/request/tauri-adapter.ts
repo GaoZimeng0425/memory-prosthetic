@@ -126,14 +126,11 @@ export function createTauriAdapter(): RequestAdapter {
           if (params.status !== undefined) {
             args.status = params.status
           }
-          if (params.limit !== undefined) {
-            args.limit = params.limit
-          }
-          if (params.offset !== undefined) {
-            args.offset = params.offset
-          }
         }
-        return invokeCommand<T>(command, Object.keys(args).length > 0 ? args : undefined)
+        // Always include limit and offset with defaults if not provided
+        args.limit = params?.limit ?? 1000
+        args.offset = params?.offset ?? 0
+        return invokeCommand<T>(command, args)
       }
       // Extract ID from endpoint if present (e.g., /api/favorite/123 -> id: 123)
       const idMatch = endpoint.match(/\/(\d+)$/)

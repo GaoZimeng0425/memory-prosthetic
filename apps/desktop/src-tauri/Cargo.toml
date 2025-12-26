@@ -45,3 +45,8 @@ chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 once_cell = "1"
 tempfile = "3"
+
+# Graph algorithms
+petgraph = "0.6"
+dashmap = "5.5"
+url = "2.5"

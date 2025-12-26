@@ -14,14 +14,9 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "^2.0.0",
-    "@ai-sdk/google": "^3.0.0",
-    "@ai-sdk/openai": "^3.0.0",
-    "@ai-sdk/react": "^3.0.1",
     "@tanstack/react-query": "^5.90.12",
-    "@tanstack/react-router": "^1.143.2",
-    "@tanstack/react-router-devtools": "^1.143.2",
-    "ai": "^6.0.1",
+    "@tanstack/react-router": "^1.143.11",
+    "@tanstack/react-router-devtools": "^1.143.11",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
     "es-toolkit": "^1.43.0",

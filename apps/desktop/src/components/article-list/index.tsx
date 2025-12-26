@@ -73,6 +73,7 @@ export function ArticleList({
   isLoading,
   filterHint,
 }: ArticleListProps) {
+  console.log(collections, '<<<')
   const [filter, setFilter] = useState('')
 
   const filteredCollections = useMemo(() => {

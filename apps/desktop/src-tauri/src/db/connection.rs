@@ -2,11 +2,11 @@
 //!
 //! Handles database initialization and connection pooling.
 
-use rusqlite::{Connection, Result as SqliteResult};
+use rusqlite::{params, Connection, Result as SqliteResult};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use tracing::{info, error};
+use tracing::{debug, error, info};
 
 /// Database error types
 #[derive(Error, Debug)]
@@ -188,20 +188,222 @@ impl Database {
                 [],
             );
 
-            // Create default "未分类" (Uncategorized) favorite if it doesn't exist
-            let default_favorite_exists: i64 = conn.query_row(
+            // Clean up duplicate "未分类" favorites if any exist
+            // Keep only the oldest one and move collections from others to it
+            let duplicate_count: i64 = match conn.query_row(
                 "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
                 [],
                 |row| row.get(0),
-            ).unwrap_or(0);
+            ) {
+                Ok(count) => count,
+                Err(_) => 0,
+            };
+
+            if duplicate_count > 1 {
+                // Get the oldest "未分类" favorite (the one to keep)
+                let keep_id: i64 = match conn.query_row(
+                    "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at ASC LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                ) {
+                    Ok(id) => id,
+                    Err(_) => {
+                        error!("Failed to find '未分类' favorite to keep");
+                        0
+                    }
+                };
+
+                if keep_id > 0 {
+                    // Move all collections from duplicate "未分类" favorites to the one we're keeping
+                    let _ = conn.execute(
+                        "UPDATE collections SET favorite_id = ?1 WHERE favorite_id IN (SELECT id FROM favorites WHERE name = '未分类' AND id != ?1)",
+                        params![keep_id],
+                    );
+
+                    // Delete duplicate "未分类" favorites
+                    let deleted = conn.execute(
+                        "DELETE FROM favorites WHERE name = '未分类' AND id != ?1",
+                        params![keep_id],
+                    );
+                    match deleted {
+                        Ok(count) => {
+                            info!("Cleaned up {} duplicate '未分类' favorites, kept id={}", count, keep_id);
+                        }
+                        Err(e) => {
+                            error!("Failed to clean up duplicate '未分类' favorites: {}", e);
+                        }
+                    }
+                }
+            }
+
+            // Create default "未分类" (Uncategorized) favorite if it doesn't exist
+            let default_favorite_exists: i64 = match conn.query_row(
+                "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                [],
+                |row| row.get(0),
+            ) {
+                Ok(count) => count,
+                Err(e) => {
+                    // If query fails (e.g., table doesn't exist yet), log and continue
+                    error!("Error checking for default '未分类' favorite: {}", e);
+                    0 // Assume it doesn't exist
+                }
+            };
 
             if default_favorite_exists == 0 {
-                conn.execute(
+                // No existing "未分类", create it
+                match conn.execute(
                     "INSERT INTO favorites (name) VALUES ('未分类')",
                     [],
-                )?;
-                info!("Created default '未分类' favorite");
+                ) {
+                    Ok(_) => {
+                        info!("Created default '未分类' favorite");
+                    }
+                    Err(e) => {
+                        // If insert fails (e.g., duplicate), log but don't fail migration
+                        error!("Failed to create default '未分类' favorite: {}", e);
+                    }
+                }
+            } else {
+                debug!("Default '未分类' favorite already exists (count: {})", default_favorite_exists);
             }
+
+            // ========== Knowledge Graph & AI Schema Extensions ==========
+
+            // Add AI metadata columns to collections table
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN summary_type TEXT",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN content_type TEXT",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN domain TEXT",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN difficulty TEXT",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN language TEXT",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN quality_score REAL",
+                [],
+            );
+            let _ = conn.execute(
+                "ALTER TABLE collections ADD COLUMN processed_at INTEGER",
+                [],
+            );
+
+            // Create associations table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS associations (
+                    id TEXT PRIMARY KEY,
+                    source_id INTEGER NOT NULL,
+                    target_id INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    types TEXT,
+                    weight REAL NOT NULL DEFAULT 0.0,
+                    confidence REAL DEFAULT 0.0,
+                    quality_score REAL DEFAULT 0.0,
+                    reason TEXT,
+                    user_feedback TEXT,
+                    access_count INTEGER DEFAULT 0,
+                    last_accessed_at INTEGER,
+                    is_expired INTEGER DEFAULT 0,
+                    is_directional INTEGER DEFAULT 0,
+                    direction TEXT,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    FOREIGN KEY (source_id) REFERENCES collections(id) ON DELETE CASCADE,
+                    FOREIGN KEY (target_id) REFERENCES collections(id) ON DELETE CASCADE,
+                    UNIQUE(source_id, target_id, type)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_associations_source_id ON associations(source_id);
+                CREATE INDEX IF NOT EXISTS idx_associations_target_id ON associations(target_id);
+                CREATE INDEX IF NOT EXISTS idx_associations_type ON associations(type);
+                CREATE INDEX IF NOT EXISTS idx_associations_weight ON associations(weight);
+                CREATE INDEX IF NOT EXISTS idx_associations_created_at ON associations(created_at);
+                "#,
+            )?;
+
+            // Create association_metadata table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS association_metadata (
+                    association_id TEXT NOT NULL,
+                    semantic_similarity REAL,
+                    shared_tags TEXT,
+                    shared_folders TEXT,
+                    time_interval INTEGER,
+                    domain TEXT,
+                    keyword_overlap REAL,
+                    topic_match REAL,
+                    PRIMARY KEY (association_id),
+                    FOREIGN KEY (association_id) REFERENCES associations(id) ON DELETE CASCADE
+                );
+                "#,
+            )?;
+
+            // Create keywords table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS keywords (
+                    id TEXT PRIMARY KEY,
+                    collection_id INTEGER NOT NULL,
+                    keyword TEXT NOT NULL,
+                    weight REAL NOT NULL DEFAULT 0.0,
+                    extraction_method TEXT,
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_keywords_collection_id ON keywords(collection_id);
+                "#,
+            )?;
+
+            // Create topics table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS topics (
+                    id TEXT PRIMARY KEY,
+                    collection_id INTEGER NOT NULL,
+                    topic TEXT NOT NULL,
+                    confidence REAL NOT NULL DEFAULT 0.0,
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_topics_collection_id ON topics(collection_id);
+                "#,
+            )?;
+
+            // Create ai_processing_logs table
+            conn.execute_batch(
+                r#"
+                CREATE TABLE IF NOT EXISTS ai_processing_logs (
+                    id TEXT PRIMARY KEY,
+                    collection_id INTEGER NOT NULL,
+                    task_type TEXT NOT NULL,
+                    model_name TEXT,
+                    status TEXT NOT NULL,
+                    processing_time INTEGER,
+                    error_message TEXT,
+                    created_at INTEGER NOT NULL,
+                    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_ai_logs_collection_id ON ai_processing_logs(collection_id);
+                CREATE INDEX IF NOT EXISTS idx_ai_logs_task_type ON ai_processing_logs(task_type);
+                "#,
+            )?;
 
             Ok(())
         })?;

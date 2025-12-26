@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Clock, Library, Search, Settings, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Library, Network, Search, Settings, Star } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
   { id: 'all', label: '全部', icon: Library, count: 0 },
   { id: 'starred', label: '星标', icon: Star, count: 0, color: 'text-yellow-500' },
   { id: 'recent', label: '最近', icon: Clock, count: 0 },
+  { id: 'graph', label: '图谱', icon: Network, count: 0 },
 ]
 
 type AppSidebarProps = {

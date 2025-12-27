@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { Link, useParams } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Folder, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -23,21 +24,16 @@ import { useFavorites } from '@/hooks/use-favorites'
 
 interface FavoritesListProps {
   isCollapsed: boolean
-  activeFavoriteId?: number
-  onFavoriteClick: (favoriteId: number | null) => void
   onCreateClick: () => void
   onFavoriteChange?: () => void
 }
 
-export function FavoritesList({
-  isCollapsed,
-  activeFavoriteId,
-  onFavoriteClick,
-  onCreateClick,
-  onFavoriteChange,
-}: FavoritesListProps) {
+export function FavoritesList({ isCollapsed, onCreateClick, onFavoriteChange }: FavoritesListProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const { favorites, isLoading } = useFavorites()
+  console.log('🚀 : FavoritesList : favorites:', favorites)
+  const params = useParams({ strict: false })
+  const activeFavoriteId = params.favoriteId ? Number(params.favoriteId) : null
 
   if (isCollapsed) {
     return (
@@ -82,21 +78,9 @@ export function FavoritesList({
               {/* 收藏夹列表 - 包括"未分类" */}
               {favorites.map((favorite) => (
                 <FavoriteItemWithCount
-                  active={
-                    favorite.name === '未分类'
-                      ? activeFavoriteId === null || activeFavoriteId === favorite.id
-                      : activeFavoriteId === favorite.id
-                  }
+                  active={activeFavoriteId === favorite.id}
                   favorite={favorite}
                   key={favorite.id}
-                  onClick={() => {
-                    // For "未分类", use null to trigger uncategorized query
-                    if (favorite.name === '未分类') {
-                      onFavoriteClick(null)
-                    } else {
-                      onFavoriteClick(favorite.id)
-                    }
-                  }}
                   onFavoriteChange={onFavoriteChange}
                 />
               ))}
@@ -111,17 +95,12 @@ export function FavoritesList({
 interface FavoriteItemWithCountProps {
   favorite: Favorite
   active: boolean
-  onClick: () => void
   onFavoriteChange?: () => void
 }
 
-function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: FavoriteItemWithCountProps) {
-  // For "未分类", use uncategorized query; for others, use favoriteId
-  const { collections } = useCollections(
-    favorite.name === '未分类'
-      ? { uncategorized: true, status: 'active' }
-      : { favoriteId: favorite.id, status: 'active' }
-  )
+function FavoriteItemWithCount({ favorite, active, onFavoriteChange }: FavoriteItemWithCountProps) {
+  // Use favoriteId for all favorites (including "未分类" which has its own ID)
+  const { collections } = useCollections({ favoriteId: favorite.id, status: 'active' })
   const { deleteFavorite } = useFavorites()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -154,19 +133,20 @@ function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: 
     }
   }
 
+  // Navigate to favorite route using favorite ID
+  const to = `/favorite/${favorite.id}`
+
   return (
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <Button
+          <Link
             className={cn(
-              'w-full justify-start gap-2 text-xs',
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
               active && 'bg-sidebar-accent text-sidebar-accent-foreground',
-              !active && 'text-muted-foreground hover:text-foreground'
+              !active && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            onClick={onClick}
-            size="sm"
-            variant="ghost"
+            to={to}
           >
             <Folder className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">{favorite.name}</span>
@@ -175,7 +155,7 @@ function FavoriteItemWithCount({ favorite, active, onClick, onFavoriteChange }: 
                 {count}
               </span>
             )}
-          </Button>
+          </Link>
         </ContextMenuTrigger>
         <ContextMenuContent>
           {

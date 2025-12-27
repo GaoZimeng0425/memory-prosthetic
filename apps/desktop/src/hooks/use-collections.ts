@@ -4,7 +4,7 @@
  * Fetches and manages collection data using react-query.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { GetCollectionsParams } from '@memory-prosthetic/shared/apis'
 import type { CollectionListItem, CollectionStats } from '@memory-prosthetic/shared/types'
@@ -16,6 +16,12 @@ interface UseCollectionsReturn {
   isLoading: boolean
   error: string | null
   refresh: () => Promise<void>
+  setFavorite: (id: number, favoriteId: number | null) => Promise<void>
+  toggleStar: (id: number) => Promise<void>
+  archive: (id: number) => Promise<void>
+  restore: (id: number) => Promise<void>
+  delete: (id: number) => Promise<void>
+  permanentlyDelete: (id: number) => Promise<void>
 }
 
 export function useCollections(params?: GetCollectionsParams): UseCollectionsReturn {
@@ -45,11 +51,73 @@ export function useCollections(params?: GetCollectionsParams): UseCollectionsRet
     ])
   }
 
+  // Mutations
+  const setFavoriteMutation = useMutation({
+    mutationFn: ({ id, favoriteId }: { id: number; favoriteId: number | null }) =>
+      collections.api.setFavorite(id, favoriteId),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
+  const toggleStarMutation = useMutation({
+    mutationFn: (id: number) => collections.api.toggleStar(id),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
+  const archiveMutation = useMutation({
+    mutationFn: (id: number) => collections.api.archive(id),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => collections.api.restore(id),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => collections.api.delete(id),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
+  const permanentlyDeleteMutation = useMutation({
+    mutationFn: (id: number) => collections.api.permanentlyDelete(id),
+    onSuccess: () => {
+      void refresh()
+    },
+  })
+
   return {
     collections: listQuery.data ?? [],
     stats: statsQuery.data ?? null,
     isLoading: listQuery.isLoading || statsQuery.isLoading,
     error: listQuery.error?.message ?? statsQuery.error?.message ?? null,
     refresh,
+    setFavorite: async (id: number, favoriteId: number | null) => {
+      await setFavoriteMutation.mutateAsync({ id, favoriteId })
+    },
+    toggleStar: async (id: number) => {
+      await toggleStarMutation.mutateAsync(id)
+    },
+    archive: async (id: number) => {
+      await archiveMutation.mutateAsync(id)
+    },
+    restore: async (id: number) => {
+      await restoreMutation.mutateAsync(id)
+    },
+    delete: async (id: number) => {
+      await deleteMutation.mutateAsync(id)
+    },
+    permanentlyDelete: async (id: number) => {
+      await permanentlyDeleteMutation.mutateAsync(id)
+    },
   }
 }

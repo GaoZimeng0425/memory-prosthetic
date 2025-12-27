@@ -68,20 +68,20 @@ export function createCollectionsApi(adapter: RequestAdapter) {
     setFavorite: (id: number, favoriteId: number | null) =>
       adapter.patch<void>(`${ENDPOINTS.collection}/${id}`, { favoriteId }),
 
+    /** Toggle starred status for a collection */
+    toggleStar: (id: number) => adapter.post<boolean>(`${ENDPOINTS.collection}/toggle-star`, { id }),
+
     /** Get tags for a collection */
     getCollectionTags: (id: number) =>
-      adapter.get<Tag[]>(`${ENDPOINTS.collection}/tags`, { collection_id: id } as Record<string, unknown>),
+      adapter.get<Tag[]>(`${ENDPOINTS.collection}/tags`, { collectionId: id } as Record<string, unknown>),
 
     /** Add tags to a collection */
     addCollectionTags: (id: number, tagIds: number[]) =>
-      adapter.post<void>(`${ENDPOINTS.collection}/tags`, { collection_id: id, tag_ids: tagIds }),
+      adapter.post<void>(`${ENDPOINTS.collection}/tags`, { collectionId: id, tagIds }),
 
     /** Remove a tag from a collection */
     removeCollectionTag: (id: number, tagId: number) =>
-      adapter.delete<void>(`${ENDPOINTS.collection}/tag`, { collection_id: id, tag_id: tagId } as Record<
-        string,
-        unknown
-      >),
+      adapter.delete<void>(`${ENDPOINTS.collection}/tag`, { collectionId: id, tagId } as Record<string, unknown>),
 
     /** Archive a collection */
     archive: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/archive`, { id }),

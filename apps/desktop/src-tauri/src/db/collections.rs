@@ -256,6 +256,33 @@ impl<'a> CollectionRepository<'a> {
                 if !tag_ids.is_empty() {
                     // Use EXISTS for tag filtering - simpler and more efficient
                     // This will match collections that have ANY of the specified tags
+                    // Convert tag_ids to JSON array for json_each
+                    let tag_ids_json = serde_json::to_string(tag_ids).map_err(|e| {
+                        rusqlite::Error::SqliteFailure(
+                            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_MISUSE),
+                            Some(format!("Failed to serialize tag_ids: {}", e)),
+                        )
+                    })?;
+
+                    // Helper closure to map rows
+                    let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
+                        let url: String = row.get(1)?;
+                        let domain = extract_domain(&url);
+                        let starred: i64 = row.get(3)?;
+                        let favorite_id: Option<i64> = row.get(4)?;
+
+                        Ok(CollectionListItem {
+                            id: row.get(0)?,
+                            url,
+                            title: row.get(2)?,
+                            domain,
+                            starred: starred != 0,
+                            favorite_id,
+                            created_at: row.get(5)?,
+                        })
+                    };
+
+                    // This will match collections that have ANY of the specified tags
                     let sql = if uncategorized {
                         r#"
                         SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
@@ -270,7 +297,7 @@ impl<'a> CollectionRepository<'a> {
                         ORDER BY c.created_at DESC
                         LIMIT ?3 OFFSET ?4
                         "#
-                    } else if let Some(fav_id) = favorite_id {
+                    } else if favorite_id.is_some() {
                         r#"
                         SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
                         FROM collections c
@@ -297,32 +324,6 @@ impl<'a> CollectionRepository<'a> {
                         ORDER BY c.created_at DESC
                         LIMIT ?3 OFFSET ?4
                         "#
-                    };
-
-                    // Convert tag_ids to JSON array for json_each
-                    let tag_ids_json = serde_json::to_string(tag_ids).map_err(|e| {
-                        rusqlite::Error::SqliteFailure(
-                            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_MISUSE),
-                            Some(format!("Failed to serialize tag_ids: {}", e)),
-                        )
-                    })?;
-
-                    // Helper closure to map rows
-                    let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
-                        let url: String = row.get(1)?;
-                        let domain = extract_domain(&url);
-                        let starred: i64 = row.get(3)?;
-                        let favorite_id: Option<i64> = row.get(4)?;
-
-                        Ok(CollectionListItem {
-                            id: row.get(0)?,
-                            url,
-                            title: row.get(2)?,
-                            domain,
-                            starred: starred != 0,
-                            favorite_id,
-                            created_at: row.get(5)?,
-                        })
                     };
 
                     let mut stmt = conn.prepare(sql)?;
@@ -522,14 +523,32 @@ impl<'a> CollectionRepository<'a> {
     }
 
     /// Update collection favorite
+    /// If favorite_id is None, it will be converted to the "未分类" favorite ID
     pub fn set_favorite(&self, id: i64, favorite_id: Option<i64>) -> Result<(), DbError> {
         self.db.with_connection(|conn| {
+            // If favorite_id is None, find the "未分类" favorite ID
+            let final_favorite_id = if favorite_id.is_none() {
+                match conn.query_row(
+                    "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at ASC LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                ) {
+                    Ok(uncategorized_id) => Some(uncategorized_id),
+                    Err(e) => {
+                        tracing::error!("Failed to find '未分类' favorite: {}", e);
+                        return Err(e);
+                    }
+                }
+            } else {
+                favorite_id
+            };
+
             conn.execute(
                 "UPDATE collections SET favorite_id = ?1, updated_at = datetime('now') WHERE id = ?2",
-                params![favorite_id, id],
+                params![final_favorite_id, id],
             )?;
 
-            info!("Updated collection id={} favorite_id={:?}", id, favorite_id);
+            info!("Updated collection id={} favorite_id={:?}", id, final_favorite_id);
             Ok(())
         })
     }

@@ -4,7 +4,7 @@
  * Dialog for selecting a favorite (folder) for a collection.
  */
 
-import { Check, Folder, FolderPlus, X } from 'lucide-react'
+import { Check, Folder, FolderPlus } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
@@ -46,7 +46,7 @@ export function SelectFavoriteDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>选择收藏夹</DialogTitle>
-          <DialogDescription>为内容选择一个收藏夹，或选择"未分类"</DialogDescription>
+          <DialogDescription>为内容选择一个收藏夹</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[400px]">
@@ -54,35 +54,20 @@ export function SelectFavoriteDialog({
             {isLoading ? (
               <div className="py-6 text-center text-muted-foreground text-sm">加载中...</div>
             ) : (
-              <>
+              favorites.map((favorite) => (
                 <Button
                   className={cn(
                     'w-full justify-start gap-2',
-                    currentFavoriteId === null && 'bg-accent text-accent-foreground'
+                    currentFavoriteId === favorite.id && 'bg-accent text-accent-foreground'
                   )}
-                  onClick={() => handleSelect(null)}
+                  key={favorite.id}
+                  onClick={() => handleSelect(favorite.id)}
                   variant="ghost"
                 >
-                  {currentFavoriteId === null ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                  <Folder className="h-4 w-4" />
-                  <span>未分类</span>
+                  {currentFavoriteId === favorite.id ? <Check className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                  <span className="flex-1 text-left">{favorite.name}</span>
                 </Button>
-
-                {favorites.map((favorite) => (
-                  <Button
-                    className={cn(
-                      'w-full justify-start gap-2',
-                      currentFavoriteId === favorite.id && 'bg-accent text-accent-foreground'
-                    )}
-                    key={favorite.id}
-                    onClick={() => handleSelect(favorite.id)}
-                    variant="ghost"
-                  >
-                    {currentFavoriteId === favorite.id ? <Check className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
-                    <span className="flex-1 text-left">{favorite.name}</span>
-                  </Button>
-                ))}
-              </>
+              ))
             )}
           </div>
         </ScrollArea>

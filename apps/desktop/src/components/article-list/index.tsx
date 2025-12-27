@@ -45,9 +45,6 @@ interface ArticleListProps {
   onDelete: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
-  onManageTags?: (id: number) => void
-  onSetFavorite?: (id: number, favoriteId: number | null) => void
-  onOpenFavoriteDialog?: (id: number) => void
   onArchive?: (id: number) => void
   isLoading?: boolean
   filterHint?: {
@@ -66,14 +63,10 @@ export function ArticleList({
   onDelete,
   onOpenUrl,
   onToggleStar,
-  onManageTags,
-  onSetFavorite,
-  onOpenFavoriteDialog,
   onArchive,
   isLoading,
   filterHint,
 }: ArticleListProps) {
-  console.log(collections, '<<<')
   const [filter, setFilter] = useState('')
 
   const filteredCollections = useMemo(() => {
@@ -151,11 +144,8 @@ export function ArticleList({
                 key={group.label}
                 onArchive={onArchive}
                 onDelete={onDelete}
-                onManageTags={onManageTags}
-                onOpenFavoriteDialog={onOpenFavoriteDialog}
                 onOpenUrl={onOpenUrl}
                 onSelect={onSelect}
-                onSetFavorite={onSetFavorite}
                 onToggleStar={onToggleStar}
                 selectedId={selectedId}
               />

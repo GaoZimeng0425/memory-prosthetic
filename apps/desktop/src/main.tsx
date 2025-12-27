@@ -3,12 +3,11 @@ import { invoke } from '@tauri-apps/api/core'
 import { emit } from '@tauri-apps/api/event'
 import ReactDOM from 'react-dom/client'
 
-import { QueryProvider } from '@memory-prosthetic/shared/request'
+import { getQueryClient, QueryProvider } from '@memory-prosthetic/shared/request'
 import { Toaster } from '@memory-prosthetic/ui/components/ui/sonner'
 import { type Theme, ThemeProvider } from '@memory-prosthetic/ui/hooks/use-theme'
+import { AppRouterProvider } from '@/lib/router'
 import { AiConfigProvider } from '@/providers/AiConfigProvider'
-import App from './App'
-import { SearchWindow } from './pages/SearchWindow'
 import type { AppSettings, CommandResult } from './types/api'
 import '@/styles/index.css'
 
@@ -38,23 +37,12 @@ const handleThemeChange = async (theme: Theme) => {
   await emit('theme-changed', theme)
 }
 
-// Simple path-based routing for Tauri windows
-const Router = () => {
-  const path = window.location.pathname
-
-  if (path === '/search') {
-    return <SearchWindow />
-  }
-
-  return <App />
-}
-
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryProvider>
       <ThemeProvider defaultTheme="dark" onThemeChange={handleThemeChange} storage={tauriStorage} storageKey="theme">
         <AiConfigProvider>
-          <Router />
+          <AppRouterProvider queryClient={getQueryClient()} />
           <Toaster />
         </AiConfigProvider>
       </ThemeProvider>

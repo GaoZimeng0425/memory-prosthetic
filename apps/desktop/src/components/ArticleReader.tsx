@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Calendar, ExternalLink, Folder, Globe, Hash, Maximize2, Minimize2, Star, Trash2 } from 'lucide-react'
 
 import { formatDateTime, getDomain } from '@memory-prosthetic/shared/utils/date'
@@ -7,12 +7,10 @@ import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
-import { FavoriteSelector } from '@/components/features/FavoriteSelector'
 import { TagBadge } from '@/components/features/TagBadge'
-import { TagDialog } from '@/components/features/TagDialog'
 import { Link } from '@/components/Link'
+import { useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
-import { useTags } from '@/hooks/use-tags'
 import type { Collection } from '@/types/api'
 
 type ArticleReaderProps = {
@@ -45,9 +43,8 @@ export const ArticleReader = ({
   isLoading,
 }: ArticleReaderProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const [isTagDialogOpen, setIsTagDialogOpen] = useState(false)
-  const { tags: collectionTags, addTags, removeTag } = useCollectionTags(article?.id ?? null)
-  const { createTag } = useTags()
+  const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
+  const { openTagDialog, openFavoriteDialog } = useDialog()
 
   if (isLoading) {
     return (
@@ -105,27 +102,28 @@ export const ArticleReader = ({
             <ExternalLink className="mr-2 h-4 w-4" />
             打开原文
           </Button>
-          {onSetFavorite && (
-            <FavoriteSelector
-              currentFavoriteId={article.favoriteId ?? null}
-              onSelect={(favoriteId) => onSetFavorite(article.id, favoriteId)}
-              trigger={
-                <Button className="text-muted-foreground hover:text-foreground" size="sm" variant="ghost">
-                  <Folder className="mr-2 h-4 w-4" />
-                  收藏夹
-                </Button>
-              }
-            />
+          {onSetFavorite && article && (
+            <Button
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => openFavoriteDialog(article.id)}
+              size="sm"
+              variant="ghost"
+            >
+              <Folder className="mr-2 h-4 w-4" />
+              收藏夹
+            </Button>
           )}
-          <Button
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => setIsTagDialogOpen(true)}
-            size="sm"
-            variant="ghost"
-          >
-            <Hash className="mr-2 h-4 w-4" />
-            管理标签
-          </Button>
+          {article && (
+            <Button
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => openTagDialog(article.id)}
+              size="sm"
+              variant="ghost"
+            >
+              <Hash className="mr-2 h-4 w-4" />
+              管理标签
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -248,37 +246,6 @@ export const ArticleReader = ({
           </div>
         </article>
       </ScrollArea>
-
-      {/* Tag Dialog */}
-      {article && (
-        <TagDialog
-          onCreateTag={async (name) => {
-            const newTagId = await createTag({ name })
-            await addTags([newTagId])
-            return newTagId
-          }}
-          onOpenChange={setIsTagDialogOpen}
-          onSelectionChange={async (tagIds) => {
-            try {
-              const currentTagIds = collectionTags.map((t) => t.id)
-              const toAdd = tagIds.filter((id) => !currentTagIds.includes(id))
-              const toRemove = currentTagIds.filter((id) => !tagIds.includes(id))
-
-              if (toAdd.length > 0) {
-                await addTags(toAdd)
-              }
-              for (const tagId of toRemove) {
-                await removeTag(tagId)
-              }
-            } catch (error) {
-              console.error('Failed to update tags:', error)
-              alert(`更新标签失败: ${error instanceof Error ? error.message : '未知错误'}`)
-            }
-          }}
-          open={isTagDialogOpen}
-          selectedTagIds={collectionTags.map((t) => t.id)}
-        />
-      )}
     </div>
   )
 }

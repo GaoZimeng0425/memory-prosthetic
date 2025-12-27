@@ -91,8 +91,6 @@ const CustomLink = ({
     return <span {...props}>{children}</span>
   }
 
-  console.log('🚀 : CustomLink : isVideoLink(children):', isVideoLink(children))
-  console.log('🚀 : CustomLink : children:', children)
   if (isVideoLink(children)) {
     // If link text contains 🎬, it's a video
     // Check if it's YouTube/Bilibili/Vimeo for iframe embed
@@ -186,7 +184,7 @@ const CustomLink = ({
     // Use button instead of <a> tag, styled to look like a link
     return (
       <Button
-        className="cursor-pointer border-0 bg-transparent p-0 font-inherit text-primary underline hover:text-primary/80"
+        className="flex! h-auto! w-full cursor-pointer items-center border-0 bg-transparent p-0 font-inherit text-primary underline hover:text-primary/80"
         onClick={handleAnchorClick}
         variant="link"
         {...props}

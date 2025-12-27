@@ -47,6 +47,7 @@ const ENDPOINT_COMMANDS: Record<string, string> = {
   'POST /api/collection/archive': 'archive_collection',
   'POST /api/collection/restore': 'restore_collection',
   'POST /api/collection/permanently-delete': 'permanently_delete_collection',
+  'POST /api/collection/toggle-star': 'toggle_collection_star',
   'POST /api/collection/tags': 'add_collection_tags',
   'DELETE /api/collection/tag': 'remove_collection_tag',
   'GET /api/collection/tags': 'get_collection_tags',
@@ -97,41 +98,7 @@ export function createTauriAdapter(): RequestAdapter {
   return {
     get: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
       const command = getCommand('GET', endpoint)
-      // For collection tags, use params directly (collection_id from params)
-      if (endpoint.includes('/collection/tags')) {
-        // Extract collection_id from params
-        const collectionId = params?.collection_id
-        console.log('Getting collection tags for:', collectionId, 'command:', command)
-        if (collectionId) {
-          // Tauri commands use camelCase parameter names
-          return invokeCommand<T>(command, { collectionId })
-        }
-        return invokeCommand<T>(command, params)
-      }
-      // For collections list, convert snake_case to camelCase for Tauri
-      if (endpoint.includes('/collections') && !endpoint.includes('/collection/')) {
-        const args: Record<string, unknown> = {}
-        if (params) {
-          // Handle both camelCase (from frontend) and snake_case (from API)
-          // Convert to camelCase for Tauri commands
-          if (params.favoriteId !== undefined || params.favorite_id !== undefined) {
-            args.favoriteId = params.favoriteId ?? params.favorite_id
-          }
-          if (params.uncategorized !== undefined) {
-            args.uncategorized = params.uncategorized
-          }
-          if (params.tagIds !== undefined || params.tag_ids !== undefined) {
-            args.tagIds = params.tagIds ?? params.tag_ids
-          }
-          if (params.status !== undefined) {
-            args.status = params.status
-          }
-        }
-        // Always include limit and offset with defaults if not provided
-        args.limit = params?.limit ?? 1000
-        args.offset = params?.offset ?? 0
-        return invokeCommand<T>(command, args)
-      }
+      // For GET requests with params, wrap in { request: params }
       // Extract ID from endpoint if present (e.g., /api/favorite/123 -> id: 123)
       const idMatch = endpoint.match(/\/(\d+)$/)
       if (idMatch) {
@@ -141,25 +108,13 @@ export function createTauriAdapter(): RequestAdapter {
         }
         return invokeCommand<T>(command, args)
       }
-      return invokeCommand<T>(command, params)
+      // For requests with params, wrap in { request: params }
+      return invokeCommand<T>(command, params ? { request: params } : undefined)
     },
 
     post: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
       const command = getCommand('POST', endpoint)
-      // For collection tags, extract collection_id and tag_ids from data
-      if (endpoint.includes('/collection/tags') && data && typeof data === 'object') {
-        const tagData = data as unknown as { collection_id: number; tag_ids: number[] }
-        console.log('Adding collection tags:', {
-          collectionId: tagData.collection_id,
-          tagIds: tagData.tag_ids,
-          command,
-        })
-        // Tauri commands use camelCase parameter names
-        return invokeCommand<T>(command, {
-          collectionId: tagData.collection_id,
-          tagIds: tagData.tag_ids,
-        })
-      }
+      // All POST requests wrap data in { request: data }
       return invokeCommand<T>(command, data ? { request: data } : undefined)
     },
 
@@ -170,53 +125,30 @@ export function createTauriAdapter(): RequestAdapter {
 
     patch: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
       const command = getCommand('PATCH', endpoint)
-      // Extract ID from endpoint if present (e.g., /api/favorite/123 -> id: 123)
+      // Extract ID from endpoint if present (e.g., /api/collection/123 -> id: 123)
       const idMatch = endpoint.match(/\/(\d+)$/)
-      const args: Record<string, unknown> = {}
 
-      if (idMatch) {
-        args.id = Number.parseInt(idMatch[1], 10)
+      if (idMatch && data && typeof data === 'object') {
+        // If ID is in endpoint and data is an object, merge id with data and wrap in request
+        const requestData: Record<string, unknown> = { id: Number.parseInt(idMatch[1], 10) }
+        Object.assign(requestData, data)
+        return invokeCommand<T>(command, { request: requestData })
       }
 
-      // For set_collection_favorite, extract favoriteId from data
-      if (endpoint.includes('/collection/') && data && typeof data === 'object') {
-        const patchData = data as unknown as { favoriteId?: number | null }
-        if ('favoriteId' in patchData) {
-          args.favoriteId = patchData.favoriteId
-          return invokeCommand<T>(command, args)
-        }
-      }
-
-      if (data) {
-        args.request = data
-      }
-
-      return invokeCommand<T>(command, Object.keys(args).length > 0 ? args : undefined)
+      // All PATCH requests wrap data in { request: data }
+      return invokeCommand<T>(command, data ? { request: data } : undefined)
     },
 
     delete: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
       const command = getCommand('DELETE', endpoint)
-      // For collection tag removal, use params directly (collection_id and tag_id from params)
-      if (endpoint.includes('/collection/tag')) {
-        const collectionId = params?.collection_id
-        const tagId = params?.tag_id
-        console.log('Removing collection tag:', { collectionId, tagId, command })
-        if (collectionId && tagId) {
-          // Tauri commands use camelCase parameter names
-          return invokeCommand<T>(command, {
-            collectionId,
-            tagId,
-          })
-        }
-        return invokeCommand<T>(command, params)
-      }
       // Extract ID from endpoint if present (e.g., /api/favorite/123 -> id: 123)
       const idMatch = endpoint.match(/\/(\d+)$/)
       if (idMatch) {
         const id = Number.parseInt(idMatch[1], 10)
         return invokeCommand<T>(command, { id })
       }
-      return invokeCommand<T>(command, params)
+      // For DELETE requests with params, wrap in { request: params }
+      return invokeCommand<T>(command, params ? { request: params } : undefined)
     },
   }
 }

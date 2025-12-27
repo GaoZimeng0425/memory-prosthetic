@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { ChevronLeft, ChevronRight, Clock, Library, Network, Search, Settings, Star } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -15,29 +16,24 @@ type NavItem = {
   id: string
   label: string
   icon: React.ElementType
+  to: string
   count?: number
   color?: string
 }
 
 const navItems: NavItem[] = [
-  { id: 'all', label: '全部', icon: Library, count: 0 },
-  { id: 'starred', label: '星标', icon: Star, count: 0, color: 'text-yellow-500' },
-  { id: 'recent', label: '最近', icon: Clock, count: 0 },
-  { id: 'graph', label: '图谱', icon: Network, count: 0 },
+  { id: 'all', label: '全部', icon: Library, to: '/', count: 0 },
+  { id: 'starred', label: '星标', icon: Star, to: '/starred', count: 0, color: 'text-yellow-500' },
+  { id: 'recent', label: '最近', icon: Clock, to: '/recent', count: 0 },
+  { id: 'graph', label: '图谱', icon: Network, to: '/graph', count: 0 },
 ]
 
 type AppSidebarProps = {
   className?: string
   state: SidebarState
   onStateChange: (state: SidebarState) => void
-  activeNav: string
-  onNavChange: (nav: string) => void
   onSearchClick: () => void
   onSettingsClick: () => void
-  activeFavoriteId?: number | null
-  onFavoriteChange?: (favoriteId: number | null) => void
-  activeTagId?: number | null
-  onTagChange?: (tagId: number | null) => void
   stats?: {
     total: number
     starred: number
@@ -51,18 +47,13 @@ export const AppSidebar = ({
   className,
   state,
   onStateChange,
-  activeNav,
-  onNavChange,
   onSearchClick,
   onSettingsClick,
-  activeFavoriteId,
-  onFavoriteChange,
-  activeTagId,
-  onTagChange,
   stats,
 }: AppSidebarProps) => {
   const [isCreateFavoriteOpen, setIsCreateFavoriteOpen] = useState(false)
   const [isCreateTagOpen, setIsCreateTagOpen] = useState(false)
+  const location = useLocation()
 
   if (state === 'hidden') {
     return null
@@ -87,6 +78,19 @@ export const AppSidebar = ({
   })
 
   const counts = getCounts()
+
+  // Determine active nav from route
+  const getActiveNav = () => {
+    const pathname = location.pathname
+    if (pathname.startsWith('/graph')) return 'graph'
+    if (pathname.startsWith('/favorite')) return 'favorite'
+    if (pathname.startsWith('/tag')) return 'tag'
+    if (pathname === '/starred' || pathname.startsWith('/starred/article')) return 'starred'
+    if (pathname === '/recent' || pathname.startsWith('/recent/article')) return 'recent'
+    return 'all'
+  }
+
+  const activeNav = getActiveNav()
 
   return (
     <aside
@@ -141,18 +145,16 @@ export const AppSidebar = ({
           const count = counts[item.id as keyof typeof counts]
 
           return (
-            <Button
+            <Link
               className={cn(
-                'w-full justify-start gap-2',
+                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
                 isCollapsed && 'justify-center px-0',
                 isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-                !isActive && 'text-muted-foreground hover:text-foreground'
+                !isActive && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
               )}
               key={item.id}
-              onClick={() => onNavChange(item.id)}
-              size={isCollapsed ? 'icon' : 'sm'}
               title={isCollapsed ? item.label : undefined}
-              variant="ghost"
+              to={item.to}
             >
               <item.icon className={cn('h-4 w-4 shrink-0', item.color)} />
               {!isCollapsed && (
@@ -165,7 +167,7 @@ export const AppSidebar = ({
                   )}
                 </>
               )}
-            </Button>
+            </Link>
           )
         })}
 
@@ -173,15 +175,10 @@ export const AppSidebar = ({
         {!isCollapsed && (
           <div className="mt-4 border-sidebar-border border-t pt-2">
             <FavoritesList
-              activeFavoriteId={activeFavoriteId ?? undefined}
               isCollapsed={isCollapsed}
               onCreateClick={() => setIsCreateFavoriteOpen(true)}
               onFavoriteChange={() => {
                 // Refresh favorites list
-              }}
-              onFavoriteClick={(favoriteId) => {
-                onFavoriteChange?.(favoriteId)
-                onNavChange('favorite')
               }}
             />
           </div>
@@ -191,15 +188,10 @@ export const AppSidebar = ({
         {!isCollapsed && (
           <div className="mt-2 border-sidebar-border border-t pt-2">
             <TagsList
-              activeTagId={activeTagId}
               isCollapsed={isCollapsed}
               onCreateClick={() => setIsCreateTagOpen(true)}
               onTagChange={() => {
                 // Refresh tags list
-              }}
-              onTagClick={(tagId) => {
-                onTagChange?.(tagId)
-                onNavChange('tag')
               }}
             />
           </div>
@@ -213,7 +205,6 @@ export const AppSidebar = ({
               archivedCount={stats?.archived ?? 0}
               deletedCount={stats?.deleted ?? 0}
               isCollapsed={isCollapsed}
-              onNavChange={onNavChange}
             />
           </div>
         )}

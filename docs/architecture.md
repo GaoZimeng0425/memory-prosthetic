@@ -8,12 +8,14 @@ inputDocuments:
 workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
-revision: 2
-revisionDate: '2025-12-22'
+revision: 3
+revisionDate: '2025-12-27'
+lastUpdated: '2025-12-27'
 completedAt: '2025-12-22'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
+updateNote: '更新技术栈版本信息，添加实际使用的依赖版本号'
 ---
 
 # Architecture Decision Document
@@ -89,31 +91,41 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 由于项目已存在，这里评估的是 **现有技术选型的合理性**，而非选择新 Starter。
 
-| 技术 | 评估 | 适用性 |
-|------|------|--------|
-| **Tauri 2.x** | ✅ 优秀 | 轻量、Rust 后端、原生性能、跨平台 |
-| **React 19** | ✅ 优秀 | 现代 Hooks、Concurrent 特性、生态成熟 |
-| **React Compiler** | ✅ 优秀 | 自动优化、无需手动 memoization |
-| **WXT 0.20** | ✅ 优秀 | 现代插件框架、热更新、TypeScript 支持 |
-| **Vite 7.x** | ✅ 优秀 | 极速 HMR、原生 ESM 支持 |
-| **TypeScript 5.8/5.9** | ✅ 优秀 | 类型安全、与 Monorepo 共享类型 |
-| **Bun Workspaces** | ✅ 良好 | 快速安装、原生 Monorepo 支持 |
-| **shadcn/ui** | ✅ 优秀 | 50+ 可定制组件、Radix UI 基础、TailwindCSS |
-| **TailwindCSS 4.x** | ✅ 优秀 | 原子化 CSS、零运行时、与 shadcn 配合 |
-| **date-fns 4.x** | ✅ 优秀 | 模块化时间处理、Tree-shaking 友好、TypeScript 支持 |
-| **@mozilla/readability** | ✅ 优秀 | 提取网页主要内容、移除导航广告等噪音 |
-| **turndown** | ✅ 优秀 | HTML 转 Markdown、可定制规则 |
-| **streamdown** | ✅ 优秀 | 流式 Markdown 渲染、React 组件 |
+| 技术 | 版本 | 评估 | 适用性 |
+|------|------|------|--------|
+| **Tauri** | 2.9.x | ✅ 优秀 | 轻量、Rust 后端、原生性能、跨平台 |
+| **React** | 19.2.3 | ✅ 优秀 | 现代 Hooks、Concurrent 特性、生态成熟 |
+| **React Compiler** | 1.0.0 | ✅ 优秀 | 自动优化、无需手动 memoization |
+| **WXT** | 0.20.13 | ✅ 优秀 | 现代插件框架、热更新、TypeScript 支持 |
+| **Vite** | 7.3.0 | ✅ 优秀 | 极速 HMR、原生 ESM 支持 |
+| **TypeScript** | 5.9.3 | ✅ 优秀 | 类型安全、与 Monorepo 共享类型 |
+| **Bun Workspaces** | latest | ✅ 良好 | 快速安装、原生 Monorepo 支持 |
+| **shadcn/ui** | latest | ✅ 优秀 | 50+ 可定制组件、Radix UI 基础、TailwindCSS |
+| **TailwindCSS** | 4.1.18 | ✅ 优秀 | 原子化 CSS、零运行时、与 shadcn 配合 |
+| **date-fns** | 4.1.0 | ✅ 优秀 | 模块化时间处理、Tree-shaking 友好、TypeScript 支持 |
+| **@mozilla/readability** | 0.6.0 | ✅ 优秀 | 提取网页主要内容、移除导航广告等噪音 |
+| **turndown** | 7.2.2 | ✅ 优秀 | HTML 转 Markdown、可定制规则 |
+| **streamdown** | 1.6.10 | ✅ 优秀 | 流式 Markdown 渲染、React 组件 |
+| **Zustand** | 5.0.9 | ✅ 优秀 | 轻量级状态管理、与 React Compiler 兼容 |
+| **TanStack Query** | 5.90.12 | ✅ 优秀 | 服务端状态管理、自动缓存和重试 |
+| **TanStack Router** | 1.143.11 | ✅ 优秀 | 类型安全路由、文件系统路由 |
+| **Axum** | 0.8 | ✅ 优秀 | Rust HTTP 服务器框架、异步支持 |
+| **Biome** | 2.3.10 | ✅ 优秀 | 快速代码格式化和 linting |
+| **ort (ONNX Runtime)** | 2.0.0-rc.10 | ✅ 优秀 | 本地 AI 模型推理（Embedding） |
+| **petgraph** | 0.6 | ✅ 优秀 | 知识图谱图算法和数据结构 |
+| **@antv/g6** | 5.0.50 | ✅ 优秀 | 知识图谱可视化渲染引擎 |
 
 ### Selected Starter: 现有技术栈（无需更换）
 
 **选择理由：**
 
-1. 技术栈现代化：Tauri 2.x、React 19、WXT 0.20 均为最新稳定版本
+1. 技术栈现代化：Tauri 2.9.x、React 19.2.3、WXT 0.20.13 均为最新稳定版本
 2. 架构合理性：Monorepo 结构适合桌面应用 + 浏览器插件的混合项目
 3. 性能优势：Tauri 的 Rust 后端满足 < 300ms 唤起响应的 NFR 要求
-4. 开发体验：Vite 7.x 提供极速热更新，WXT 支持插件热重载
-5. 类型安全：TypeScript 5.x 支持 Monorepo 类型共享
+4. 开发体验：Vite 7.3.0 提供极速热更新，WXT 支持插件热重载，Biome 2.3.10 提供快速格式化
+5. 类型安全：TypeScript 5.9.3 支持 Monorepo 类型共享
+6. AI 能力：ort 2.0.0-rc.10 支持本地 Embedding 推理，无需云端依赖
+7. 知识图谱：petgraph 0.6 和 @antv/g6 5.0.50 提供完整的图谱构建和可视化能力
 
 ### Architecture Decision Records
 
@@ -293,7 +305,8 @@ Markdown 内容 → 文本分块 → all-MiniLM-L6-v2 → 向量 → sqlite-vec
 |------|-----|
 | 模型 | all-MiniLM-L6-v2 (23MB) |
 | 向量维度 | 384 |
-| 推理框架 | candle (Rust) 或 ort (ONNX Runtime) |
+| 推理框架 | ort 2.0.0-rc.10 (ONNX Runtime) |
+| Rust 依赖 | ort, tokenizers 0.21, ndarray 0.16 |
 | 迭代计划 | Alpha 阶段评估中文效果，考虑 bge-small-zh |
 
 ### API & Communication Patterns
@@ -327,10 +340,11 @@ Markdown 内容 → 文本分块 → all-MiniLM-L6-v2 → 向量 → sqlite-vec
 
 | 属性 | 值 |
 |------|-----|
-| 框架 | Axum |
+| 框架 | Axum 0.8 |
 | 端口 | localhost:21890 (可配置) |
 | 认证 | 可选 Bearer Token |
-| CORS | 允许浏览器插件源 |
+| CORS | 允许浏览器插件源 (tower-http 0.6) |
+| 异步运行时 | Tokio 1.x (rt-multi-thread) |
 
 **API 端点设计:**
 
@@ -411,12 +425,14 @@ type SearchFilters = {
 
 | 层级 | 技术 | 版本 |
 |------|------|------|
-| 框架 | React | 19.x |
-| 状态管理 | Zustand | latest |
-| 服务端状态 | TanStack Query | v5 |
-| 路由 | TanStack Router | latest |
-| UI 组件 | shadcn/ui | - |
-| 样式 | Tailwind CSS | 4.x |
+| 框架 | React | 19.2.3 |
+| 状态管理 | Zustand | 5.0.9 |
+| 服务端状态 | TanStack Query | 5.90.12 |
+| 路由 | TanStack Router | 1.143.11 |
+| UI 组件 | shadcn/ui | latest |
+| 样式 | Tailwind CSS | 4.1.18 |
+| 代码格式化 | Biome | 2.3.10 |
+| React 编译器 | babel-plugin-react-compiler | 1.0.0 |
 
 **状态分层:**
 

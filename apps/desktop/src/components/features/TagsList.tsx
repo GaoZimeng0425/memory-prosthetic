@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { Link, useParams } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Hash, Pencil, Plus, SortAsc, Trash2 } from 'lucide-react'
 
 import type { Tag } from '@memory-prosthetic/shared'
@@ -29,16 +30,16 @@ import { useTags } from '@/hooks/use-tags'
 
 interface TagsListProps {
   isCollapsed: boolean
-  activeTagId?: number | null
-  onTagClick: (tagId: number | null) => void
   onCreateClick: () => void
   onTagChange?: () => void
 }
 
-export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick, onTagChange }: TagsListProps) {
+export function TagsList({ isCollapsed, onCreateClick, onTagChange }: TagsListProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [sortOrder, setSortOrder] = useState<TagSortOrder>('name')
   const { tags, isLoading } = useTags(sortOrder)
+  const params = useParams({ strict: false })
+  const activeTagId = params.tagId ? Number(params.tagId) : null
 
   if (isCollapsed) {
     return (
@@ -96,13 +97,7 @@ export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick, 
             <div className="px-2 py-1 text-muted-foreground text-xs">暂无标签</div>
           ) : (
             tags.map((tag) => (
-              <TagItemWithCount
-                active={activeTagId === tag.id}
-                key={tag.id}
-                onClick={() => onTagClick(activeTagId === tag.id ? null : tag.id)}
-                onTagChange={onTagChange}
-                tag={tag}
-              />
+              <TagItemWithCount active={activeTagId === tag.id} key={tag.id} onTagChange={onTagChange} tag={tag} />
             ))
           )}
         </div>
@@ -114,11 +109,10 @@ export function TagsList({ isCollapsed, activeTagId, onTagClick, onCreateClick, 
 interface TagItemWithCountProps {
   tag: Tag
   active: boolean
-  onClick: () => void
   onTagChange?: () => void
 }
 
-function TagItemWithCount({ tag, active, onClick, onTagChange }: TagItemWithCountProps) {
+function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
   const { collections } = useCollections({ tagIds: [tag.id], status: 'active' })
   const { deleteTag } = useTags()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -152,15 +146,13 @@ function TagItemWithCount({ tag, active, onClick, onTagChange }: TagItemWithCoun
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
-          <Button
+          <Link
             className={cn(
-              'w-full justify-start gap-2 text-xs',
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
               active && 'bg-sidebar-accent text-sidebar-accent-foreground',
-              !active && 'text-muted-foreground hover:text-foreground'
+              !active && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            onClick={onClick}
-            size="sm"
-            variant="ghost"
+            to={active ? '/' : `/tag/${tag.id}`}
           >
             <Hash className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">{tag.name}</span>
@@ -169,7 +161,7 @@ function TagItemWithCount({ tag, active, onClick, onTagChange }: TagItemWithCoun
                 {count}
               </span>
             )}
-          </Button>
+          </Link>
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => setIsEditDialogOpen(true)}>

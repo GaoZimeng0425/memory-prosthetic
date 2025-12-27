@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Archive, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -13,18 +14,11 @@ import { cn } from '@memory-prosthetic/ui/utils/tw'
 interface OtherSectionProps {
   isCollapsed: boolean
   activeNav: string
-  onNavChange: (nav: string) => void
   archivedCount?: number
   deletedCount?: number
 }
 
-export function OtherSection({
-  isCollapsed,
-  activeNav,
-  onNavChange,
-  archivedCount = 0,
-  deletedCount = 0,
-}: OtherSectionProps) {
+export function OtherSection({ isCollapsed, activeNav, archivedCount = 0, deletedCount = 0 }: OtherSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true)
 
   if (isCollapsed) {
@@ -63,15 +57,13 @@ export function OtherSection({
       {/* Sub-items */}
       {isExpanded && (
         <div className="space-y-0.5 px-2">
-          <Button
+          <Link
             className={cn(
-              'w-full justify-start gap-2 text-xs',
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
               isArchivedActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-              !isArchivedActive && 'text-muted-foreground hover:text-foreground'
+              !isArchivedActive && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            onClick={() => onNavChange('archived')}
-            size="sm"
-            variant="ghost"
+            to="/"
           >
             <Archive className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">已归档</span>
@@ -80,17 +72,15 @@ export function OtherSection({
                 {archivedCount}
               </span>
             )}
-          </Button>
+          </Link>
 
-          <Button
+          <Link
             className={cn(
-              'w-full justify-start gap-2 text-xs',
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
               isDeletedActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-              !isDeletedActive && 'text-muted-foreground hover:text-foreground'
+              !isDeletedActive && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            onClick={() => onNavChange('deleted')}
-            size="sm"
-            variant="ghost"
+            to="/"
           >
             <Trash2 className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">最近删除</span>
@@ -99,7 +89,7 @@ export function OtherSection({
                 {deletedCount}
               </span>
             )}
-          </Button>
+          </Link>
         </div>
       )}
     </div>

@@ -250,7 +250,7 @@ impl Database {
                 }
             };
 
-            if default_favorite_exists == 0 {
+            let uncategorized_favorite_id: Option<i64> = if default_favorite_exists == 0 {
                 // No existing "未分类", create it
                 match conn.execute(
                     "INSERT INTO favorites (name) VALUES ('未分类')",
@@ -258,14 +258,58 @@ impl Database {
                 ) {
                     Ok(_) => {
                         info!("Created default '未分类' favorite");
+                        // Get the ID of the newly created favorite
+                        match conn.query_row(
+                            "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at DESC LIMIT 1",
+                            [],
+                            |row| row.get(0),
+                        ) {
+                            Ok(id) => Some(id),
+                            Err(e) => {
+                                error!("Failed to get ID of newly created '未分类' favorite: {}", e);
+                                None
+                            }
+                        }
                     }
                     Err(e) => {
                         // If insert fails (e.g., duplicate), log but don't fail migration
                         error!("Failed to create default '未分类' favorite: {}", e);
+                        None
                     }
                 }
             } else {
-                debug!("Default '未分类' favorite already exists (count: {})", default_favorite_exists);
+                // Get the ID of existing "未分类" favorite (use the oldest one)
+                match conn.query_row(
+                    "SELECT id FROM favorites WHERE name = '未分类' ORDER BY created_at ASC LIMIT 1",
+                    [],
+                    |row| row.get(0),
+                ) {
+                    Ok(id) => {
+                        debug!("Default '未分类' favorite already exists (id: {})", id);
+                        Some(id)
+                    }
+                    Err(e) => {
+                        error!("Failed to get ID of existing '未分类' favorite: {}", e);
+                        None
+                    }
+                }
+            };
+
+            // Migrate collections with favorite_id IS NULL to "未分类" favorite
+            if let Some(uncategorized_id) = uncategorized_favorite_id {
+                match conn.execute(
+                    "UPDATE collections SET favorite_id = ?1 WHERE favorite_id IS NULL",
+                    params![uncategorized_id],
+                ) {
+                    Ok(rows_affected) => {
+                        if rows_affected > 0 {
+                            info!("Migrated {} collections with NULL favorite_id to '未分类' favorite (id: {})", rows_affected, uncategorized_id);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to migrate collections with NULL favorite_id: {}", e);
+                    }
+                }
             }
 
             // ========== Knowledge Graph & AI Schema Extensions ==========

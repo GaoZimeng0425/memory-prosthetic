@@ -1,9 +1,14 @@
 installation:
-  version: 6.0.0-alpha.19
-  installDate: 2025-12-21T03:24:47.944Z
-  lastUpdated: 2025-12-21T03:24:47.944Z
+  version: 6.0.0-alpha.21
+  installDate: 2025-12-27T05:37:30.904Z
+  lastUpdated: 2025-12-27T05:37:30.904Z
 modules:
   - core
+  - bmb
   - bmm
 ides:
   - cursor
+  - antigravity
+  - windsurf
+  - trae
+  - gemini

@@ -44,7 +44,7 @@ const ChatPage = () => {
         onSubmit={(e) => {
           e.preventDefault()
           setInput('')
-          onChat(input)
+          void onChat(input)
         }}
       >
         <Input onChange={(e) => setInput(e.target.value)} placeholder="Say something..." value={input} />

@@ -9,14 +9,29 @@
  * - Interactive hover and click effects
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { IElementEvent } from '@antv/g6'
-import { Graph as G6Graph } from '@antv/g6'
+import { CanvasEvent, Graph as G6Graph, NodeEvent } from '@antv/g6'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 
-import type { GraphData, GraphFilters, GraphNode as SharedGraphNode } from '@memory-prosthetic/shared'
+import type { GraphData, GraphEdge, GraphFilters, GraphNode as SharedGraphNode } from '@memory-prosthetic/shared'
 import type { CommandResult } from '@/types/api'
+
+// 单个关联节点的 Tooltip 信息
+type NodeAssociationTooltip = {
+  nodeId: string
+  x: number
+  y: number
+  edge: GraphEdge
+}
+
+// 悬停节点时显示的所有关联 Tooltips
+type TooltipInfo = {
+  hoveredNodeId: string
+  hoveredNodeTitle: string
+  associations: NodeAssociationTooltip[]
+} | null
 
 // 自定义节点数据类型
 type GraphNodeData = {
@@ -44,6 +59,16 @@ type GraphEdgeData = {
     confidence: number
     distance?: number // 用于布局的距离（权重越高，距离越短）
     strength?: number // 用于布局的强度（权重越高，强度越大）
+    // 关联详情
+    semanticSimilarity?: number
+    sharedTags?: string[]
+    sharedFolders?: string[]
+    timeInterval?: number
+    domain?: string
+    keywordOverlap?: number
+    topicMatch?: number
+    // 原始边数据引用
+    originalEdge?: GraphEdge
   }
 }
 
@@ -119,6 +144,7 @@ type GraphViewProps = {
 export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<G6Graph | null>(null)
+  const [tooltipInfo, setTooltipInfo] = useState<TooltipInfo>(null)
 
   const {
     data: graphData,
@@ -178,10 +204,10 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
     // 构建边数据，添加动态距离和强度属性（用于力导向布局）
     const edges: GraphEdgeData[] = graphData.edges.map((edge) => {
       const weight = edge.weight
-      // 权重范围 0-1，映射到距离范围 50-200（权重越高，距离越短）
-      const distance = 200 - weight * 150
-      // 权重范围 0-1，映射到强度范围 0.1-0.5（权重越高，强度越大）
-      const strength = 0.1 + weight * 0.4
+      // 权重范围 0-1，映射到距离范围 30-150（权重越高，距离越短，关联节点更近）
+      const distance = 400 - weight * 50
+      // 权重范围 0-1，映射到强度范围 0.3-0.9（权重越高，强度越大，拉得更紧）
+      const strength = 0.3 + weight * 0.6
 
       return {
         id: edge.id,
@@ -193,9 +219,24 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
           confidence: edge.confidence,
           distance, // 用于布局的距离
           strength, // 用于布局的强度
+          // 关联详情
+          semanticSimilarity: edge.semanticSimilarity,
+          sharedTags: edge.sharedTags,
+          sharedFolders: edge.sharedFolders,
+          timeInterval: edge.timeInterval,
+          domain: edge.domain,
+          keywordOverlap: edge.keywordOverlap,
+          topicMatch: edge.topicMatch,
+          originalEdge: edge, // 保存原始边数据引用
         },
       }
     })
+
+    // 创建节点 ID 到标题的映射，用于 tooltip 显示
+    const nodeIdToTitle = new Map<string, string>()
+    for (const node of nodes) {
+      nodeIdToTitle.set(node.id, node.data.title)
+    }
 
     // 清理旧图实例
     if (graphRef.current) {
@@ -235,10 +276,12 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
               },
             },
             manyBody: {
+              // 节点间斥力：负值越大，无关联节点距离越远
               strength: -200,
             },
             collide: {
-              radius: 40,
+              // 碰撞检测：避免节点重叠
+              radius: 50,
               strength: 1,
             },
             center: {
@@ -396,6 +439,85 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
       }
     })
 
+    // 节点悬停事件 - 在关联节点旁边显示关联详情 Tooltip
+    graph.on(NodeEvent.POINTER_OVER, (e: IElementEvent) => {
+      const nodeId = e.target?.id
+      if (!nodeId) return
+
+      const nodeData = graph.getNodeData(nodeId)
+      const hoveredNodeTitle = nodeData?.data?.title as string | undefined
+      if (!hoveredNodeTitle) {
+        return
+      }
+
+      // 获取所有连接到这个节点的边
+      const relatedEdges = graph.getRelatedEdgesData(nodeId)
+      if (!relatedEdges || relatedEdges.length === 0) {
+        setTooltipInfo(null)
+        return
+      }
+
+      // 为每个关联节点创建 tooltip 信息
+      const associations: NodeAssociationTooltip[] = []
+
+      for (const edgeData of relatedEdges) {
+        const originalEdge = edgeData?.data?.originalEdge as GraphEdge | undefined
+        if (!originalEdge) {
+          continue
+        }
+
+        // 找到"另一个"节点（不是当前悬停的节点）
+        // 节点 ID 格式是 String(node.id)，不是 "node-{id}"
+        const sourceNodeId = String(originalEdge.sourceId)
+        const targetNodeId = String(originalEdge.targetId)
+        const otherNodeId = sourceNodeId === nodeId ? targetNodeId : sourceNodeId
+
+        // 检查节点是否存在于当前图谱中
+        try {
+          const otherNodeData = graph.getNodeData(otherNodeId)
+          if (!otherNodeData) {
+            continue
+          }
+
+          // 获取节点在视口中的位置
+          const nodePosition = graph.getElementPosition(otherNodeId)
+          if (!nodePosition) continue
+
+          // 转换为视口坐标
+          const viewportPos = graph.getViewportByCanvas(nodePosition as [number, number])
+
+          associations.push({
+            nodeId: otherNodeId,
+            x: viewportPos[0],
+            y: viewportPos[1],
+            edge: originalEdge,
+          })
+        } catch (err) {
+          console.log('🚀 处理节点时出错:', err)
+        }
+      }
+
+      if (associations.length > 0) {
+        setTooltipInfo({
+          hoveredNodeId: nodeId,
+          hoveredNodeTitle,
+          associations,
+        })
+      } else {
+        console.log('🚀 associations 为空，不显示 tooltip')
+      }
+    })
+
+    // 节点离开事件 - 隐藏 Tooltip
+    graph.on(NodeEvent.POINTER_LEAVE, () => {
+      setTooltipInfo(null)
+    })
+
+    // 画布拖拽时隐藏 Tooltip
+    graph.on(CanvasEvent.DRAG, () => {
+      setTooltipInfo(null)
+    })
+
     graphRef.current = graph
 
     // 清理函数
@@ -488,6 +610,16 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
           <LegendItem color={COLORS.edgeTopic} label="主题" />
         </div>
       </div>
+
+      {/* 关联详情 Tooltips - 在每个关联节点旁边显示 */}
+      {tooltipInfo?.associations.map((assoc, index) => (
+        <NodeAssociationTooltipComponent
+          edge={assoc.edge}
+          key={`${assoc.nodeId}-${assoc.edge.id}-${index}`}
+          x={assoc.x}
+          y={assoc.y}
+        />
+      ))}
     </div>
   )
 }
@@ -499,3 +631,89 @@ const LegendItem = ({ color, label }: { color: string; label: string }) => (
     <span className="text-slate-500">{label}</span>
   </div>
 )
+
+// 关联详情类型名称映射
+const TYPE_NAMES: Record<string, string> = {
+  semantic: '语义相似',
+  tag: '标签共享',
+  folder: '收藏夹共享',
+  time: '时间邻近',
+  domain: '同一网站',
+  keyword: '关键词重叠',
+  topic: '主题相关',
+}
+
+// 节点关联 Tooltip 组件 - 在关联节点旁边显示
+type NodeAssociationTooltipProps = {
+  edge: GraphEdge
+  x: number
+  y: number
+}
+
+const NodeAssociationTooltipComponent = ({ edge, x, y }: NodeAssociationTooltipProps) => {
+  const typeName = TYPE_NAMES[edge.type] || edge.type
+
+  // 根据关联类型生成详情描述
+  const getDetailDescription = (): string => {
+    switch (edge.type) {
+      case 'semantic':
+        if (edge.semanticSimilarity !== undefined) {
+          return `相似度 ${(edge.semanticSimilarity * 100).toFixed(0)}%`
+        }
+        break
+      case 'tag':
+        if (edge.sharedTags && edge.sharedTags.length > 0) {
+          return edge.sharedTags.slice(0, 3).join(', ') + (edge.sharedTags.length > 3 ? '...' : '')
+        }
+        break
+      case 'folder':
+        if (edge.sharedFolders && edge.sharedFolders.length > 0) {
+          return edge.sharedFolders.slice(0, 2).join(', ')
+        }
+        break
+      case 'time':
+        if (edge.timeInterval !== undefined) {
+          return `${edge.timeInterval}天内`
+        }
+        break
+      case 'domain':
+        if (edge.domain) {
+          return edge.domain
+        }
+        break
+      case 'keyword':
+        if (edge.keywordOverlap !== undefined) {
+          return `重叠 ${(edge.keywordOverlap * 100).toFixed(0)}%`
+        }
+        break
+      case 'topic':
+        if (edge.topicMatch !== undefined) {
+          return `匹配 ${(edge.topicMatch * 100).toFixed(0)}%`
+        }
+        break
+    }
+    return ''
+  }
+
+  const detail = getDetailDescription()
+
+  return (
+    <div
+      className="pointer-events-none absolute z-50 max-w-[200px] rounded-md border border-slate-200/80 bg-white/95 px-2 py-1.5 shadow-md backdrop-blur-sm"
+      style={{
+        left: x + 20,
+        top: y - 10,
+      }}
+    >
+      {/* 关联类型和颜色指示 */}
+      <div className="flex items-center gap-1.5">
+        <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: getEdgeStroke(edge.type) }} />
+        <span className="truncate font-medium text-slate-700 text-xs">{typeName}</span>
+        <span className="shrink-0 text-slate-400 text-xs">{(edge.weight * 100).toFixed(0)}%</span>
+      </div>
+
+      {/* 具体详情 */}
+      {detail && <div className="mt-1 truncate rounded bg-slate-50 px-1.5 py-0.5 text-slate-600 text-xs">{detail}</div>}
+    </div>
+  )
+}

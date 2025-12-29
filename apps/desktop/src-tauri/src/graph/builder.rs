@@ -29,6 +29,21 @@ pub struct GraphEdge {
     pub r#type: String,
     pub weight: f64,
     pub confidence: f64,
+    // 关联详情 - 用于显示具体的关联信息
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_similarity: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared_tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared_folders: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_interval: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keyword_overlap: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topic_match: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -206,6 +221,14 @@ impl GraphBuilder {
                 r#type: a.r#type,
                 weight: a.weight,
                 confidence: a.confidence,
+                // 关联详情
+                semantic_similarity: a.semantic_similarity,
+                shared_tags: a.shared_tags,
+                shared_folders: a.shared_folders,
+                time_interval: a.time_interval,
+                domain: a.domain,
+                keyword_overlap: a.keyword_overlap,
+                topic_match: a.topic_match,
             })
             .collect();
 
@@ -346,6 +369,14 @@ impl GraphBuilder {
                 r#type: a.r#type,
                 weight: a.weight,
                 confidence: a.confidence,
+                // 关联详情
+                semantic_similarity: a.semantic_similarity,
+                shared_tags: a.shared_tags,
+                shared_folders: a.shared_folders,
+                time_interval: a.time_interval,
+                domain: a.domain,
+                keyword_overlap: a.keyword_overlap,
+                topic_match: a.topic_match,
             })
             .collect();
 

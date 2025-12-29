@@ -17,7 +17,7 @@ use db::{
     Tag, TagRepository, CreateTag, UpdateTag, TagSortOrder,
     CollectionTagRepository,
     AiMetadataRepository, UpdateAiMetadata, CreateKeyword, CreateTopic, CreateAiLog,
-    AiProcessingLog,
+    AiProcessingLog, Keyword, Topic,
     AssociationRepository,
     CreateAssociation as DbCreateAssociation,
 };
@@ -1140,6 +1140,80 @@ fn get_ai_processing_logs(
     Ok(CommandResult { data: logs })
 }
 
+/// Get keywords for a collection
+#[tauri::command]
+fn get_collection_keywords(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+) -> Result<CommandResult<Vec<Keyword>>, CommandError> {
+    let repo = AiMetadataRepository::new(state.db.clone());
+    let keywords = repo.get_keywords(collection_id)?;
+
+    Ok(CommandResult { data: keywords })
+}
+
+/// Get topics for a collection
+#[tauri::command]
+fn get_collection_topics(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+) -> Result<CommandResult<Vec<Topic>>, CommandError> {
+    let repo = AiMetadataRepository::new(state.db.clone());
+    let topics = repo.get_topics(collection_id)?;
+
+    Ok(CommandResult { data: topics })
+}
+
+/// Get AI metadata for a collection (including classification fields from collections table)
+#[tauri::command]
+fn get_collection_ai_metadata(
+    state: State<'_, Arc<AppState>>,
+    collection_id: i64,
+) -> Result<CommandResult<serde_json::Value>, CommandError> {
+    use crate::db::CollectionRepository;
+
+    let collection_repo = CollectionRepository::new(&state.db);
+    let collection = collection_repo
+        .get_by_id(collection_id)?
+        .ok_or_else(|| CommandError {
+            code: "NOT_FOUND".to_string(),
+            message: format!("Collection {} not found", collection_id),
+        })?;
+
+    let ai_repo = AiMetadataRepository::new(state.db.clone());
+    let keywords = ai_repo.get_keywords(collection_id).unwrap_or_default();
+    let topics = ai_repo.get_topics(collection_id).unwrap_or_default();
+
+    // Get classification fields from collections table
+    use rusqlite::params;
+    let metadata = state.db.with_connection(|conn| {
+        conn.query_row(
+            r#"
+            SELECT content_type, domain, difficulty, language, quality_score, processed_at, summary_type
+            FROM collections
+            WHERE id = ?1
+            "#,
+            params![collection_id],
+            |row| {
+                Ok(serde_json::json!({
+                    "contentType": row.get::<_, Option<String>>(0)?,
+                    "domain": row.get::<_, Option<String>>(1)?,
+                    "difficulty": row.get::<_, Option<String>>(2)?,
+                    "language": row.get::<_, Option<String>>(3)?,
+                    "qualityScore": row.get::<_, Option<f64>>(4)?,
+                    "processedAt": row.get::<_, Option<i64>>(5)?,
+                    "summary": collection.summary,
+                    "summaryType": row.get::<_, Option<String>>(6)?,
+                    "keywords": keywords,
+                    "topics": topics,
+                }))
+            },
+        )
+    })?;
+
+    Ok(CommandResult { data: metadata })
+}
+
 // ============================================
 // Graph Commands
 // ============================================
@@ -1630,6 +1704,9 @@ pub fn run() {
             // AI Metadata
             update_collection_ai_metadata,
             get_ai_processing_logs,
+            get_collection_keywords,
+            get_collection_topics,
+            get_collection_ai_metadata,
             // Graph
             get_graph_data,
             discover_all_associations,

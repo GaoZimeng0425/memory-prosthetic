@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Clock, Library, MessageCircle, Network, Search, Settings, Star } from 'lucide-react'
+import { Clock, Library, MessageCircle, Network, PanelLeftIcon, Search, Settings, Star } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
@@ -238,15 +238,14 @@ export const AppSidebar = ({
         {/* Toggle Button */}
         <Button
           className={cn(
-            'mt-1 w-full justify-start gap-2 text-muted-foreground hover:text-foreground',
+            'mt-1 w-full justify-end text-muted-foreground hover:text-foreground',
             isCollapsed && 'justify-center px-0'
           )}
           onClick={toggleState}
-          size={isCollapsed ? 'icon' : 'sm'}
-          title={isCollapsed ? '展开侧边栏' : '折叠侧边栏'}
+          size="icon"
           variant="ghost"
         >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <PanelLeftIcon />
           {!isCollapsed && <span>折叠</span>}
         </Button>
       </div>

@@ -9,7 +9,8 @@
  * - Topic identification
  */
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Brain, ChevronDown, FileText, Key, Lightbulb, Loader2, Settings, Sparkles } from 'lucide-react'
 
 import type { AiMetadata, Collection } from '@memory-prosthetic/shared'
@@ -18,9 +19,12 @@ import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@memory-prosthetic/ui/components/ui/popover'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { collections } from '@/apis'
 import { useDialog } from '@/contexts/DialogContext'
 import { useAiConfig } from '@/hooks/use-ai-config'
+import { useAiMetadata } from '@/hooks/use-ai-metadata'
 import { useAiProcessing } from '@/hooks/use-ai-processing'
+import { useCollectionTags } from '@/hooks/use-collection-tags'
 
 type AiButtonProps = {
   article: Collection
@@ -68,11 +72,45 @@ export const AiButton = ({ article }: AiButtonProps) => {
   const { isConfigured, enabled } = useAiConfig()
   const { processCollection, isProcessing, error } = useAiProcessing()
   const { openSettingsDialog } = useDialog()
+  const { tags: collectionTags } = useCollectionTags(article.id)
+  const queryClient = useQueryClient()
+
+  // 判断是否已分析过（通过 summary 判断）
+  const isAnalyzed = !!article.summary
+
+  // 使用 hook 获取 AI 元数据（仅在 popover 打开且已分析时加载）
+  const { data: existingMetadata, isLoading: isLoadingMetadata } = useAiMetadata(article.id, {
+    fallbackSummary: article.summary,
+    enabled: isOpen && isAnalyzed,
+  })
+
+  // 当加载到已有数据时，更新 result
+  useEffect(() => {
+    if (existingMetadata && !isProcessing) {
+      setResult(existingMetadata)
+    }
+  }, [existingMetadata, isProcessing])
+
+  // 当 popover 关闭时，重置 result（以便下次打开时重新加载）
+  useEffect(() => {
+    if (!isOpen) {
+      setResult(null)
+    }
+  }, [isOpen])
 
   const handleProcess = async () => {
     try {
-      const aiResult = await processCollection(article)
+      // 获取现有 tags 的名称
+      const existingTagNames = collectionTags.map((t) => t.name)
+      const aiResult = await processCollection(article, existingTagNames)
       setResult(aiResult)
+
+      // 刷新 collection 数据和 AI 元数据
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: collections.keys.detail(article.id) }),
+        queryClient.invalidateQueries({ queryKey: ['collectionTags', article.id] }),
+        queryClient.invalidateQueries({ queryKey: ['aiMetadata', article.id] }),
+      ])
     } catch (err) {
       console.error('AI processing failed:', err)
     }
@@ -92,7 +130,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
         title="配置 AI 功能"
         variant="ghost"
       >
-        <Sparkles className="mr-2 h-4 w-4" />
+        <Sparkles className="mr-2 h-4 w-4 text-primary" />
         AI
         <Badge className="ml-1.5 px-1 py-0 text-[10px]" variant="secondary">
           未配置
@@ -109,7 +147,11 @@ export const AiButton = ({ article }: AiButtonProps) => {
           size="sm"
           variant="ghost"
         >
-          {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          {isProcessing ? (
+            <Loader2 className="mr-2 size-4 animate-spin" />
+          ) : (
+            <Sparkles className="mr-2 size-4 text-primary" />
+          )}
           AI 分析
           <ChevronDown className="ml-1 h-3 w-3" />
         </Button>
@@ -117,7 +159,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
 
       <PopoverContent align="end" className="w-80">
         {/* Header */}
-        <div className="flex items-center justify-between border-b p-3">
+        <div className="flex items-center justify-between border-b">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-primary" />
             <span className="font-medium text-sm">AI 内容分析</span>
@@ -127,19 +169,14 @@ export const AiButton = ({ article }: AiButtonProps) => {
           </Button>
         </div>
 
-        <ScrollArea className="h-96">
+        <ScrollArea className="h-96 p-3">
           <div className="space-y-4">
             {/* 处理按钮 */}
             {!result && !isProcessing && (
               <div className="space-y-3">
                 <p className="text-muted-foreground text-xs">使用 AI 自动分析文章内容，生成摘要、标签、分类等信息。</p>
-                <Button className="w-full" disabled={isProcessing} onClick={handleProcess} size="sm">
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  开始分析
-                </Button>
               </div>
             )}
-
             {/* 处理中状态 */}
             {isProcessing && (
               <div className="flex flex-col items-center justify-center py-8">
@@ -149,19 +186,24 @@ export const AiButton = ({ article }: AiButtonProps) => {
               </div>
             )}
 
+            {/* 加载已有数据状态 */}
+            {isLoadingMetadata && !isProcessing && (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+                <p className="font-medium text-sm">加载分析数据...</p>
+              </div>
+            )}
+
             {/* 错误状态 */}
-            {error && !isProcessing && (
+            {error && !isProcessing && !isLoadingMetadata && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
                 <p className="font-medium text-destructive text-sm">处理失败</p>
                 <p className="mt-1 text-muted-foreground text-xs">{error}</p>
-                <Button className="mt-2" onClick={handleProcess} size="sm" variant="outline">
-                  重试
-                </Button>
               </div>
             )}
 
             {/* 结果展示 */}
-            {result && !isProcessing && (
+            {result && !isProcessing && !isLoadingMetadata && (
               <div className="space-y-4">
                 {/* 摘要 */}
                 {result.summary && (
@@ -240,10 +282,10 @@ export const AiButton = ({ article }: AiButtonProps) => {
           </div>
         </ScrollArea>
 
-        {/* 重新分析按钮 */}
-        <Button className="w-full" onClick={handleProcess} size="sm" variant="outline">
-          <Sparkles className="mr-2 h-4 w-4" />
-          重新分析
+        {/* 分析按钮 */}
+        <Button className="w-full" disabled={isProcessing} onClick={handleProcess} size="sm" variant="outline">
+          <Sparkles className="mr-2 h-4 w-4 text-primary" />
+          {isAnalyzed ? '重新分析' : '开始分析'}
         </Button>
       </PopoverContent>
     </Popover>

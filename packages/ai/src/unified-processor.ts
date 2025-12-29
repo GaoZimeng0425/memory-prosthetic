@@ -41,20 +41,41 @@ const UnifiedAnalysisSchema = z.object({
     .min(1)
     .max(3)
     .describe('主题列表，1-3个，按 confidence 降序排列'),
+  tags: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(50).describe('标签名称，1-3个词'),
+        confidence: z.number().min(0).max(1).describe('置信度，0-1'),
+      })
+    )
+    .min(2)
+    .max(5)
+    .describe('分类标签列表，2-5个，用于内容分类和组织，优先使用技术栈、领域、类型等分类标签'),
 })
 
-export const processContentUnified = async (content: string, title: string): Promise<AiMetadata> => {
+export type ProcessContentUnifiedResult = AiMetadata & {
+  tags: Array<{ id: string; name: string; confidence: number; isAuto: boolean }>
+}
+
+export const processContentUnified = async (
+  content: string,
+  title: string,
+  existingTags?: string[]
+): Promise<ProcessContentUnifiedResult> => {
   const config = await getAiConfig()
   const model = getAiModel(config)
+
+  const existingTagsContext = existingTags?.length ? `\n用户已有的标签：${existingTags.join(', ')}` : ''
 
   const prompt = `${ARTICLE_PROMPT}
 
 标题：${title}
+${existingTagsContext}
 
 内容：
 ${content.substring(0, 4000)}
 
-请分析以上内容并生成元数据。`
+请分析以上内容并生成元数据。${existingTagsContext ? '\n注意：如果用户已有标签，生成的标签应尽量保持风格一致。' : ''}`
 
   try {
     const { output } = await generateText({
@@ -84,6 +105,15 @@ ${content.substring(0, 4000)}
         confidence: Math.min(1, Math.max(0, t.confidence)),
       }))
 
+    const tags = output.tags
+      .filter((t) => t.confidence > 0.3)
+      .map((t) => ({
+        id: crypto.randomUUID(),
+        name: t.name.trim(),
+        confidence: Math.min(1, Math.max(0, t.confidence)),
+        isAuto: true,
+      }))
+
     // 验证摘要长度
     let summary = output.summary
     if (summary) {
@@ -97,7 +127,7 @@ ${content.substring(0, 4000)}
       }
     }
 
-    const result: AiMetadata = {
+    const result: ProcessContentUnifiedResult = {
       summary,
       summaryType: summary ? 'auto' : null,
       contentType: output.contentType,
@@ -108,6 +138,7 @@ ${content.substring(0, 4000)}
       processedAt: Date.now(),
       keywords,
       topics,
+      tags,
     }
 
     return result
@@ -125,6 +156,7 @@ ${content.substring(0, 4000)}
       processedAt: Date.now(),
       keywords: [],
       topics: [],
+      tags: [],
     }
   }
 }

@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { Calendar, ExternalLink, Folder, Globe, Hash, Maximize2, Minimize2, Star, Trash2 } from 'lucide-react'
+import { Calendar, ExternalLink, Folder, Globe, Hash, Maximize2, Minimize2, Sparkles, Star, Trash2 } from 'lucide-react'
 
 import { formatDateTime, getDomain } from '@memory-prosthetic/shared/utils/date'
 import { MarkdownUI } from '@memory-prosthetic/ui/components/markdown-ui'
@@ -205,6 +205,17 @@ export const ArticleReader = ({
                   <span>{formatDateTime(article.createdAt)}</span>
                 </div>
               </div>
+
+              {/* AI Summary Section */}
+              {article.summary && (
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="font-medium text-sm">AI 摘要</span>
+                  </div>
+                  <p className="text-foreground text-sm leading-relaxed">{article.summary}</p>
+                </div>
+              )}
 
               {/* Tags Section */}
               {collectionTags.length > 0 && (

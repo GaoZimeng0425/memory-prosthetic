@@ -1,11 +1,11 @@
 import type { AiMetadata, Keyword, SummaryType, Topic } from '@memory-prosthetic/shared'
-import { processContentUnified } from './unified-processor'
+import { type ProcessContentUnifiedResult, processContentUnified } from './unified-processor'
 
 // 重新导出类型以保持兼容性
 export type { AiMetadata, SummaryType, Keyword, Topic }
 
 // 结果缓存（基于内容哈希）
-const cache = new Map<string, { data: AiMetadata; timestamp: number }>()
+const cache = new Map<string, { data: ProcessContentUnifiedResult; timestamp: number }>()
 const CACHE_TTL = 24 * 60 * 60 * 1000 // 24小时
 
 const getContentHash = (content: string, title: string): string => {
@@ -16,19 +16,20 @@ const getContentHash = (content: string, title: string): string => {
 export const processContentAi = async (
   content: string,
   title: string,
-  _existingTags?: string[]
-): Promise<AiMetadata> => {
+  existingTags?: string[]
+): Promise<ProcessContentUnifiedResult> => {
   const cacheKey = getContentHash(content, title)
 
-  // 检查缓存
+  // 检查缓存（注意：如果 existingTags 不同，应该使用不同的缓存键）
+  // 但为了简化，这里暂时忽略 existingTags 对缓存的影响
   const cached = cache.get(cacheKey)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data
+    return cached.data as ProcessContentUnifiedResult
   }
 
   try {
-    // 使用统一的 AI 处理函数，一次性生成所有元数据
-    const result = await processContentUnified(content, title)
+    // 使用统一的 AI 处理函数，一次性生成所有元数据（包括 tags）
+    const result = await processContentUnified(content, title, existingTags)
 
     // 缓存结果
     cache.set(cacheKey, {

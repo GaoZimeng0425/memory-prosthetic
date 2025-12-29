@@ -24,6 +24,11 @@ interface DialogContextValue {
   isCreateFavoriteOpen: boolean
   openCreateFavoriteDialog: () => void
   closeCreateFavoriteDialog: () => void
+
+  // Settings Dialog
+  isSettingsOpen: boolean
+  openSettingsDialog: () => void
+  closeSettingsDialog: () => void
 }
 
 const DialogContext = createContext<DialogContextValue | undefined>(undefined)
@@ -35,6 +40,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     collectionId: number | null
   }>({ open: false, collectionId: null })
   const [isCreateFavoriteOpen, setIsCreateFavoriteOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const openTagDialog = (collectionId: number) => {
     setTagDialogCollectionId(collectionId)
@@ -60,6 +66,14 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     setIsCreateFavoriteOpen(false)
   }
 
+  const openSettingsDialog = () => {
+    setIsSettingsOpen(true)
+  }
+
+  const closeSettingsDialog = () => {
+    setIsSettingsOpen(false)
+  }
+
   return (
     <DialogContext.Provider
       value={{
@@ -72,6 +86,9 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         isCreateFavoriteOpen,
         openCreateFavoriteDialog,
         closeCreateFavoriteDialog,
+        isSettingsOpen,
+        openSettingsDialog,
+        closeSettingsDialog,
       }}
     >
       {children}

@@ -131,29 +131,35 @@ const CustomLink = ({
     // Handle anchor links (hash fragments) - use button instead of <a> tag
     const handleAnchorClick = () => {
       const targetId = href.slice(1) // Remove the # to get the id
+      console.log('🚀 : handleAnchorClick : targetId:', targetId)
 
       // Try multiple ways to find the target element
       let targetElement: Element | null = null
 
       // Method 1: Standard ID lookup
-      targetElement = document.getElementById(targetId)
+      targetElement = scrollAreaRef?.current?.querySelector(`[id="${targetId}"]`) || null
+      console.log('🚀 : handleAnchorClick : targetElement:', targetElement)
 
       // Method 2: Query by name attribute
       if (!targetElement) {
-        targetElement = document.querySelector(`[name="${targetId}"]`)
+        targetElement = scrollAreaRef?.current?.querySelector(`[name="${targetId}"]`) || null
       }
 
       // Method 3: Query by id attribute (fallback)
       if (!targetElement) {
-        targetElement = document.querySelector(`[id="${targetId}"]`)
+        targetElement = scrollAreaRef?.current?.querySelector(`[id="${targetId}"]`) || null
       }
 
       // Method 4: Try to find in markdown content (for headings with auto-generated IDs)
       if (!targetElement) {
         // Some markdown renderers create IDs like "user-content-getting-started"
         // Try to find headings that might match
-        const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6')
+        const allHeadings = scrollAreaRef?.current?.querySelectorAll('h1, h2, h3, h4, h5, h6') || []
         for (const heading of allHeadings) {
+          if (heading.textContent.toLocaleLowerCase() === targetId.toLocaleLowerCase()) {
+            targetElement = heading
+            break
+          }
           if (heading.id === targetId || heading.getAttribute('name') === targetId) {
             targetElement = heading
             break
@@ -164,15 +170,14 @@ const CustomLink = ({
       if (targetElement) {
         // Calculate offset for fixed headers if needed
         const rect = targetElement.getBoundingClientRect()
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-        const targetPosition = rect.top + scrollTop
+        const scrollTop = scrollAreaRef?.current?.scrollTop || 0
+        const targetPosition = rect.top + scrollTop - 80
 
         // Smooth scroll using window.scrollTo
         scrollAreaRef?.current?.scrollTo({
           top: targetPosition,
           behavior: 'smooth',
         })
-        console.log('🚀 : handleAnchorClick : scrollAreaRef:', scrollAreaRef)
 
         // Update URL hash for bookmarking/sharing
         window.history.pushState(null, '', href)
@@ -196,7 +201,7 @@ const CustomLink = ({
 
   // Regular external link
   return (
-    <Button variant="link" {...props}>
+    <Button variant="link" {...props} className="h-auto p-0 text-inherit">
       <a href={href} rel="noopener noreferrer" target="_blank">
         {children}
       </a>

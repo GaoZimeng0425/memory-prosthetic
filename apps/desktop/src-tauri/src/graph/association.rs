@@ -175,6 +175,84 @@ impl AssociationCalculator {
             None
         }
     }
+
+    /// Calculate keyword-based association
+    pub async fn calculate_keyword_association(
+        &self,
+        collection1_id: i64,
+        collection2_id: i64,
+    ) -> Result<Option<f64>, CalculationError> {
+        use crate::db::AiMetadataRepository;
+        let ai_repo = AiMetadataRepository::new(self.db.clone());
+
+        let keywords1: HashSet<String> = ai_repo
+            .get_keywords(collection1_id)
+            .map_err(CalculationError::Database)?
+            .into_iter()
+            .map(|k| k.keyword.to_lowercase())
+            .collect();
+
+        let keywords2: HashSet<String> = ai_repo
+            .get_keywords(collection2_id)
+            .map_err(CalculationError::Database)?
+            .into_iter()
+            .map(|k| k.keyword.to_lowercase())
+            .collect();
+
+        if keywords1.is_empty() || keywords2.is_empty() {
+            return Ok(None);
+        }
+
+        let shared_keywords: Vec<String> = keywords1.intersection(&keywords2).cloned().collect();
+
+        if shared_keywords.is_empty() {
+            return Ok(None);
+        }
+
+        // Weight calculation: min(共享关键词数 / 5, 1.0)
+        let weight = (shared_keywords.len() as f64 / 5.0).min(1.0);
+
+        Ok(Some(weight))
+    }
+
+    /// Calculate topic-based association
+    pub async fn calculate_topic_association(
+        &self,
+        collection1_id: i64,
+        collection2_id: i64,
+    ) -> Result<Option<f64>, CalculationError> {
+        use crate::db::AiMetadataRepository;
+        let ai_repo = AiMetadataRepository::new(self.db.clone());
+
+        let topics1: HashSet<String> = ai_repo
+            .get_topics(collection1_id)
+            .map_err(CalculationError::Database)?
+            .into_iter()
+            .map(|t| t.topic.to_lowercase())
+            .collect();
+
+        let topics2: HashSet<String> = ai_repo
+            .get_topics(collection2_id)
+            .map_err(CalculationError::Database)?
+            .into_iter()
+            .map(|t| t.topic.to_lowercase())
+            .collect();
+
+        if topics1.is_empty() || topics2.is_empty() {
+            return Ok(None);
+        }
+
+        let shared_topics: Vec<String> = topics1.intersection(&topics2).cloned().collect();
+
+        if shared_topics.is_empty() {
+            return Ok(None);
+        }
+
+        // Weight calculation: min(共享主题数 / 2, 1.0)
+        let weight = (shared_topics.len() as f64 / 2.0).min(1.0);
+
+        Ok(Some(weight))
+    }
 }
 
 /// Calculate cosine similarity between two vectors

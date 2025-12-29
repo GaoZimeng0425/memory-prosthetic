@@ -329,5 +329,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    @apply select-none;
   }
 }

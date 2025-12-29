@@ -7,6 +7,7 @@ import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { AiButton } from '@/components/features/AiButton'
 import { TagBadge } from '@/components/features/TagBadge'
 import { Link } from '@/components/Link'
 import { useDialog } from '@/contexts/DialogContext'
@@ -127,6 +128,9 @@ export const ArticleReader = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* AI 分析按钮 */}
+          <AiButton article={article} />
+          <Separator className="h-6" orientation="vertical" />
           {(article.status === 'archived' || article.status === 'deleted') && onRestore && (
             <Button
               className="text-muted-foreground hover:text-foreground"
@@ -221,7 +225,7 @@ export const ArticleReader = ({
           <Separator className="mb-8" />
 
           {/* Body */}
-          <div className="max-w-none">
+          <div className="max-w-none select-auto">
             {article.content ? (
               <MarkdownUI markdown={article.content} scrollAreaRef={scrollAreaRef} />
             ) : (

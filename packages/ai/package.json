@@ -45,10 +45,10 @@
   "peerDependencies": {
     "@ai-sdk/anthropic": "^3.0.1",
     "@ai-sdk/deepseek": "^2.0.1",
-    "@ai-sdk/google": "^3.0.0",
-    "@ai-sdk/openai": "^3.0.0",
-    "@ai-sdk/react": "^3.0.1",
-    "ai": "^6.0.1"
+    "@ai-sdk/google": "^3.0.1",
+    "@ai-sdk/openai": "^3.0.1",
+    "@ai-sdk/react": "^3.0.3",
+    "ai": "^6.0.3"
   },
   "peerDependenciesMeta": {
     "@tauri-apps/api": {

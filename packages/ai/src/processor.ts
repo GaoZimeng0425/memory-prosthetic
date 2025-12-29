@@ -1,58 +1,8 @@
-// 使用 shared 包的类型定义
 import type { AiMetadata, Keyword, SummaryType, Topic } from '@memory-prosthetic/shared'
-import { classifyContent } from './classification'
-import { extractKeywords } from './keywords'
-import { generateSummary } from './summary'
-import { identifyTopics } from './topics'
+import { processContentUnified } from './unified-processor'
 
 // 重新导出类型以保持兼容性
 export type { AiMetadata, SummaryType, Keyword, Topic }
-
-// 请求限流器（避免 API 配额超限）
-class RateLimiter {
-  private queue: Array<() => Promise<void>> = []
-  private running = 0
-  private readonly maxConcurrent: number
-  private readonly delayBetweenRequests: number
-
-  constructor(maxConcurrent = 3, delayBetweenRequests = 200) {
-    this.maxConcurrent = maxConcurrent
-    this.delayBetweenRequests = delayBetweenRequests
-  }
-
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.queue.push(async () => {
-        try {
-          const result = await fn()
-          resolve(result)
-        } catch (error) {
-          reject(error)
-        } finally {
-          this.running--
-          this.processQueue()
-        }
-      })
-      this.processQueue()
-    })
-  }
-
-  private processQueue() {
-    if (this.running >= this.maxConcurrent || this.queue.length === 0) {
-      return
-    }
-
-    this.running++
-    const task = this.queue.shift()!
-    task().then(() => {
-      // 延迟后处理下一个请求
-      setTimeout(() => this.processQueue(), this.delayBetweenRequests)
-    })
-  }
-}
-
-// 全局限流器实例
-const rateLimiter = new RateLimiter(3, 200) // 最多3个并发，请求间隔200ms
 
 // 结果缓存（基于内容哈希）
 const cache = new Map<string, { data: AiMetadata; timestamp: number }>()
@@ -77,34 +27,8 @@ export const processContentAi = async (
   }
 
   try {
-    // 使用限流器执行并行处理
-    const [summary, classification, keywords, topics] = await Promise.all([
-      rateLimiter.execute(() => generateSummary(content, title)).catch(() => null),
-      rateLimiter
-        .execute(() => classifyContent(content, title))
-        .catch(() => ({
-          contentType: null,
-          domain: null,
-          difficulty: null,
-          language: null,
-          techStack: [],
-        })),
-      rateLimiter.execute(() => extractKeywords(content, title)).catch(() => []),
-      rateLimiter.execute(() => identifyTopics(content, title)).catch(() => []),
-    ])
-
-    const result: AiMetadata = {
-      summary: summary || null,
-      summaryType: summary ? 'auto' : null,
-      contentType: classification.contentType,
-      domain: classification.domain,
-      difficulty: classification.difficulty,
-      language: classification.language,
-      qualityScore: null, // 可选，未来可添加
-      processedAt: Date.now(),
-      keywords,
-      topics,
-    }
+    // 使用统一的 AI 处理函数，一次性生成所有元数据
+    const result = await processContentUnified(content, title)
 
     // 缓存结果
     cache.set(cacheKey, {
@@ -122,6 +46,7 @@ export const processContentAi = async (
       }
     }
 
+    console.log('🚀 : processContentAi : result:', result)
     return result
   } catch (error) {
     console.error('AI processing failed:', error)

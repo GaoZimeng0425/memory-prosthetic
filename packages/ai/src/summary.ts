@@ -23,8 +23,9 @@ ${content.substring(0, 4000)}  // 限制输入长度
     const { text } = await generateText({
       model,
       prompt,
-      temperature: 0.3, // 较低温度，更确定性
+      // temperature: 0.3, // 较低温度，更确定性
     })
+    console.log('🚀 : generateSummary : text:', text)
 
     // 确保摘要长度在合理范围内
     const summary = text.trim()

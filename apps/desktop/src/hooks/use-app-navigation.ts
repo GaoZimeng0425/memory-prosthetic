@@ -41,11 +41,11 @@ export const useAppNavigation = () => {
   }
 
   const navigateToArchived = () => {
-    void navigate({ to: '/' })
+    void navigate({ to: '/archived' })
   }
 
   const navigateToDeleted = () => {
-    void navigate({ to: '/' })
+    void navigate({ to: '/deleted' })
   }
 
   // 根据当前路由确定 activeNav
@@ -56,6 +56,8 @@ export const useAppNavigation = () => {
     if (pathname.startsWith('/tag')) return 'tag'
     if (pathname === '/starred' || pathname.startsWith('/starred/article')) return 'starred'
     if (pathname === '/recent' || pathname.startsWith('/recent/article')) return 'recent'
+    if (pathname === '/archived' || pathname.startsWith('/archived/article')) return 'archived'
+    if (pathname === '/deleted' || pathname.startsWith('/deleted/article')) return 'deleted'
     // For nested article routes, determine nav from path
     if (pathname.includes('/favorite/') && pathname.includes('/article/')) {
       return 'favorite'

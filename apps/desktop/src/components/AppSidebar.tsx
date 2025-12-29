@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { ChevronLeft, ChevronRight, Clock, Library, Network, Search, Settings, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Library, MessageCircle, Network, Search, Settings, Star } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
   { id: 'starred', label: '星标', icon: Star, to: '/starred', count: 0, color: 'text-yellow-500' },
   { id: 'recent', label: '最近', icon: Clock, to: '/recent', count: 0 },
   { id: 'graph', label: '图谱', icon: Network, to: '/graph', count: 0 },
+  { id: 'chat', label: 'Chat', icon: MessageCircle, to: '/chat', count: 0 },
 ]
 
 type AppSidebarProps = {
@@ -87,6 +88,8 @@ export const AppSidebar = ({
     if (pathname.startsWith('/tag')) return 'tag'
     if (pathname === '/starred' || pathname.startsWith('/starred/article')) return 'starred'
     if (pathname === '/recent' || pathname.startsWith('/recent/article')) return 'recent'
+    if (pathname === '/archived' || pathname.startsWith('/archived/article')) return 'archived'
+    if (pathname === '/deleted' || pathname.startsWith('/deleted/article')) return 'deleted'
     return 'all'
   }
 

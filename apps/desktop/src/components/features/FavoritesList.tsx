@@ -3,7 +3,6 @@
  *
  * Displays a list of favorites (folders) with expand/collapse functionality.
  */
-
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Folder, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -22,16 +21,15 @@ import { EditFavoriteDialog } from '@/components/features/EditFavoriteDialog'
 import { useCollections } from '@/hooks/use-collections'
 import { useFavorites } from '@/hooks/use-favorites'
 
-interface FavoritesListProps {
+type FavoritesListProps = {
   isCollapsed: boolean
   onCreateClick: () => void
   onFavoriteChange?: () => void
 }
 
-export function FavoritesList({ isCollapsed, onCreateClick, onFavoriteChange }: FavoritesListProps) {
+export const FavoritesList = ({ isCollapsed, onCreateClick, onFavoriteChange }: FavoritesListProps) => {
   const [isExpanded, setIsExpanded] = useState(true)
   const { favorites, isLoading } = useFavorites()
-  console.log('🚀 : FavoritesList : favorites:', favorites)
   const params = useParams({ strict: false })
   const activeFavoriteId = params.favoriteId ? Number(params.favoriteId) : null
 

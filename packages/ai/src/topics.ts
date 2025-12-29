@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
 import { getAiConfig, getAiModel } from './config'
@@ -36,14 +36,16 @@ ${content.substring(0, 3000)}
 3. 按 confidence 降序排列`
 
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model,
-      schema: TopicsResponseSchema,
+      output: Output.object({
+        schema: TopicsResponseSchema,
+      }),
       prompt,
       temperature: 0.4,
     })
 
-    return object.topics
+    return output.topics
       .filter((t) => t.confidence > 0.5)
       .map((t) => ({
         id: crypto.randomUUID(),

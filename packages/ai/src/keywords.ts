@@ -1,6 +1,8 @@
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
+// 使用 shared 包的类型定义
+import type { Keyword } from '@memory-prosthetic/shared'
 import { getAiConfig, getAiModel } from './config'
 
 // 定义关键词 Schema
@@ -12,9 +14,6 @@ const KeywordSchema = z.object({
 const KeywordsResponseSchema = z.object({
   keywords: z.array(KeywordSchema).min(5).max(10),
 })
-
-// 使用 shared 包的类型定义
-import type { Keyword } from '@memory-prosthetic/shared'
 
 // 重新导出以保持兼容性
 export type { Keyword }
@@ -37,14 +36,16 @@ ${content.substring(0, 3000)}
 4. 按 weight 降序排列`
 
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model,
-      schema: KeywordsResponseSchema,
+      output: Output.object({
+        schema: KeywordsResponseSchema,
+      }),
       prompt,
       temperature: 0.4,
     })
 
-    return object.keywords
+    return output.keywords
       .filter((k) => k.weight > 0.3)
       .map((k) => ({
         id: crypto.randomUUID(),

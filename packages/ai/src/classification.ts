@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
 // 使用 shared 包的类型定义
@@ -44,19 +44,21 @@ ${content.substring(0, 3000)}
 5. techStack: 涉及的技术栈，按重要性排序，最多5个`
 
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model,
-      schema: ContentClassificationSchema,
+      output: Output.object({
+        schema: ContentClassificationSchema,
+      }),
       prompt,
       temperature: 0.3,
     })
 
     return {
-      contentType: object.contentType,
-      domain: object.domain,
-      difficulty: object.difficulty,
-      language: object.language,
-      techStack: object.techStack,
+      contentType: output.contentType,
+      domain: output.domain,
+      difficulty: output.difficulty,
+      language: output.language,
+      techStack: output.techStack,
     }
   } catch (error) {
     console.error('Classification failed:', error)

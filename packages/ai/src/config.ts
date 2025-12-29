@@ -149,11 +149,11 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
         throw new Error('Custom provider requires baseURL')
       }
       // 自定义 API 端点（兼容 OpenAI 格式）
-      const openaiProvider = createOpenAI({
+      const openaiProvider = createDeepSeek({
         apiKey: config.apiKey,
         baseURL: config.baseURL,
       })
-      return openaiProvider(config.model ?? 'gpt-4o-mini')
+      return openaiProvider(config.model ?? 'deepseek-chat')
     }
     default:
       throw new Error(`Unsupported provider: ${config.provider}`)

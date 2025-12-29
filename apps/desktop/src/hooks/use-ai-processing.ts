@@ -3,20 +3,19 @@
  *
  * Handles AI content processing using react-query mutation.
  */
-
 import { useMutation } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 
 import { processContentAi } from '@memory-prosthetic/ai'
 import type { AiMetadata, Collection } from '@memory-prosthetic/shared'
 
-interface UseAiProcessingReturn {
+type UseAiProcessingReturn = {
   processCollection: (collection: Collection, existingTags?: string[]) => Promise<AiMetadata>
   isProcessing: boolean
   error: string | null
 }
 
-export function useAiProcessing(): UseAiProcessingReturn {
+export const useAiProcessing = (): UseAiProcessingReturn => {
   const mutation = useMutation({
     mutationFn: async ({
       collection,

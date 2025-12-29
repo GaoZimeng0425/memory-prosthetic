@@ -18,8 +18,10 @@ use db::{
     CollectionTagRepository,
     AiMetadataRepository, UpdateAiMetadata, CreateKeyword, CreateTopic, CreateAiLog,
     AiProcessingLog,
+    AssociationRepository,
+    CreateAssociation as DbCreateAssociation,
 };
-use graph::{GraphBuilder, GraphData};
+use graph::{GraphBuilder, GraphData, IncrementalDiscovery};
 use embedding::get_embedding_model;
 use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
@@ -1012,7 +1014,7 @@ fn get_collection_tags(
 
 /// Update AI metadata for a collection
 #[tauri::command]
-fn update_collection_ai_metadata(
+async fn update_collection_ai_metadata(
     state: State<'_, Arc<AppState>>,
     id: i64,
     ai_metadata: serde_json::Value,
@@ -1078,6 +1080,51 @@ fn update_collection_ai_metadata(
     let repo = AiMetadataRepository::new(state.db.clone());
     repo.update_collection_metadata(id, &metadata)?;
 
+    // 触发关联发现
+    let collection_repo = CollectionRepository::new(&state.db);
+    if let Ok(Some(collection)) = collection_repo.get_by_id(id) {
+        let discovery = IncrementalDiscovery::new(state.db.clone());
+        match discovery.discover_for_new_content(&collection).await {
+            Ok(associations) => {
+                tracing::info!("Discovered {} associations for collection {}", associations.len(), id);
+                let assoc_repo = AssociationRepository::new(state.db.clone());
+                let mut created_count = 0;
+                for assoc in associations {
+                    // 将 graph::builder::CreateAssociation 转换为 db::associations::CreateAssociation
+                    let db_assoc = DbCreateAssociation {
+                        source_id: assoc.source_id,
+                        target_id: assoc.target_id,
+                        r#type: assoc.r#type,
+                        types: assoc.types,
+                        weight: assoc.weight,
+                        confidence: assoc.confidence,
+                        quality_score: assoc.quality_score,
+                        reason: assoc.reason,
+                        user_feedback: assoc.user_feedback,
+                        is_expired: assoc.is_expired,
+                        is_directional: assoc.is_directional,
+                        direction: assoc.direction,
+                        semantic_similarity: assoc.semantic_similarity,
+                        shared_tags: assoc.shared_tags,
+                        shared_folders: assoc.shared_folders,
+                        time_interval: assoc.time_interval,
+                        domain: assoc.domain,
+                        keyword_overlap: assoc.keyword_overlap,
+                        topic_match: assoc.topic_match,
+                    };
+                    // 尝试创建关联，如果已存在则忽略错误
+                    if assoc_repo.create(&db_assoc).is_ok() {
+                        created_count += 1;
+                    }
+                }
+                tracing::info!("Created {} new associations for collection {}", created_count, id);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to discover associations for collection {}: {}", id, e);
+            }
+        }
+    }
+
     Ok(CommandResult { data: () })
 }
 
@@ -1097,6 +1144,250 @@ fn get_ai_processing_logs(
 // Graph Commands
 // ============================================
 
+/// Discover associations for all collections (batch discovery)
+#[tauri::command]
+async fn discover_all_associations(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<usize>, CommandError> {
+    let collection_repo = CollectionRepository::new(&state.db);
+    let discovery = IncrementalDiscovery::new(state.db.clone());
+    let assoc_repo = AssociationRepository::new(state.db.clone());
+
+    // Get all collections
+    let all_collections = collection_repo
+        .list(1000, 0, None, false, None, None)
+        .map_err(|e| CommandError {
+            code: "DB_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    let mut total_associations = 0;
+    let mut processed_count = 0;
+
+    // Discover associations for each collection
+    for item in all_collections {
+        processed_count += 1;
+        if let Ok(Some(collection)) = collection_repo.get_by_id(item.id) {
+            if let Ok(associations) = discovery.discover_for_new_content(&collection).await {
+            for assoc in associations {
+                // 将 graph::builder::CreateAssociation 转换为 db::associations::CreateAssociation
+                let db_assoc = DbCreateAssociation {
+                    source_id: assoc.source_id,
+                    target_id: assoc.target_id,
+                    r#type: assoc.r#type,
+                    types: assoc.types,
+                    weight: assoc.weight,
+                    confidence: assoc.confidence,
+                    quality_score: assoc.quality_score,
+                    reason: assoc.reason,
+                    user_feedback: assoc.user_feedback,
+                    is_expired: assoc.is_expired,
+                    is_directional: assoc.is_directional,
+                    direction: assoc.direction,
+                    semantic_similarity: assoc.semantic_similarity,
+                    shared_tags: assoc.shared_tags,
+                    shared_folders: assoc.shared_folders,
+                    time_interval: assoc.time_interval,
+                    domain: assoc.domain,
+                    keyword_overlap: assoc.keyword_overlap,
+                    topic_match: assoc.topic_match,
+                };
+                // Try to create association, ignore if already exists
+                if assoc_repo.create(&db_assoc).is_ok() {
+                    total_associations += 1;
+                }
+            }
+            }
+        }
+    }
+
+    tracing::info!("Batch discovery completed: created {} associations from {} collections", total_associations, processed_count);
+    Ok(CommandResult {
+        data: total_associations,
+    })
+}
+
+/// Debug: Get association statistics
+#[tauri::command]
+fn get_association_stats(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<serde_json::Value>, CommandError> {
+    use std::collections::HashMap;
+    let assoc_repo = AssociationRepository::new(state.db.clone());
+    let collection_repo = CollectionRepository::new(&state.db);
+    let ai_repo = AiMetadataRepository::new(state.db.clone());
+
+    // Get all collections
+    let all_collections = collection_repo
+        .list(1000, 0, None, false, None, None)
+        .map_err(|e| CommandError {
+            code: "DB_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // Count associations by type
+    let mut type_counts: HashMap<String, usize> = HashMap::new();
+    let mut total_associations = 0;
+    let mut collection_associations: HashMap<i64, usize> = HashMap::new();
+    let mut failed_collections: Vec<(i64, String)> = Vec::new();
+
+    for collection in &all_collections {
+        match assoc_repo.get_by_collection(collection.id, None, None) {
+            Ok(assocs) => {
+                let count = assocs.len();
+                total_associations += count;
+                collection_associations.insert(collection.id, count);
+                for assoc in assocs {
+                    *type_counts.entry(assoc.r#type.clone()).or_insert(0) += 1;
+                }
+            }
+            Err(e) => {
+                // 记录失败的 collection
+                failed_collections.push((collection.id, e.to_string()));
+                // 仍然添加到 map，标记为 0
+                collection_associations.insert(collection.id, 0);
+            }
+        }
+    }
+
+    if !failed_collections.is_empty() {
+        tracing::warn!("Failed to get associations for {} collections: {:?}", failed_collections.len(), failed_collections);
+    }
+
+    // Analyze potential associations
+    let mut potential_associations: HashMap<String, Vec<String>> = HashMap::new();
+
+    // Check keyword overlaps
+    let mut keyword_overlaps = Vec::new();
+    for i in 0..all_collections.len() {
+        for j in (i + 1)..all_collections.len() {
+            let id1 = all_collections[i].id;
+            let id2 = all_collections[j].id;
+
+            let keywords1: std::collections::HashSet<String> = ai_repo
+                .get_keywords(id1)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|k| k.keyword.to_lowercase())
+                .collect();
+
+            let keywords2: std::collections::HashSet<String> = ai_repo
+                .get_keywords(id2)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|k| k.keyword.to_lowercase())
+                .collect();
+
+            let shared: Vec<String> = keywords1.intersection(&keywords2).cloned().collect();
+            if !shared.is_empty() {
+                keyword_overlaps.push(format!("Collection {} <-> {}: {} shared keywords ({})",
+                    id1, id2, shared.len(), shared.join(", ")));
+            }
+        }
+    }
+    potential_associations.insert("keyword".to_string(), keyword_overlaps);
+
+    // Check topic overlaps
+    let mut topic_overlaps = Vec::new();
+    for i in 0..all_collections.len() {
+        for j in (i + 1)..all_collections.len() {
+            let id1 = all_collections[i].id;
+            let id2 = all_collections[j].id;
+
+            let topics1: std::collections::HashSet<String> = ai_repo
+                .get_topics(id1)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|t| t.topic.to_lowercase())
+                .collect();
+
+            let topics2: std::collections::HashSet<String> = ai_repo
+                .get_topics(id2)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|t| t.topic.to_lowercase())
+                .collect();
+
+            let shared: Vec<String> = topics1.intersection(&topics2).cloned().collect();
+            if !shared.is_empty() {
+                topic_overlaps.push(format!("Collection {} <-> {}: {} shared topics ({})",
+                    id1, id2, shared.len(), shared.join(", ")));
+            }
+        }
+    }
+    potential_associations.insert("topic".to_string(), topic_overlaps);
+
+    // Check tag overlaps
+    use crate::db::CollectionTagRepository;
+    let tag_repo = CollectionTagRepository::new(&state.db);
+    let mut tag_overlaps = Vec::new();
+    for i in 0..all_collections.len() {
+        for j in (i + 1)..all_collections.len() {
+            let id1 = all_collections[i].id;
+            let id2 = all_collections[j].id;
+
+            let tags1: std::collections::HashSet<String> = tag_repo
+                .get_tags_by_collection(id1)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|t| t.name)
+                .collect();
+
+            let tags2: std::collections::HashSet<String> = tag_repo
+                .get_tags_by_collection(id2)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|t| t.name)
+                .collect();
+
+            let shared: Vec<String> = tags1.intersection(&tags2).cloned().collect();
+            if !shared.is_empty() {
+                tag_overlaps.push(format!("Collection {} <-> {}: {} shared tags ({})",
+                    id1, id2, shared.len(), shared.join(", ")));
+            }
+        }
+    }
+    potential_associations.insert("tag".to_string(), tag_overlaps);
+
+    // Check domain overlaps
+    fn extract_domain(url: &str) -> Option<String> {
+        url::Url::parse(url)
+            .ok()
+            .and_then(|u| u.host_str().map(|h| h.to_string()))
+    }
+
+    let mut domain_overlaps = Vec::new();
+    for i in 0..all_collections.len() {
+        for j in (i + 1)..all_collections.len() {
+            if let (Ok(Some(c1)), Ok(Some(c2))) = (
+                collection_repo.get_by_id(all_collections[i].id),
+                collection_repo.get_by_id(all_collections[j].id)
+            ) {
+                if let (Some(d1), Some(d2)) = (
+                    extract_domain(&c1.url),
+                    extract_domain(&c2.url)
+                ) {
+                    if d1 == d2 {
+                        domain_overlaps.push(format!("Collection {} <-> {}: same domain ({})",
+                            c1.id, c2.id, d1));
+                    }
+                }
+            }
+        }
+    }
+    potential_associations.insert("domain".to_string(), domain_overlaps);
+
+    let stats = serde_json::json!({
+        "total_collections": all_collections.len(),
+        "total_associations": total_associations,
+        "associations_by_type": type_counts,
+        "collections_with_associations": collection_associations,
+        "potential_associations": potential_associations,
+    });
+
+    Ok(CommandResult { data: stats })
+}
+
 /// Graph filters request
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1104,6 +1395,8 @@ pub struct GraphFiltersRequest {
     pub min_weight: Option<f64>,
     pub types: Option<Vec<String>>,
     pub max_nodes: Option<usize>,
+    pub focused_node_id: Option<i64>, // 焦点模式：中心节点 ID
+    pub max_depth: Option<usize>, // 焦点模式：最大关联深度（默认 1）
 }
 
 /// Get graph data for visualization
@@ -1115,6 +1408,21 @@ fn get_graph_data(
     let builder = GraphBuilder::new(state.db.clone());
 
     let r#type = filters.types.as_ref().and_then(|t| t.first()).map(|s| s.as_str());
+
+    // 焦点模式：仅返回与指定节点相关的图谱
+    if let Some(focused_id) = filters.focused_node_id {
+        let max_depth = filters.max_depth.unwrap_or(1);
+        let graph_data = builder.build_focused_graph(
+            focused_id,
+            max_depth,
+            r#type,
+            filters.min_weight,
+            filters.max_nodes,
+        )?;
+        return Ok(CommandResult { data: graph_data });
+    }
+
+    // 全量模式：返回所有节点和边
     let graph_data = builder.build_graph(
         r#type,
         filters.min_weight,
@@ -1324,6 +1632,8 @@ pub fn run() {
             get_ai_processing_logs,
             // Graph
             get_graph_data,
+            discover_all_associations,
+            get_association_stats,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

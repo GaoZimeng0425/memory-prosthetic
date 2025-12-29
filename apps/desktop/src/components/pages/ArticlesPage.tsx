@@ -31,8 +31,6 @@ export function ArticlesPage() {
     ...collectionsApi.queries.detail(articleId ?? 0),
     enabled: articleId !== null && articleId > 0,
   })
-  console.log('🚀 : ArticlesPage : selectedArticle:', selectedArticle)
-
   // Build article route path based on current context
   const getArticleRoute = useCallback(
     (id: number) => {
@@ -41,6 +39,12 @@ export function ArticlesPage() {
       }
       if (activeNav === 'recent') {
         return { to: '/recent/article/$articleId' as const, params: { articleId: String(id) } }
+      }
+      if (activeNav === 'archived') {
+        return { to: '/archived/article/$articleId' as const, params: { articleId: String(id) } }
+      }
+      if (activeNav === 'deleted') {
+        return { to: '/deleted/article/$articleId' as const, params: { articleId: String(id) } }
       }
       if (activeNav === 'favorite' && activeFavoriteId !== null) {
         return {
@@ -66,6 +70,12 @@ export function ArticlesPage() {
     }
     if (activeNav === 'recent') {
       return { to: '/recent' as const }
+    }
+    if (activeNav === 'archived') {
+      return { to: '/archived' as const }
+    }
+    if (activeNav === 'deleted') {
+      return { to: '/deleted' as const }
     }
     if (activeNav === 'favorite' && activeFavoriteId !== null) {
       return { to: '/favorite/$favoriteId' as const, params: { favoriteId: String(activeFavoriteId) } }

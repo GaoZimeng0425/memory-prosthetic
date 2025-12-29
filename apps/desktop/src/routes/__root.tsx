@@ -30,7 +30,6 @@ function RootLayout() {
   const [sidebarState, setSidebarState] = useState<SidebarState>('expanded')
   const [isSearchWindow, setIsSearchWindow] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Detect if current window is search window and ensure correct route
   useEffect(() => {
@@ -105,6 +104,28 @@ function RootLayout() {
     }
   }, [navigate, isSearchWindow])
 
+  // Listen for navigate event from tray menu (only in main window)
+  useEffect(() => {
+    if (isSearchWindow) return // Don't listen in search window
+
+    const unlisten = listen<string>('navigate', async (event) => {
+      console.log('[RootLayout] Received navigate event:', event.payload)
+      const target = event.payload
+      if (target === 'settings') {
+        // Show main window first
+        try {
+          await invoke('show_main_window')
+        } catch (error) {
+          console.error('[RootLayout] Failed to show main window:', error)
+        }
+        // SettingsDialog will be opened via DialogContext in RootLayoutContent
+      }
+    })
+    return () => {
+      void unlisten.then((fn) => fn())
+    }
+  }, [isSearchWindow])
+
   // Global keyboard shortcuts (only in main window)
   useEffect(() => {
     if (isSearchWindow) return // Don't listen in search window
@@ -139,10 +160,6 @@ function RootLayout() {
     setIsSearchOpen(true)
   }
 
-  const handleSettingsClick = () => {
-    setIsSettingsOpen(true)
-  }
-
   // For search window, render only the content without sidebar and drag region
   if (isSearchWindow) {
     return <Outlet />
@@ -151,11 +168,58 @@ function RootLayout() {
   // For main window, render full layout with sidebar
   return (
     <DialogProvider>
+      <RootLayoutContent
+        handleOpenUrl={handleOpenUrl}
+        handleSearchClick={handleSearchClick}
+        handleSearchResultSelect={handleSearchResultSelect}
+        isSearchOpen={isSearchOpen}
+        setIsSearchOpen={setIsSearchOpen}
+        setSidebarState={setSidebarState}
+        sidebarState={sidebarState}
+        sidebarStats={sidebarStats}
+      />
+    </DialogProvider>
+  )
+}
+
+function RootLayoutContent({
+  handleSearchClick,
+  isSearchOpen,
+  setIsSearchOpen,
+  sidebarState,
+  setSidebarState,
+  sidebarStats,
+  handleOpenUrl,
+  handleSearchResultSelect,
+}: {
+  handleSearchClick: () => void
+  isSearchOpen: boolean
+  setIsSearchOpen: (open: boolean) => void
+  sidebarState: SidebarState
+  setSidebarState: (state: SidebarState) => void
+  sidebarStats: {
+    total: number
+    starred: number
+    recent: number
+    archived: number
+    deleted: number
+  }
+  handleOpenUrl: (url: string) => void
+  handleSearchResultSelect: (result: SearchResult) => void
+}) {
+  const { openSettingsDialog } = useDialog()
+
+  const handleSettingsClick = () => {
+    openSettingsDialog()
+  }
+
+  return (
+    <>
       <div className="flex h-screen overflow-hidden bg-background text-foreground">
         <DragRegion className="h-8 shrink-0 cursor-move" />
         {/* Sidebar */}
         <AppSidebar
-          className="pt-4"
+          className="shrink-0 pt-4"
           onSearchClick={handleSearchClick}
           onSettingsClick={handleSettingsClick}
           onStateChange={setSidebarState}
@@ -176,12 +240,9 @@ function RootLayout() {
         onSelectResult={handleSearchResultSelect}
       />
 
-      {/* Settings Dialog */}
-      <SettingsDialog onOpenChange={setIsSettingsOpen} open={isSettingsOpen} />
-
       {/* Dialog components managed by DialogContext */}
       <DialogComponents />
-    </DialogProvider>
+    </>
   )
 }
 
@@ -195,6 +256,8 @@ function DialogComponents() {
     isCreateFavoriteOpen,
     closeCreateFavoriteDialog,
     openCreateFavoriteDialog,
+    isSettingsOpen,
+    closeSettingsDialog,
   } = useDialog()
   const { collections, setFavorite } = useCollections({ status: 'active' })
 
@@ -248,6 +311,16 @@ function DialogComponents() {
           }
         }}
         open={isCreateFavoriteOpen}
+      />
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        onOpenChange={(open) => {
+          if (!open) {
+            closeSettingsDialog()
+          }
+        }}
+        open={isSettingsOpen}
       />
     </>
   )

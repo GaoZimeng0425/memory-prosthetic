@@ -140,9 +140,10 @@ impl AssociationRepository {
             )?;
 
             let row = stmt.query_row(params![id], |row| {
+                // Column indices: see row_to_association for full mapping
                 let types: Option<String> = row.get(4)?;
-                let shared_tags: Option<String> = row.get(19)?;
-                let shared_folders: Option<String> = row.get(20)?;
+                let shared_tags: Option<String> = row.get(18)?;
+                let shared_folders: Option<String> = row.get(19)?;
 
                 Ok(Association {
                     id: row.get(0)?,
@@ -165,10 +166,10 @@ impl AssociationRepository {
                     semantic_similarity: row.get(17)?,
                     shared_tags: shared_tags.and_then(|t| serde_json::from_str(&t).ok()),
                     shared_folders: shared_folders.and_then(|t| serde_json::from_str(&t).ok()),
-                    time_interval: row.get(21)?,
-                    domain: row.get(22)?,
-                    keyword_overlap: row.get(23)?,
-                    topic_match: row.get(24)?,
+                    time_interval: row.get(20)?,
+                    domain: row.get(21)?,
+                    keyword_overlap: row.get(22)?,
+                    topic_match: row.get(23)?,
                 })
             })?;
 
@@ -254,9 +255,17 @@ impl AssociationRepository {
     }
 
     fn row_to_association(&self, row: &rusqlite::Row) -> rusqlite::Result<Association> {
+        // SQL query column indices:
+        // 0: id, 1: source_id, 2: target_id, 3: type, 4: types
+        // 5: weight, 6: confidence, 7: quality_score, 8: reason
+        // 9: user_feedback, 10: access_count, 11: last_accessed_at
+        // 12: is_expired, 13: is_directional, 14: direction
+        // 15: created_at, 16: updated_at
+        // 17: semantic_similarity, 18: shared_tags, 19: shared_folders
+        // 20: time_interval, 21: domain, 22: keyword_overlap, 23: topic_match
         let types: Option<String> = row.get(4)?;
-        let shared_tags: Option<String> = row.get(19)?;
-        let shared_folders: Option<String> = row.get(20)?;
+        let shared_tags: Option<String> = row.get(18)?;
+        let shared_folders: Option<String> = row.get(19)?;
 
         Ok(Association {
             id: row.get(0)?,
@@ -279,10 +288,10 @@ impl AssociationRepository {
             semantic_similarity: row.get(17)?,
             shared_tags: shared_tags.and_then(|t| serde_json::from_str(&t).ok()),
             shared_folders: shared_folders.and_then(|t| serde_json::from_str(&t).ok()),
-            time_interval: row.get(21)?,
-            domain: row.get(22)?,
-            keyword_overlap: row.get(23)?,
-            topic_match: row.get(24)?,
+            time_interval: row.get(20)?,
+            domain: row.get(21)?,
+            keyword_overlap: row.get(22)?,
+            topic_match: row.get(23)?,
         })
     }
 }

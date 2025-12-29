@@ -63,7 +63,7 @@ export function OtherSection({ isCollapsed, activeNav, archivedCount = 0, delete
               isArchivedActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
               !isArchivedActive && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            to="/"
+            to="/archived"
           >
             <Archive className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">已归档</span>
@@ -80,7 +80,7 @@ export function OtherSection({ isCollapsed, activeNav, archivedCount = 0, delete
               isDeletedActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
               !isDeletedActive && 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'
             )}
-            to="/"
+            to="/deleted"
           >
             <Trash2 className="h-3 w-3 shrink-0" />
             <span className="flex-1 truncate text-left">最近删除</span>

@@ -35,6 +35,10 @@ stories: FR54-FR315 (262 functional requirements)
 
 1. **知识图谱构建** - 自动发现和计算内容之间的多种关联类型
 2. **关联可视化** - 力导向图展示知识网络
+   - **全量模式**：在图谱页面显示所有文章和关联
+   - **焦点模式**：在文章页面只显示与该文章相关的图谱
+   - **关联强度可视化**：关联性越强，节点距离越近
+   - **关联类型区分**：不同类型的关联使用不同颜色的连线
 3. **AI 内容理解** - 自动生成摘要、标签、分类、关键词、主题
 4. **关联探索** - 路径查找、知识簇识别、关联筛选
 5. **性能优化** - 增量更新、缓存、批量处理
@@ -368,6 +372,14 @@ export type GraphEdge = Association
 export type GraphData = {
   nodes: GraphNode[]
   edges: GraphEdge[]
+}
+
+export type GraphFilters = {
+  minWeight?: number  // 最小权重阈值（0-1）
+  types?: AssociationType[]  // 关联类型筛选
+  maxNodes?: number  // 最大节点数（用于性能优化）
+  focusedNodeId?: number  // 焦点模式：中心节点 ID
+  maxDepth?: number  // 焦点模式：最大关联深度（默认 1，仅直接关联）
 }
 
 // packages/shared/src/types/ai.ts
@@ -1583,7 +1595,22 @@ export const AiSettings = () => {
 
 ### 3. 图谱可视化
 
-#### 3.1 前端图谱组件（AntV G6）
+#### 3.1 图谱显示模式
+
+**图谱支持两种显示模式：**
+
+1. **全量模式（默认）** - 在图谱页面显示所有文章
+   - 显示所有收集的文章作为节点
+   - 显示所有关联关系作为边
+   - 适用于探索整体知识结构
+
+2. **焦点模式** - 在文章页面只显示与该文章相关的图谱
+   - 以指定文章为中心节点
+   - 仅显示与该文章有直接关联的文章
+   - 可选：显示二级关联（关联的关联）
+   - 适用于深入探索特定主题的知识网络
+
+#### 3.2 前端图谱组件（AntV G6）
 
 ```typescript
 // apps/desktop/src/components/features/GraphView.tsx
@@ -1593,17 +1620,24 @@ import { Graph, GraphData as G6GraphData } from '@antv/g6'
 import { useEffect, useRef } from 'react'
 import type { GraphData, GraphNode, GraphEdge } from '@memory-prosthetic/shared'
 
-export const GraphView = () => {
+type GraphViewProps = {
+  focusedNodeId?: number  // 焦点模式：指定中心节点 ID
+  maxDepth?: number  // 焦点模式：最大关联深度（默认 1，仅直接关联）
+}
+
+export const GraphView = ({ focusedNodeId, maxDepth = 1 }: GraphViewProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<Graph | null>(null)
 
   const { data: graphData, isLoading } = useQuery({
-    queryKey: ['graph', 'data'],
+    queryKey: ['graph', 'data', focusedNodeId, maxDepth],
     queryFn: async () => {
       const result = await invoke<CommandResult<GraphData>>('get_graph_data', {
         filters: {
           minWeight: 0.3,
           types: ['semantic', 'tag', 'folder'],
+          focusedNodeId: focusedNodeId,  // 焦点模式：仅返回与指定节点相关的数据
+          maxDepth: focusedNodeId ? maxDepth : undefined,  // 焦点模式：关联深度
         },
       })
       return result.data
@@ -1644,10 +1678,12 @@ export const GraphView = () => {
         target: edge.targetId,
         label: edge.type,
         style: {
-          stroke: getEdgeColor(edge.type),
+          stroke: getEdgeColor(edge.type),  // 根据关联类型设置不同颜色
           lineWidth: Math.max(1, Math.min(5, edge.weight * 5)), // 根据权重调整边粗细
           opacity: edge.weight,
         },
+        // 力导向布局：边的长度与权重成反比（权重越高，距离越近）
+        weight: edge.weight,
         labelCfg: {
           style: {
             fill: '#666',
@@ -1673,7 +1709,19 @@ export const GraphView = () => {
         preventOverlap: true,
         nodeSize: 30,
         nodeStrength: -300,
-        edgeStrength: 0.1,
+        // 边的强度：根据权重动态计算，权重越高，边越短（节点距离越近）
+        // edgeStrength 函数：weight 越高，返回的 strength 越大（范围 0.05-0.3）
+        edgeStrength: (edge: any) => {
+          const weight = edge.data?.weight || 0.5
+          // 权重范围 0-1，映射到强度范围 0.05-0.3
+          return 0.05 + (weight * 0.25)
+        },
+        // 边的长度：权重越高，理想长度越短
+        edgeLength: (edge: any) => {
+          const weight = edge.data?.weight || 0.5
+          // 权重范围 0-1，映射到长度范围 50-200
+          return 200 - (weight * 150)
+        },
         collideStrength: 0.8,
         alpha: 0.3,
         alphaDecay: 0.028,
@@ -1843,10 +1891,20 @@ export const GraphControls = ({
 }
 ```
 
-#### 3.2 图谱数据获取 Command
+#### 3.3 图谱数据获取 Command
 
 ```rust
 // apps/desktop/src-tauri/src/commands/graph.rs
+
+#[derive(Deserialize)]
+pub struct GraphFilters {
+    pub min_weight: Option<f64>,
+    pub types: Option<Vec<String>>,
+    pub max_nodes: Option<usize>,
+    pub focused_node_id: Option<i64>,  // 焦点模式：中心节点 ID
+    pub max_depth: Option<usize>,  // 焦点模式：最大关联深度（默认 1）
+}
+
 #[tauri::command]
 pub async fn get_graph_data(
     state: State<'_, Arc<AppState>>,
@@ -1854,12 +1912,85 @@ pub async fn get_graph_data(
 ) -> Result<CommandResult<GraphData>, CommandError> {
     let graph_db = &state.graph_db;
 
-    let nodes = graph_db.get_nodes(&filters).await?;
-    let edges = graph_db.get_edges(&filters).await?;
+    // 全量模式：返回所有节点和边
+    if filters.focused_node_id.is_none() {
+        let nodes = graph_db.get_all_nodes(&filters).await?;
+        let edges = graph_db.get_all_edges(&filters).await?;
+        return Ok(CommandResult {
+            data: GraphData { nodes, edges },
+        });
+    }
+
+    // 焦点模式：仅返回与指定节点相关的节点和边
+    let focused_id = filters.focused_node_id.unwrap();
+    let max_depth = filters.max_depth.unwrap_or(1);
+
+    // 获取关联节点（BFS 遍历，最多 max_depth 层）
+    let related_node_ids = graph_db
+        .get_related_nodes(focused_id, max_depth, &filters)
+        .await?;
+
+    // 获取这些节点之间的所有边
+    let edges = graph_db
+        .get_edges_between_nodes(&related_node_ids, &filters)
+        .await?;
+
+    // 获取节点数据
+    let nodes = graph_db
+        .get_nodes_by_ids(&related_node_ids)
+        .await?;
 
     Ok(CommandResult {
         data: GraphData { nodes, edges },
     })
+}
+```
+
+**焦点模式实现说明：**
+
+```rust
+// apps/desktop/src-tauri/src/db/graph.rs
+impl GraphDb {
+    /// 获取与指定节点相关的所有节点（BFS 遍历）
+    pub async fn get_related_nodes(
+        &self,
+        center_id: i64,
+        max_depth: usize,
+        filters: &GraphFilters,
+    ) -> Result<Vec<i64>, DbError> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        let mut result = HashSet::new();
+
+        queue.push_back((center_id, 0));  // (node_id, depth)
+        visited.insert(center_id);
+        result.insert(center_id);
+
+        while let Some((node_id, depth)) = queue.pop_front() {
+            if depth >= max_depth {
+                continue;
+            }
+
+            // 获取该节点的所有关联
+            let associations = self.get_associations_by_node(node_id, filters).await?;
+
+            for assoc in associations {
+                let neighbor_id = if assoc.source_id == node_id {
+                    assoc.target_id
+                } else {
+                    assoc.source_id
+                };
+
+                if !visited.contains(&neighbor_id) {
+                    visited.insert(neighbor_id);
+                    result.insert(neighbor_id);
+                    queue.push_back((neighbor_id, depth + 1));
+                }
+            }
+        }
+
+        Ok(result.into_iter().collect())
+    }
 }
 ```
 
@@ -1948,7 +2079,9 @@ impl AssociationCache {
 ```rust
 // 图谱相关
 #[tauri::command]
-pub async fn get_graph_data(filters: GraphFilters) -> Result<CommandResult<GraphData>, CommandError>
+pub async fn get_graph_data(
+    filters: GraphFilters  // 包含 focused_node_id 和 max_depth 用于焦点模式
+) -> Result<CommandResult<GraphData>, CommandError>
 
 #[tauri::command]
 pub async fn get_node_associations(node_id: String) -> Result<CommandResult<Vec<Association>>, CommandError>
@@ -2190,13 +2323,20 @@ describe('generateSummary', () => {
 
 2. **图谱数据获取 API**
    - 实现 `get_graph_data` Tauri Command
+   - 支持全量模式（返回所有节点和边）
+   - 支持焦点模式（`focused_node_id` + `max_depth`）
+   - 实现 BFS 遍历获取关联节点（焦点模式）
    - 数据格式转换（GraphData → G6 格式）
 
 3. **前端图谱可视化组件**
    - 创建 `GraphView.tsx` 组件
+   - 支持 `focusedNodeId` 和 `maxDepth` 属性（焦点模式）
    - 集成 AntV G6 实例
-   - 配置力导向布局
+   - 配置力导向布局，确保关联性越强，距离越近
+     - 使用动态 `edgeStrength` 函数（根据权重计算）
+     - 使用动态 `edgeLength` 函数（权重越高，长度越短）
    - 实现节点和边的渲染
+   - 边颜色映射（根据关联类型）
 
 4. **基础交互（拖拽、缩放、平移）**
    - 启用 G6 内置交互模式
@@ -2209,11 +2349,13 @@ describe('generateSummary', () => {
    - 实现权重阈值滑块
    - 实现布局模式切换
    - 实现重置布局功能
+   - 实现焦点模式切换（全量/焦点）
 
 6. **样式和主题**
    - 节点颜色映射（根据关联度）
    - 边颜色映射（根据关联类型）
    - 响应式布局适配
+   - 焦点模式：中心节点高亮显示
 
 ### Phase 4: Enhanced Features (P1)
 

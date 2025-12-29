@@ -1,4 +1,4 @@
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
 import { getAiConfig, getAiModel } from './config'
@@ -46,14 +46,16 @@ ${content.substring(0, 3000)}
 5. confidence 范围：0-1，表示标签的置信度`
 
   try {
-    const { object } = await generateObject({
+    const { output } = await generateText({
       model,
-      schema: TagsResponseSchema,
+      output: Output.object({
+        schema: TagsResponseSchema,
+      }),
       prompt,
       temperature: 0.5,
     })
 
-    return object.tags
+    return output.tags
       .filter((t) => t.confidence > 0.3)
       .map((t) => ({
         id: crypto.randomUUID(),

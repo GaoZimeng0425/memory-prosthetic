@@ -171,6 +171,64 @@ impl IncrementalDiscovery {
                     topic_match: None,
                 });
             }
+
+            // Keyword association
+            if let Ok(Some(weight)) = self
+                .calculator
+                .calculate_keyword_association(new_content.id, existing.id)
+                .await
+            {
+                associations.push(CreateAssociation {
+                    source_id: new_content.id,
+                    target_id: existing.id,
+                    r#type: AssociationType::Keyword.as_str().to_string(),
+                    types: None,
+                    weight,
+                    confidence: 0.6,
+                    quality_score: weight,
+                    reason: Some("auto_discovered".to_string()),
+                    user_feedback: None,
+                    is_expired: false,
+                    is_directional: false,
+                    direction: None,
+                    semantic_similarity: None,
+                    shared_tags: None,
+                    shared_folders: None,
+                    time_interval: None,
+                    domain: None,
+                    keyword_overlap: Some(weight),
+                    topic_match: None,
+                });
+            }
+
+            // Topic association
+            if let Ok(Some(weight)) = self
+                .calculator
+                .calculate_topic_association(new_content.id, existing.id)
+                .await
+            {
+                associations.push(CreateAssociation {
+                    source_id: new_content.id,
+                    target_id: existing.id,
+                    r#type: AssociationType::Topic.as_str().to_string(),
+                    types: None,
+                    weight,
+                    confidence: 0.7,
+                    quality_score: weight,
+                    reason: Some("auto_discovered".to_string()),
+                    user_feedback: None,
+                    is_expired: false,
+                    is_directional: false,
+                    direction: None,
+                    semantic_similarity: None,
+                    shared_tags: None,
+                    shared_folders: None,
+                    time_interval: None,
+                    domain: None,
+                    keyword_overlap: None,
+                    topic_match: Some(weight),
+                });
+            }
         }
 
         Ok(associations)

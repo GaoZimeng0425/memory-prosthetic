@@ -5,7 +5,7 @@
  */
 
 import { useState } from 'react'
-import { RefreshCw, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
+import { Loader2, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
 
 import type { AssociationType, GraphFilters } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -23,10 +23,11 @@ import { Slider } from '@memory-prosthetic/ui/components/ui/slider'
 interface GraphControlsProps {
   filters: GraphFilters
   onFiltersChange: (filters: GraphFilters) => void
-  onRefresh?: () => void
+  onRefresh?: () => void | Promise<void>
   onResetLayout?: () => void
   onZoomIn?: () => void
   onZoomOut?: () => void
+  isRefreshing?: boolean
 }
 
 const ASSOCIATION_TYPES: { value: AssociationType; label: string }[] = [
@@ -53,6 +54,7 @@ export function GraphControls({
   onResetLayout,
   onZoomIn,
   onZoomOut,
+  isRefreshing = false,
 }: GraphControlsProps) {
   const [layout, setLayout] = useState<string>('force')
 
@@ -104,7 +106,7 @@ export function GraphControls({
         <div className="space-y-2">
           <Label>关联类型</Label>
           <Select onValueChange={handleTypeChange} value={filters.types?.[0] ?? 'all'}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -122,7 +124,7 @@ export function GraphControls({
         <div className="space-y-2">
           <Label>最大节点数</Label>
           <Select onValueChange={handleMaxNodesChange} value={filters.maxNodes?.toString() ?? 'unlimited'}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -139,7 +141,7 @@ export function GraphControls({
         <div className="space-y-2">
           <Label>布局模式</Label>
           <Select onValueChange={setLayout} value={layout}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -153,11 +155,15 @@ export function GraphControls({
         </div>
 
         {/* 操作按钮 */}
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex w-full flex-col flex-wrap gap-2 pt-2">
           {onRefresh && (
-            <Button onClick={onRefresh} size="sm" variant="outline">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              刷新
+            <Button disabled={isRefreshing} onClick={onRefresh} size="sm" variant="outline">
+              {isRefreshing ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-2 h-4 w-4" />
+              )}
+              {isRefreshing ? '发现关联中...' : '刷新并发现关联'}
             </Button>
           )}
           {onResetLayout && (

@@ -10,10 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "trayIcon": {
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": true
-    },
+    "macOSPrivateApi": true,
     "windows": [
       {
         "label": "main",
@@ -42,7 +39,7 @@
         "visible": false,
         "skipTaskbar": true,
         "focus": true,
-        "shadow": false,
+        "shadow": true,
         "hiddenTitle": true
       }
     ],

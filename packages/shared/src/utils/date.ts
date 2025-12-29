@@ -13,7 +13,7 @@ const getLocalTimeZone = (): string => {
  * 解析日期字符串为本地时区的 TZDate
  * 后端存储 UTC 时间（SQLite datetime('now')），前端显示本地时间
  */
-const parseToLocalTZ = (dateString: string): TZDate => {
+export const parseToLocalTZ = (dateString: string): TZDate => {
   const localTZ = getLocalTimeZone()
 
   // 如果已经有时区信息（Z 或 +/-），直接使用
@@ -55,6 +55,18 @@ export const isWithinDays = (dateString: string, days = 7): boolean => {
   const date = parseToLocalTZ(dateString)
   const now = new Date()
   return isWithinInterval(date, { start: subDays(now, days), end: now })
+}
+
+/**
+ * 比较两个日期字符串
+ * @param dateStringA 第一个日期字符串
+ * @param dateStringB 第二个日期字符串
+ * @returns 负数表示 A < B，0 表示 A = B，正数表示 A > B
+ */
+export const compareDates = (dateStringA: string, dateStringB: string): number => {
+  const dateA = parseToLocalTZ(dateStringA).getTime()
+  const dateB = parseToLocalTZ(dateStringB).getTime()
+  return dateA - dateB
 }
 
 /**

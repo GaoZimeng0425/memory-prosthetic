@@ -4,12 +4,13 @@
  * Displays a list of tags with expand/collapse functionality.
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
-import { ChevronDown, ChevronRight, Hash, Pencil, Plus, SortAsc, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Hash, Pencil, Plus, SortAsc, SortDesc, Trash2 } from 'lucide-react'
 
 import type { Tag } from '@memory-prosthetic/shared'
 import type { TagSortOrder } from '@memory-prosthetic/shared/apis'
+import { compareDates } from '@memory-prosthetic/shared/utils/date'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
   ContextMenu,
@@ -34,12 +35,56 @@ interface TagsListProps {
   onTagChange?: () => void
 }
 
+type SortDirection = 'asc' | 'desc'
+
 export function TagsList({ isCollapsed, onCreateClick, onTagChange }: TagsListProps) {
   const [isExpanded, setIsExpanded] = useState(true)
   const [sortOrder, setSortOrder] = useState<TagSortOrder>('name')
-  const { tags, isLoading } = useTags(sortOrder)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const { tags: rawTags, isLoading } = useTags(sortOrder)
   const params = useParams({ strict: false })
   const activeTagId = params.tagId ? Number(params.tagId) : null
+
+  // 根据排序方向和排序字段对标签进行排序
+  const tags = useMemo(() => {
+    if (!rawTags.length) return rawTags
+
+    // 对于使用频率排序，后端已经按降序返回，我们只需要根据方向决定是否反转
+    if (sortOrder === 'usage') {
+      return sortDirection === 'desc' ? rawTags : [...rawTags].reverse()
+    }
+
+    // 对于名称和创建时间，在前端排序
+    const sorted = [...rawTags].sort((a, b) => {
+      let comparison = 0
+
+      switch (sortOrder) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name, 'zh-CN', { numeric: true })
+          break
+        case 'created': {
+          comparison = compareDates(a.createdAt, b.createdAt)
+          break
+        }
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+
+    return sorted
+  }, [rawTags, sortOrder, sortDirection])
+
+  // 处理排序字段点击：如果当前字段相同则切换方向，否则设置为该字段且方向为正序
+  const handleSortFieldClick = (field: TagSortOrder) => {
+    if (sortOrder === field) {
+      // 相同字段，切换方向
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      // 不同字段，设置为该字段且方向为正序
+      setSortOrder(field)
+      setSortDirection('asc')
+    }
+  }
 
   if (isCollapsed) {
     return (
@@ -70,22 +115,47 @@ export function TagsList({ isCollapsed, onCreateClick, onTagChange }: TagsListPr
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <span className="font-medium text-xs">标签</span>
           </Button>
+        </div>
+        <div className="flex items-center gap-0.5">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="h-6 w-6 p-0" size="icon" variant="ghost">
-                <SortAsc className="h-3 w-3" />
+              <Button
+                className="h-6 w-6 p-0"
+                size="icon"
+                title={`排序: ${sortOrder === 'name' ? '名称' : sortOrder === 'usage' ? '使用频率' : '创建时间'} (${
+                  sortDirection === 'asc' ? '正序' : '倒序'
+                })`}
+                variant="ghost"
+              >
+                {sortDirection === 'asc' ? <SortAsc className="h-3 w-3" /> : <SortDesc className="h-3 w-3" />}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setSortOrder('name')}>按名称排序</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortOrder('usage')}>按使用频率排序</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortOrder('created')}>按创建时间排序</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortFieldClick('name')}>
+                <span className="flex-1">按名称排序</span>
+                {sortOrder === 'name' && (
+                  <span className="mr-1 text-muted-foreground text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortFieldClick('usage')}>
+                <span className="flex-1">按使用频率排序</span>
+                {sortOrder === 'usage' && (
+                  <span className="mr-1 text-muted-foreground text-xs">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSortFieldClick('created')}>
+                <span className="flex-1">按创建时间排序</span>
+                {sortOrder === 'created' && (
+                  <span className="mr-1 text-muted-foreground text-xs">{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <Button className="h-6 w-6 p-0" onClick={onCreateClick} size="icon" title="创建标签" variant="ghost">
+            <Plus className="h-3 w-3" />
+          </Button>
         </div>
-        <Button className="h-6 w-6 p-0" onClick={onCreateClick} size="icon" title="创建标签" variant="ghost">
-          <Plus className="h-3 w-3" />
-        </Button>
       </div>
 
       {/* Tags List */}

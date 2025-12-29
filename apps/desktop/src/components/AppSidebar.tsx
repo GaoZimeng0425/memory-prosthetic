@@ -238,11 +238,12 @@ export const AppSidebar = ({
         {/* Toggle Button */}
         <Button
           className={cn(
-            'mt-1 w-full justify-end text-muted-foreground hover:text-foreground',
+            'mt-1 w-full justify-start gap-2 text-muted-foreground hover:text-foreground',
             isCollapsed && 'justify-center px-0'
           )}
           onClick={toggleState}
-          size="icon"
+          size={isCollapsed ? 'icon' : 'sm'}
+          title={isCollapsed ? '折叠' : undefined}
           variant="ghost"
         >
           <PanelLeftIcon />

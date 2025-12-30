@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Brain, ChevronDown, FileText, Key, Lightbulb, Loader2, Settings, Sparkles } from 'lucide-react'
+import { BookOpen, Brain, FileText, Key, Lightbulb, Loader2, Settings, Sparkles } from 'lucide-react'
 
 import type { AiMetadata, Collection } from '@memory-prosthetic/shared'
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
@@ -124,11 +124,12 @@ export const AiButton = ({ article }: AiButtonProps) => {
   if (!isConfigured || !enabled) {
     return (
       <Button
+        aria-label="Go Back"
         className="text-muted-foreground hover:text-foreground"
         onClick={handleOpenSettings}
-        size="sm"
+        size="icon"
         title="配置 AI 功能"
-        variant="ghost"
+        variant="outline"
       >
         <Sparkles className="mr-2 h-4 w-4 text-primary" />
         AI
@@ -143,17 +144,12 @@ export const AiButton = ({ article }: AiButtonProps) => {
     <Popover onOpenChange={setIsOpen} open={isOpen}>
       <PopoverTrigger asChild>
         <Button
-          className={cn('text-muted-foreground hover:text-foreground', isProcessing && 'text-primary')}
-          size="sm"
+          aria-label="AI Content Analysis"
+          className={cn(isProcessing && 'text-primary')}
+          size="icon"
           variant="ghost"
         >
-          {isProcessing ? (
-            <Loader2 className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Sparkles className="mr-2 size-4 text-primary" />
-          )}
-          AI 分析
-          <ChevronDown className="ml-1 h-3 w-3" />
+          {isProcessing ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4 text-primary" />}
         </Button>
       </PopoverTrigger>
 

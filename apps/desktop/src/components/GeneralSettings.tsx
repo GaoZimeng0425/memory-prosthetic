@@ -1,20 +1,6 @@
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import {
-  Check,
-  Code,
-  Copy,
-  ExternalLink,
-  Info,
-  Keyboard,
-  Monitor,
-  Moon,
-  Palette,
-  Power,
-  Sun,
-  Trash2,
-  X,
-} from 'lucide-react'
+import { Check, Code, Copy, ExternalLink, Info, Keyboard, Palette, Power, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
@@ -28,15 +14,9 @@ import {
   SelectValue,
 } from '@memory-prosthetic/ui/components/ui/select'
 import { Switch } from '@memory-prosthetic/ui/components/ui/switch'
-import { type Theme, useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
+import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import type { AppSettings, AutoCleanupDeleted, CommandResult, ShortcutConfig } from '@/types/api'
 import { formatShortcut } from '@/types/settings'
-
-const THEME_OPTIONS: { value: Theme; label: string; icon: React.ReactNode }[] = [
-  { value: 'light', label: '浅色', icon: <Sun className="h-4 w-4" /> },
-  { value: 'dark', label: '深色', icon: <Moon className="h-4 w-4" /> },
-  { value: 'system', label: '跟随系统', icon: <Monitor className="h-4 w-4" /> },
-]
 
 interface GeneralSettingsProps {
   settings: AppSettings
@@ -49,7 +29,7 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
   const [error, setError] = useState<string | null>(null)
   const [isCopyingMcpConfig, setIsCopyingMcpConfig] = useState(false)
   const [isOpeningCursorConfig, setIsOpeningCursorConfig] = useState(false)
-  const { theme, setTheme } = useTheme()
+  const { theme, setTheme, themeOptions } = useTheme()
 
   const mcpServerUrl = `http://127.0.0.1:${settings.serverPort}/mcp`
 
@@ -223,7 +203,7 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
               <p className="text-muted-foreground text-xs">选择应用的颜色主题</p>
             </div>
             <div className="flex gap-1">
-              {THEME_OPTIONS.map((option) => (
+              {themeOptions.map((option) => (
                 <Button
                   className="gap-1.5"
                   key={option.value}

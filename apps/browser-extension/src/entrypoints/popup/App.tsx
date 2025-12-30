@@ -1,6 +1,8 @@
 import { CheckCircle2, Clock, FileText, Loader2, XCircle } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
+import { ButtonGroup } from '@memory-prosthetic/ui/components/ui/button-group'
+import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { useCollect } from '@/hooks/use-collect'
 import { useConnection } from '@/hooks/use-connection'
 
@@ -27,6 +29,7 @@ function App() {
 
   // Truncate content for preview
   const previewText = preview?.content.slice(0, 200) || ''
+  const { themeOptions, theme, setTheme } = useTheme()
 
   return (
     <div className="w-80 bg-background p-4 text-foreground">
@@ -151,14 +154,20 @@ function App() {
 
       {/* Footer */}
       <footer className="border-border border-t pt-3 text-center">
-        <a
-          className="text-muted-foreground text-xs no-underline hover:text-foreground hover:underline"
-          href="https://github.com/memory-prosthetic"
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          帮助 & 文档
-        </a>
+        <ButtonGroup>
+          {themeOptions.map((option) => (
+            <Button
+              key={option.value}
+              onClick={() => {
+                setTheme(option.value)
+              }}
+              size="icon"
+              variant={theme === option.value ? 'default' : 'outline'}
+            >
+              {option.icon}
+            </Button>
+          ))}
+        </ButtonGroup>
       </footer>
     </div>
   )

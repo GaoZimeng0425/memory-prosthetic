@@ -1,6 +1,5 @@
-'use client'
-
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
+import { Monitor, Moon, Sun } from 'lucide-react'
 
 export type Theme = 'light' | 'dark' | 'system'
 type ResolvedTheme = 'light' | 'dark'
@@ -12,7 +11,7 @@ interface ThemeProviderProps {
   /** Storage key for persisting theme */
   storageKey?: string
   /** Custom storage adapter (defaults to localStorage) */
-  storage?: {
+  storageAdapter: {
     getItem: (key: string) => string | null | Promise<string | null>
     setItem: (key: string, value: string) => void | Promise<void>
   }
@@ -25,6 +24,7 @@ interface ThemeContextValue {
   resolvedTheme: ResolvedTheme
   setTheme: (theme: Theme) => void
   themes: Theme[]
+  themeOptions: { value: Theme; label: string; icon: React.ReactNode }[]
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined)
@@ -42,11 +42,17 @@ function applyThemeToDOM(theme: ResolvedTheme) {
   root.classList.add(theme)
 }
 
+export const THEME_OPTIONS: { value: Theme; label: string; icon: React.ReactNode }[] = [
+  { value: 'light', label: '浅色', icon: <Sun className="size-4" /> },
+  { value: 'dark', label: '深色', icon: <Moon className="size-4" /> },
+  { value: 'system', label: '跟随系统', icon: <Monitor className="size-4" /> },
+]
+
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
   storageKey = 'theme',
-  storage,
+  storageAdapter,
   onThemeChange,
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(defaultTheme)
@@ -62,11 +68,6 @@ export function ThemeProvider({
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const storageAdapter = storage ?? {
-          getItem: (key: string) => localStorage.getItem(key),
-          setItem: (key: string, value: string) => localStorage.setItem(key, value),
-        }
-
         const stored = await storageAdapter.getItem(storageKey)
         if (stored && ['light', 'dark', 'system'].includes(stored)) {
           setThemeState(stored as Theme)
@@ -79,7 +80,7 @@ export function ThemeProvider({
     }
 
     void loadTheme()
-  }, [storageKey, storage])
+  }, [storageKey, storageAdapter])
 
   // Update resolved theme and apply to DOM
   useEffect(() => {
@@ -109,11 +110,6 @@ export function ThemeProvider({
     setThemeState(newTheme)
 
     // Persist to storage
-    const storageAdapter = storage ?? {
-      getItem: (key: string) => localStorage.getItem(key),
-      setItem: (key: string, value: string) => localStorage.setItem(key, value),
-    }
-
     void storageAdapter.setItem(storageKey, newTheme)
 
     // Notify callback
@@ -134,6 +130,7 @@ export function ThemeProvider({
         resolvedTheme,
         setTheme,
         themes: ['light', 'dark', 'system'],
+        themeOptions: THEME_OPTIONS,
       }}
     >
       {children}

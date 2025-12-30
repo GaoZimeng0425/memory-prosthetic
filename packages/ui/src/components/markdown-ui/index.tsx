@@ -156,7 +156,7 @@ const CustomLink = ({
         // Try to find headings that might match
         const allHeadings = scrollAreaRef?.current?.querySelectorAll('h1, h2, h3, h4, h5, h6') || []
         for (const heading of allHeadings) {
-          if (heading.textContent.toLocaleLowerCase() === targetId.toLocaleLowerCase()) {
+          if (heading.textContent?.toLocaleLowerCase() === targetId.toLocaleLowerCase()) {
             targetElement = heading
             break
           }

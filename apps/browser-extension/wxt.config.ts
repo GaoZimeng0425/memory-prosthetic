@@ -2,9 +2,32 @@ import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import TurboConsole from 'unplugin-turbo-console/vite'
+import type { Plugin } from 'vite'
 import { imagetools } from 'vite-imagetools'
 import svgr from 'vite-plugin-svgr'
 import { defineConfig } from 'wxt'
+
+// Plugin to handle wxt/utils/storage resolution issues
+// Since we're using browser.storage.local directly, we can ignore wxt/utils/storage imports
+const wxtStorageResolver = (): Plugin => {
+  return {
+    name: 'wxt-storage-resolver',
+    resolveId(id) {
+      // Ignore wxt/utils/storage imports (we use browser.storage.local directly)
+      if (id === 'wxt/utils/storage') {
+        return '\0virtual:wxt-storage'
+      }
+      return null
+    },
+    load(id) {
+      // Return empty module for virtual wxt-storage
+      if (id === '\0virtual:wxt-storage') {
+        return '// Virtual module - using browser.storage.local directly instead'
+      }
+      return null
+    },
+  }
+}
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -18,6 +41,7 @@ export default defineConfig({
         },
       },
       plugins: [
+        wxtStorageResolver(),
         react({
           babel: {
             plugins: ['babel-plugin-react-compiler'],

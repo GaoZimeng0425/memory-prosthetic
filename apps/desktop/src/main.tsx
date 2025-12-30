@@ -40,7 +40,12 @@ const handleThemeChange = async (theme: Theme) => {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryProvider>
-      <ThemeProvider defaultTheme="dark" onThemeChange={handleThemeChange} storage={tauriStorage} storageKey="theme">
+      <ThemeProvider
+        defaultTheme="dark"
+        onThemeChange={handleThemeChange}
+        storageAdapter={tauriStorage}
+        storageKey="theme"
+      >
         <AiConfigProvider>
           <AppRouterProvider queryClient={getQueryClient()} />
           <Toaster />

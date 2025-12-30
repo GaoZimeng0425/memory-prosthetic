@@ -9,7 +9,7 @@
  * - Interactive hover and click effects
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import type { IElementEvent } from '@antv/g6'
 import { CanvasEvent, Graph as G6Graph, NodeEvent } from '@antv/g6'
 import { useQuery } from '@tanstack/react-query'
@@ -141,7 +141,14 @@ type GraphViewProps = {
   onEdgeClick?: (edgeId: string) => void
 }
 
-export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps) => {
+export type GraphViewRef = {
+  zoomIn: () => void
+  zoomOut: () => void
+  fitView: () => void
+  getGraph: () => G6Graph | null
+}
+
+export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ filters, onNodeClick, onEdgeClick }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<G6Graph | null>(null)
   const [tooltipInfo, setTooltipInfo] = useState<TooltipInfo>(null)
@@ -201,36 +208,55 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
       }
     })
 
-    // 构建边数据，添加动态距离和强度属性（用于力导向布局）
-    const edges: GraphEdgeData[] = graphData.edges.map((edge) => {
-      const weight = edge.weight
-      // 权重范围 0-1，映射到距离范围 30-150（权重越高，距离越短，关联节点更近）
-      const distance = 400 - weight * 50
-      // 权重范围 0-1，映射到强度范围 0.3-0.9（权重越高，强度越大，拉得更紧）
-      const strength = 0.3 + weight * 0.6
+    // 创建节点 ID 集合，用于验证边引用的节点是否存在
+    const nodeIdSet = new Set<string>(nodes.map((node) => node.id))
 
-      return {
-        id: edge.id,
-        source: String(edge.sourceId),
-        target: String(edge.targetId),
-        data: {
-          type: edge.type,
-          weight: edge.weight,
-          confidence: edge.confidence,
-          distance, // 用于布局的距离
-          strength, // 用于布局的强度
-          // 关联详情
-          semanticSimilarity: edge.semanticSimilarity,
-          sharedTags: edge.sharedTags,
-          sharedFolders: edge.sharedFolders,
-          timeInterval: edge.timeInterval,
-          domain: edge.domain,
-          keywordOverlap: edge.keywordOverlap,
-          topicMatch: edge.topicMatch,
-          originalEdge: edge, // 保存原始边数据引用
-        },
-      }
-    })
+    // 构建边数据，添加动态距离和强度属性（用于力导向布局）
+    // 过滤掉引用了不存在节点的边，避免 G6 报错
+    const edges: GraphEdgeData[] = graphData.edges
+      .filter((edge) => {
+        const sourceId = String(edge.sourceId)
+        const targetId = String(edge.targetId)
+        const sourceExists = nodeIdSet.has(sourceId)
+        const targetExists = nodeIdSet.has(targetId)
+
+        if (!sourceExists || !targetExists) {
+          console.warn(
+            `⚠️ GraphView: 过滤掉引用不存在节点的边 ${edge.id}: sourceId=${edge.sourceId} (exists: ${sourceExists}), targetId=${edge.targetId} (exists: ${targetExists})`
+          )
+          return false
+        }
+        return true
+      })
+      .map((edge) => {
+        const weight = edge.weight
+        // 权重范围 0-1，映射到距离范围 30-150（权重越高，距离越短，关联节点更近）
+        const distance = 400 - weight * 50
+        // 权重范围 0-1，映射到强度范围 0.3-0.9（权重越高，强度越大，拉得更紧）
+        const strength = 0.3 + weight * 0.6
+
+        return {
+          id: edge.id,
+          source: String(edge.sourceId),
+          target: String(edge.targetId),
+          data: {
+            type: edge.type,
+            weight: edge.weight,
+            confidence: edge.confidence,
+            distance, // 用于布局的距离
+            strength, // 用于布局的强度
+            // 关联详情
+            semanticSimilarity: edge.semanticSimilarity,
+            sharedTags: edge.sharedTags,
+            sharedFolders: edge.sharedFolders,
+            timeInterval: edge.timeInterval,
+            domain: edge.domain,
+            keywordOverlap: edge.keywordOverlap,
+            topicMatch: edge.topicMatch,
+            originalEdge: edge, // 保存原始边数据引用
+          },
+        }
+      })
 
     // 创建节点 ID 到标题的映射，用于 tooltip 显示
     const nodeIdToTitle = new Map<string, string>()
@@ -546,6 +572,56 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
     void refetch()
   }, [refetch])
 
+  // 暴露控制方法给父组件
+  useImperativeHandle(ref, () => ({
+    zoomIn: () => {
+      if (graphRef.current) {
+        try {
+          const graph = graphRef.current as unknown as {
+            getZoom?: () => number
+            zoom?: (ratio: number) => void
+            zoomTo?: (ratio: number) => void
+          }
+          const currentZoom = graph.getZoom?.() ?? 1
+          const newZoom = currentZoom * 1.2
+          graph.zoomTo?.(newZoom) || graph.zoom?.(newZoom)
+        } catch (error) {
+          console.error('Zoom in failed:', error)
+        }
+      }
+    },
+    zoomOut: () => {
+      if (graphRef.current) {
+        try {
+          const graph = graphRef.current as unknown as {
+            getZoom?: () => number
+            zoom?: (ratio: number) => void
+            zoomTo?: (ratio: number) => void
+          }
+          const currentZoom = graph.getZoom?.() ?? 1
+          const newZoom = Math.max(0.1, currentZoom * 0.8)
+          graph.zoomTo?.(newZoom) || graph.zoom?.(newZoom)
+        } catch (error) {
+          console.error('Zoom out failed:', error)
+        }
+      }
+    },
+    fitView: () => {
+      if (graphRef.current) {
+        try {
+          const graph = graphRef.current as unknown as {
+            fitView?: () => void
+            fit?: () => void
+          }
+          graph.fitView?.() || graph.fit?.()
+        } catch (error) {
+          console.error('Fit view failed:', error)
+        }
+      }
+    },
+    getGraph: () => graphRef.current,
+  }))
+
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-slate-50 to-slate-100">
@@ -622,7 +698,9 @@ export const GraphView = ({ filters, onNodeClick, onEdgeClick }: GraphViewProps)
       ))}
     </div>
   )
-}
+})
+
+GraphView.displayName = 'GraphView'
 
 // 图例项组件
 const LegendItem = ({ color, label }: { color: string; label: string }) => (

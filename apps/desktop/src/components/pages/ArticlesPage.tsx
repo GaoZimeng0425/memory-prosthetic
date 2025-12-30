@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { toast } from 'sonner'
 
 import { isWithinDays } from '@memory-prosthetic/shared/utils/date'
 import { collections as collectionsApi } from '@/apis'
-import { ArticleReader } from '@/components/ArticleReader'
-import { ArticleList } from '@/components/article-list'
+import { ArticlesLayout } from '@/components/layouts/ArticlesLayout'
 import { useAppNavigation } from '@/hooks/use-app-navigation'
 import { useCollections } from '@/hooks/use-collections'
 import { useFavorites } from '@/hooks/use-favorites'
@@ -25,6 +25,16 @@ export function ArticlesPage() {
 
   // Article state - loaded from route params
   const [isReaderMaximized, setIsReaderMaximized] = useState(false)
+  // Delete dialog state
+  const [deleteDialogState, setDeleteDialogState] = useState<{
+    open: boolean
+    id: number | null
+    isPermanent: boolean
+  }>({
+    open: false,
+    id: null,
+    isPermanent: false,
+  })
 
   // Load article when route params change using React Query
   const { data: selectedArticle, isLoading: isArticleLoading } = useQuery({
@@ -58,7 +68,7 @@ export function ArticlesPage() {
           params: { tagId: String(activeTagId), articleId: String(id) },
         }
       }
-      return { to: '/article/$articleId' as const, params: { articleId: String(id) } }
+      return { to: '/all/article/$articleId' as const, params: { articleId: String(id) }, resetScroll: false }
     },
     [activeNav, activeFavoriteId, activeTagId]
   )
@@ -83,7 +93,7 @@ export function ArticlesPage() {
     if (activeNav === 'tag' && activeTagId !== null) {
       return { to: '/tag/$tagId' as const, params: { tagId: String(activeTagId) } }
     }
-    return { to: '/' as const }
+    return { to: '/all' as const }
   }, [activeNav, activeFavoriteId, activeTagId])
 
   // Handle article selection - only navigates, data loading is handled by useEffect
@@ -93,20 +103,6 @@ export function ArticlesPage() {
     },
     [navigate, getArticleRoute]
   )
-
-  // Handle navigation back when article is deleted
-  useEffect(() => {
-    const handleDeleteCollection = (event: CustomEvent<{ id: number; isPermanent: boolean }>) => {
-      if (articleId === event.detail.id) {
-        void navigate(getParentRoute())
-      }
-    }
-
-    window.addEventListener('delete-collection-confirmed', handleDeleteCollection as EventListener)
-    return () => {
-      window.removeEventListener('delete-collection-confirmed', handleDeleteCollection as EventListener)
-    }
-  }, [articleId, navigate, getParentRoute])
 
   // Collections data - filter by favorite, tags, or status if active
   const collectionParams = useMemo(() => {
@@ -135,6 +131,8 @@ export function ArticlesPage() {
     restore,
     setFavorite,
     toggleStar,
+    delete: deleteCollection,
+    permanentlyDelete,
   } = useCollections(collectionParams)
   const { favorites } = useFavorites()
   const { tags } = useTags()
@@ -211,8 +209,11 @@ export function ArticlesPage() {
   )
 
   const handleDelete = useCallback((id: number) => {
-    // Delete dialog will be handled by App.tsx via events
-    window.dispatchEvent(new CustomEvent('delete-collection', { detail: { id, isPermanent: false } }))
+    setDeleteDialogState({
+      open: true,
+      id,
+      isPermanent: false,
+    })
   }, [])
 
   const handleOpenUrl = useCallback((url: string) => {
@@ -242,9 +243,38 @@ export function ArticlesPage() {
   )
 
   const handlePermanentDelete = useCallback((id: number) => {
-    // Delete dialog will be handled by App.tsx via events
-    window.dispatchEvent(new CustomEvent('delete-collection', { detail: { id, isPermanent: true } }))
+    setDeleteDialogState({
+      open: true,
+      id,
+      isPermanent: true,
+    })
   }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (deleteDialogState.id === null) return
+
+    const deletedId = deleteDialogState.id
+
+    try {
+      if (deleteDialogState.isPermanent) {
+        await permanentlyDelete(deletedId)
+        toast.success('已永久删除')
+      } else {
+        await deleteCollection(deletedId)
+        toast.success('已删除')
+      }
+
+      // Navigate back if the deleted article is currently being viewed
+      if (articleId === deletedId) {
+        void navigate(getParentRoute())
+      }
+
+      setDeleteDialogState({ open: false, id: null, isPermanent: false })
+    } catch (error) {
+      console.error('Failed to delete collection:', error)
+      toast.error(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }, [deleteDialogState, deleteCollection, permanentlyDelete, articleId, navigate, getParentRoute])
 
   const handleRestore = useCallback(
     async (id: number) => {
@@ -258,36 +288,28 @@ export function ArticlesPage() {
   )
 
   return (
-    <>
-      {/* Article List */}
-      <ArticleList
-        className="pt-4"
-        collections={filteredCollections}
-        filterHint={filterHint ?? undefined}
-        isLoading={collectionsLoading}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onOpenUrl={handleOpenUrl}
-        onSelect={handleSelectArticle}
-        onToggleStar={handleToggleStar}
-        selectedId={articleId}
-      />
-
-      {/* Article Reader */}
-      <ArticleReader
-        article={selectedArticle ?? null}
-        className="pt-4"
-        isLoading={isArticleLoading}
-        isMaximized={isReaderMaximized}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onOpenUrl={handleOpenUrl}
-        onPermanentDelete={handlePermanentDelete}
-        onRestore={handleRestore}
-        onSetFavorite={handleSetFavorite}
-        onToggleMaximize={() => setIsReaderMaximized((m) => !m)}
-        onToggleStar={handleToggleStar}
-      />
-    </>
+    <ArticlesLayout
+      article={selectedArticle ?? null}
+      collections={filteredCollections}
+      deleteDialogState={deleteDialogState}
+      filterHint={filterHint ?? undefined}
+      isArticleLoading={isArticleLoading}
+      isLoading={collectionsLoading}
+      isReaderMaximized={isReaderMaximized}
+      onArchive={handleArchive}
+      onCloseDeleteDialog={() => {
+        setDeleteDialogState({ open: false, id: null, isPermanent: false })
+      }}
+      onConfirmDelete={handleConfirmDelete}
+      onDelete={handleDelete}
+      onOpenUrl={handleOpenUrl}
+      onPermanentDelete={handlePermanentDelete}
+      onRestore={handleRestore}
+      onSelect={handleSelectArticle}
+      onSetFavorite={handleSetFavorite}
+      onToggleMaximize={() => setIsReaderMaximized((m) => !m)}
+      onToggleStar={handleToggleStar}
+      selectedId={articleId}
+    />
   )
 }

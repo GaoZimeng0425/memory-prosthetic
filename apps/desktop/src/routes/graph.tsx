@@ -17,7 +17,7 @@ function GraphPageRoute() {
 
   const handleNodeSelect = (nodeId: number) => {
     // 点击节点时，切换到文章列表并选中该文章
-    void navigate({ to: '/article/$articleId', params: { articleId: String(nodeId) } })
+    void navigate({ to: '/all/article/$articleId', params: { articleId: String(nodeId) }, resetScroll: false })
   }
 
   return <GraphPage filters={graphFilters} onFiltersChange={setGraphFilters} onNodeSelect={handleNodeSelect} />

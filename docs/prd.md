@@ -16,8 +16,8 @@ documentCounts:
   projectDocs: 6
 workflowType: 'prd'
 lastStep: 11
-revision: 2
-revisionDate: '2025-12-22'
+revision: 3
+revisionDate: '2025-01-27'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
@@ -82,6 +82,8 @@ date: '2025-12-21'
 | **UI 组件** | shadcn/ui | 53 个可访问组件 |
 | **构建工具** | Vite 7.x | 快速 HMR |
 | **浏览器插件** | WXT + React + TypeScript | 内容收集 |
+| **HTTP Server** | Axum (Rust) | 本地 HTTP Server，集成 MCP 端点 |
+| **MCP SDK** | rmcp (Rust) | 官方 MCP Rust SDK，实现 MCP 协议 |
 | **仓库结构** | Monorepo (Bun Workspaces) | 应用分离，代码共享 |
 
 ### 架构决策
@@ -220,6 +222,7 @@ memory-prosthetic/
 | **AI 自动摘要/标签** | 先验证搜索核心价值 |
 | **内容高亮** | 提升搜索准确率 |
 | **数据导入导出** | 先跑通核心，再考虑迁移 |
+| **MCP 集成** | ✅ 已完成 - MCP 功能已集成到桌面应用 HTTP Server 中，通过 `/mcp` 端点提供服务，支持 AI 助手通过自然语言调用搜索功能 |
 
 **Beta 阶段（3 月）**
 
@@ -347,10 +350,13 @@ memory-prosthetic/
 
 | 组件 | 技术栈 | 职责 |
 |------|--------|------|
-| **桌面应用** | Tauri 2.x + React 19 | 主应用、搜索界面、内容存储、AI 推理 |
+| **桌面应用** | Tauri 2.x + React 19 | 主应用、搜索界面、内容存储、AI 推理、MCP 服务器 |
 | **浏览器插件** | WXT + React + TypeScript | 内容收集、一键保存 |
 
-通信方式：浏览器插件通过 **本地 HTTP Server** 与桌面应用同步数据。
+通信方式：
+
+- 浏览器插件通过 **本地 HTTP Server** 与桌面应用同步数据
+- AI 助手通过 **MCP 协议**（集成在 HTTP Server 中）调用搜索功能
 
 ### 平台支持
 
@@ -441,7 +447,8 @@ memory-prosthetic/
 |------|------|------|
 | `POST /api/collect` | POST | 收集新内容 |
 | `GET /api/health` | GET | 检查应用是否运行 |
-| `GET /api/search?q=...` | GET | 执行搜索（可选，供插件预览） |
+| `POST /api/search` | POST | 执行语义搜索（供浏览器插件和 MCP 客户端调用） |
+| `POST /mcp` | POST | MCP 协议端点（Streamable HTTP），供 AI 助手连接 |
 
 ### 离线能力
 
@@ -451,6 +458,105 @@ memory-prosthetic/
 | **AI 推理** | 本地 Embedding 模型（如 all-MiniLM-L6-v2） |
 | **网络依赖** | 仅用于可选的云同步（未来功能） |
 | **离线搜索** | 100% 可用，无网络时所有核心功能正常 |
+
+### MCP 集成需求 (MCP Protocol Integration)
+
+#### 架构概述
+
+MCP（Model Context Protocol）功能已集成到桌面应用的 Rust HTTP Server 中，作为后端 HTTP Server 的一部分，无需独立的 Node.js 项目。
+
+**架构优势：**
+
+- **统一架构** - MCP 功能与现有 HTTP Server 统一管理
+- **简化部署** - 无需单独部署和维护 Node.js 项目
+- **减少依赖** - 消除对 Node.js 运行时的依赖
+- **性能优化** - Rust 实现的性能优势
+- **配置简化** - 用户只需配置 URL，无需管理本地文件
+
+#### 技术栈选择
+
+| 技术 | 说明 |
+|------|------|
+| **协议** | [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - AI 助手与外部工具交互的标准协议 |
+| **实现** | Rust + [rmcp SDK](https://github.com/modelcontextprotocol/rust-sdk) - 官方 MCP Rust SDK |
+| **传输方式** | Streamable HTTP（MCP 协议标准） |
+| **集成位置** | 桌面应用 HTTP Server（Axum）中的 `/mcp` 端点 |
+| **通信** | MCP 端点直接调用桌面应用的 `/api/search` 接口 |
+
+#### MCP 选择优势
+
+| 优势 | 说明 |
+|------|------|
+| **标准化** | MCP 是开放协议，支持多种 AI 助手（Claude Desktop、Cursor 等） |
+| **自然语言** | 用户可以通过自然语言指令调用搜索功能 |
+| **扩展性** | 未来可以扩展更多功能（如内容收集、标签管理等） |
+| **配置简化** | AI 助手只需配置 URL `http://127.0.0.1:21890/mcp`，无需下载或管理本地文件 |
+| **零配置** | 桌面应用启动后，MCP 端点自动可用 |
+
+#### MCP 实现结构
+
+```
+apps/desktop/src-tauri/src/
+├── server/
+│   ├── routes.rs          # 添加 /mcp 路由
+│   ├── handlers.rs        # 现有 API handlers
+│   └── mcp/               # MCP 模块
+│       ├── mod.rs          # MCP 模块入口
+│       ├── service.rs      # MCP Service 实现（使用 rmcp SDK）
+│       ├── tools.rs        # 工具实现（search）
+│       └── transport.rs    # HTTP 传输适配
+```
+
+#### MCP 功能
+
+| 功能 | 说明 | 优先级 |
+|------|------|--------|
+| **MCP 协议端点** | 实现 `/mcp` 端点，支持 Streamable HTTP 传输 | P0 |
+| **搜索工具** | 实现 MCP `search` 工具，调用 `/api/search` 接口 | P0 |
+| **自然语言解析** | 解析用户指令（如"使用 MP 搜索 React 文章"），提取搜索关键词 | P0 |
+| **错误处理** | 检测桌面应用状态，未运行时返回友好提示 | P0 |
+| **协议初始化** | 处理 MCP 客户端初始化请求 | P0 |
+| **工具列表** | 返回可用工具列表（当前：`search`） | P0 |
+
+#### MCP 配置方式
+
+**AI 助手配置示例（Claude Desktop / Cursor）：**
+
+```json
+{
+  "memory-prosthetic": {
+    "url": "http://127.0.0.1:21890/mcp"
+  }
+}
+```
+
+**配置优势：**
+
+- ✅ **无需本地文件** - 用户不再需要下载 JavaScript 文件
+- ✅ **无需文件路径** - 用户不再需要在配置文件中指定本地文件路径
+- ✅ **自动可用** - 桌面应用启动后，MCP 端点自动可用
+- ✅ **统一端口** - 所有功能（浏览器扩展、MCP）通过同一 HTTP Server 访问
+
+#### MCP 使用场景
+
+**场景 1：AI 助手搜索**
+
+用户在与 AI 助手对话时：
+
+- 用户："使用 MP 搜索 React 文章"
+- AI 助手通过 MCP 协议连接到 `http://127.0.0.1:21890/mcp`
+- MCP 端点接收请求，解析指令，提取"React"作为搜索关键词
+- MCP 端点调用桌面应用的 `/api/search` 接口
+- 返回格式化的搜索结果给 AI 助手
+- AI 助手将结果呈现给用户
+
+**场景 2：内容查询**
+
+用户询问已收集的内容：
+
+- 用户："我之前收集过关于 TypeScript 的文章吗？"
+- AI 助手通过 MCP 协议搜索"TypeScript"
+- MCP 端点返回匹配的文章列表
 
 ### 浏览器插件需求 (WXT)
 
@@ -511,6 +617,11 @@ memory-prosthetic/
 │   ├── desktop/                    # Tauri 桌面应用
 │   │   ├── src/                    # React 前端
 │   │   ├── src-tauri/              # Rust 后端
+│   │   │   └── src/
+│   │   │       └── server/
+│   │   │           ├── routes.rs   # HTTP 路由（包含 /mcp）
+│   │   │           ├── handlers.rs # API handlers
+│   │   │           └── mcp/        # MCP 模块（集成在 HTTP Server 中）
 │   │   └── package.json
 │   └── browser-extension/          # WXT 浏览器插件
 │       ├── entrypoints/            # WXT 入口点
@@ -525,6 +636,8 @@ memory-prosthetic/
 └── bun.lockb
 ```
 
+**注意：** MCP 功能已集成到桌面应用的 Rust HTTP Server 中，不再需要独立的 `apps/mcp/` 项目。
+
 ### 实现考量
 
 #### 技术风险
@@ -535,6 +648,8 @@ memory-prosthetic/
 | **应用未运行** | 插件检测应用状态，提示启动应用 |
 | **内容提取失败** | 优雅降级，至少保存 URL 和标题 |
 | **WXT 学习曲线** | 框架成熟，文档完善，类似 Nuxt/Next 开发体验 |
+| **rmcp SDK 集成复杂度** | 使用官方 SDK，参考示例代码，分步实现 |
+| **MCP HTTP 传输实现** | 参考 MCP 协议规范和 SDK 文档，使用 Streamable HTTP |
 
 #### 开发优先级
 
@@ -543,6 +658,7 @@ memory-prosthetic/
 | **MVP Week 1** | HTTP Server 骨架、基础收集 API、WXT 插件 MVP |
 | **MVP Week 2** | 全局快捷键、搜索 UI、Embedding 集成 |
 | **Alpha** | 系统托盘、开机自启、插件增强 |
+| **MCP 重构** | ✅ 已完成 - MCP 功能从独立 Node.js 项目重构为集成在 Rust HTTP Server 中的后端实现 |
 
 ---
 
@@ -585,6 +701,22 @@ memory-prosthetic/
 - **FR21**: 浏览器插件可以通过本地 HTTP Server 与桌面应用同步数据
 - **FR22**: 浏览器插件可以检测桌面应用是否正在运行
 - **FR23**: 系统可以提供健康检查端点供插件验证连接状态
+
+### MCP 集成 (MCP Integration)
+
+MCP (Model Context Protocol) 集成允许 AI 助手通过 MCP 协议调用应用的搜索功能，实现自然语言交互。MCP 功能已集成到桌面应用的 Rust HTTP Server 中，作为 `/mcp` 端点提供。
+
+- **FR317**: 系统可以在 Rust HTTP Server 中实现 `/mcp` 端点，支持 MCP 协议标准接口
+- **FR318**: MCP 端点可以接收自然语言搜索指令（如"使用 MP 搜索 React 文章"）
+- **FR319**: MCP 端点可以解析搜索指令，提取搜索关键词
+- **FR320**: MCP 端点可以调用桌面应用的 `/api/search` 接口执行搜索
+- **FR321**: MCP 端点可以将搜索结果格式化为 MCP 协议响应返回给 AI 助手
+- **FR322**: MCP 端点可以检测桌面应用运行状态，未运行时返回友好错误提示
+- **FR323**: MCP 端点支持 Streamable HTTP 传输方式（MCP 协议标准）
+- **FR324**: MCP 端点可以支持错误处理和降级策略（应用未运行时优雅提示）
+- **FR325**: MCP 端点使用官方 rmcp SDK 实现协议标准接口
+- **FR326**: MCP 端点与现有 HTTP Server 集成，使用同一端口和路由系统
+- **FR327**: AI 助手可以通过 URL `http://127.0.0.1:21890/mcp` 连接，无需本地文件配置
 
 ### 用户设置 (User Settings)
 
@@ -1307,6 +1439,10 @@ AI 处理日志表:
 | **HTTP API 稳定性** | 本地 HTTP Server API 版本稳定，向后兼容 |
 | **CORS 配置** | 正确配置 CORS 允许浏览器插件访问 |
 | **健康检查** | 提供 `/api/health` 端点供插件检测应用状态 |
+| **MCP 协议兼容** | MCP 端点（`/mcp`）实现标准 MCP 协议，使用官方 rmcp SDK，支持主流 AI 助手（Claude Desktop、Cursor 等） |
+| **MCP 工具注册** | MCP 端点正确注册搜索工具，提供清晰的工具描述和参数定义 |
+| **MCP 传输方式** | 支持 Streamable HTTP 传输方式（MCP 协议标准） |
+| **MCP 配置简化** | AI 助手通过 URL `http://127.0.0.1:21890/mcp` 连接，无需本地文件配置 |
 
 ### 可维护性 (Maintainability)
 

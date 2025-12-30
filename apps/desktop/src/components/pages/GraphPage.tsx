@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
-import { Bug, SlidersHorizontal } from 'lucide-react'
+import { Bug, Maximize2, Minimize2, SlidersHorizontal, ZoomIn, ZoomOut } from 'lucide-react'
 
 import type { CommandResult, GraphFilters } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@memory-prosthetic/ui/components/ui/popover'
 import { GraphControls } from '@/components/features/GraphControls'
-import { GraphView } from '@/components/features/GraphView'
+import { GraphView, type GraphViewRef } from '@/components/features/GraphView'
 import { checkAssociationStats } from '@/utils/debug-associations'
 
 interface GraphPageProps {
@@ -19,6 +19,8 @@ interface GraphPageProps {
 export function GraphPage({ filters, onFiltersChange, onNodeSelect }: GraphPageProps) {
   const queryClient = useQueryClient()
   const [isDiscovering, setIsDiscovering] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const graphViewRef = useRef<GraphViewRef>(null)
 
   const handleEdgeClick = (edgeId: string) => {
     console.log('Edge clicked:', edgeId)
@@ -48,8 +50,48 @@ export function GraphPage({ filters, onFiltersChange, onNodeSelect }: GraphPageP
     }
   }
 
+  const handleZoomIn = () => {
+    graphViewRef.current?.zoomIn()
+  }
+
+  const handleZoomOut = () => {
+    graphViewRef.current?.zoomOut()
+  }
+
+  const handleFitView = () => {
+    graphViewRef.current?.fitView()
+  }
+
+  const handleToggleFullscreen = () => {
+    const container = document.querySelector('[data-graph-container]') as HTMLElement
+    if (!container) return
+
+    if (!isFullscreen) {
+      if (container.requestFullscreen) {
+        void container.requestFullscreen()
+      }
+      setIsFullscreen(true)
+    } else {
+      if (document.exitFullscreen) {
+        void document.exitFullscreen()
+      }
+      setIsFullscreen(false)
+    }
+  }
+
+  // 监听全屏状态变化
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [])
+
   return (
-    <div className="relative flex h-full grow flex-col overflow-hidden">
+    <div className="relative flex h-full grow flex-col overflow-hidden" data-graph-container>
       <div className="flex h-full gap-4 overflow-hidden p-4">
         {/* Graph Controls */}
         <Popover>
@@ -68,6 +110,46 @@ export function GraphPage({ filters, onFiltersChange, onNodeSelect }: GraphPageP
           </PopoverContent>
         </Popover>
 
+        {/* Zoom Controls */}
+        <div className="absolute top-20 right-6 z-20 flex flex-col gap-2">
+          <Button
+            className="bg-white/90 shadow-md hover:bg-white"
+            onClick={handleZoomIn}
+            size="icon"
+            title="放大"
+            variant="outline"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button
+            className="bg-white/90 shadow-md hover:bg-white"
+            onClick={handleZoomOut}
+            size="icon"
+            title="缩小"
+            variant="outline"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button
+            className="bg-white/90 shadow-md hover:bg-white"
+            onClick={handleFitView}
+            size="icon"
+            title="适应视图 (1:1)"
+            variant="outline"
+          >
+            <span className="font-medium text-xs">1:1</span>
+          </Button>
+          <Button
+            className="bg-white/90 shadow-md hover:bg-white"
+            onClick={handleToggleFullscreen}
+            size="icon"
+            title={isFullscreen ? '退出全屏' : '全屏'}
+            variant="outline"
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
+        </div>
+
         {/* Debug Button */}
         <Button
           className="absolute top-6 right-6 z-20"
@@ -81,7 +163,7 @@ export function GraphPage({ filters, onFiltersChange, onNodeSelect }: GraphPageP
 
         {/* Graph View */}
         <div className="grow overflow-hidden rounded-lg border">
-          <GraphView filters={filters} onEdgeClick={handleEdgeClick} onNodeClick={onNodeSelect} />
+          <GraphView filters={filters} onEdgeClick={handleEdgeClick} onNodeClick={onNodeSelect} ref={graphViewRef} />
         </div>
       </div>
     </div>

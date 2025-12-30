@@ -8,14 +8,14 @@ inputDocuments:
 workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
-revision: 3
+revision: 4
 revisionDate: '2025-12-27'
 lastUpdated: '2025-12-27'
 completedAt: '2025-12-22'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-21'
-updateNote: '更新技术栈版本信息，添加实际使用的依赖版本号'
+updateNote: '添加 MCP 应用的架构设计，包括服务器架构、工具实现、配置管理和集成点'
 ---
 
 # Architecture Decision Document
@@ -977,28 +977,44 @@ memory-prosthetic/
 │   │               ├── mod.rs
 │   │               └── error.rs
 │   │
-│   └── browser-extension/          # WXT 插件
+│   ├── browser-extension/          # WXT 插件
+│   │   ├── package.json
+│   │   ├── wxt.config.ts
+│   │   ├── components.json
+│   │   ├── src/
+│   │   │   ├── entrypoints/
+│   │   │   │   ├── popup/
+│   │   │   │   │   ├── index.html
+│   │   │   │   │   ├── main.tsx
+│   │   │   │   │   └── App.tsx
+│   │   │   │   ├── background.ts
+│   │   │   │   └── content.ts
+│   │   │   ├── components/
+│   │   │   │   └── CollectButton.tsx
+│   │   │   ├── hooks/
+│   │   │   ├── styles/
+│   │   │   ├── types/
+│   │   │   ├── utils/
+│   │   │   ├── constants/
+│   │   │   └── assets/
+│   │   └── public/
+│   │       └── icon/
+│   │
+│   └── mcp/                         # MCP Server
 │       ├── package.json
-│       ├── wxt.config.ts
-│       ├── components.json
+│       ├── tsconfig.json
+│       ├── .env.example
 │       ├── src/
-│       │   ├── entrypoints/
-│       │   │   ├── popup/
-│       │   │   │   ├── index.html
-│       │   │   │   ├── main.tsx
-│       │   │   │   └── App.tsx
-│       │   │   ├── background.ts
-│       │   │   └── content.ts
-│       │   ├── components/
-│       │   │   └── CollectButton.tsx
-│       │   ├── hooks/
-│       │   ├── styles/
-│       │   ├── types/
+│       │   ├── index.ts             # MCP 服务器入口
+│       │   ├── tools/
+│       │   │   └── search.ts        # 搜索工具实现
 │       │   ├── utils/
-│       │   ├── constants/
-│       │   └── assets/
-│       └── public/
-│           └── icon/
+│       │   │   └── api-client.ts    # HTTP API 客户端
+│       │   ├── config/
+│       │   │   └── settings.ts     # 配置管理
+│       │   └── types/
+│       │       └── mcp.ts          # MCP 类型定义
+│       └── README.md
 │
 ├── packages/
 │   ├── shared/                     # 共享类型和工具
@@ -1078,17 +1094,273 @@ memory-prosthetic/
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**MCP Server ↔ Desktop Boundary:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ MCP Server (apps/mcp/)                                       │
+│  - 实现 MCP 协议标准接口                                    │
+│  - 提供搜索工具供 AI 助手调用                               │
+│  - 通过 HTTP 与桌面应用通信                                 │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    HTTP (localhost:21890)
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│ Desktop HTTP Server (src-tauri/src/server/)                 │
+│  - POST /api/search                                         │
+│  - GET /api/health                                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                    MCP Protocol (stdio/SSE)
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│ AI Assistant (Claude Desktop, Cursor, etc.)                │
+│  - 通过 MCP 协议调用 MCP Server                             │
+│  - 接收搜索结果并呈现给用户                                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### MCP Application Architecture
+
+**技术栈:**
+
+| 层级 | 技术 | 版本/说明 |
+|------|------|----------|
+| 协议 | Model Context Protocol (MCP) | 标准协议，支持 stdio/SSE 传输 |
+| 运行时 | Node.js | 与项目技术栈一致 |
+| 实现语言 | TypeScript | 类型安全，与 Monorepo 共享类型 |
+| HTTP 客户端 | fetch / axios | 调用桌面应用 HTTP API |
+| 配置管理 | 环境变量 / 配置文件 | 桌面应用地址和端口配置 |
+
+**MCP 服务器架构:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ MCP Server (apps/mcp/src/)                                   │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ index.ts                                             │   │
+│  │  - MCP 服务器入口                                     │   │
+│  │  - 初始化 MCP 服务器实例                               │   │
+│  │  - 注册工具和资源                                     │   │
+│  │  - 处理 MCP 协议消息                                  │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                          │                                    │
+│        ┌─────────────────┼─────────────────┐                  │
+│        ▼                 ▼                 ▼                  │
+│  ┌──────────┐    ┌──────────┐    ┌──────────────┐             │
+│  │ tools/   │    │ utils/  │    │ config/      │             │
+│  │ search.ts│    │ api-    │    │ settings.ts  │             │
+│  │          │    │ client. │    │              │             │
+│  │ - search │    │ ts      │    │ - 读取配置   │             │
+│  │   tool   │    │         │    │ - 验证配置   │             │
+│  │          │    │ - HTTP  │    │              │             │
+│  │          │    │   client│    │              │             │
+│  │          │    │ - 错误  │    │              │             │
+│  │          │    │   处理  │    │              │             │
+│  └──────────┘    └──────────┘    └──────────────┘             │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+        ┌─────────────────────────────────────┐
+        │ Desktop HTTP Server                 │
+        │  POST /api/search                   │
+        │  GET /api/health                    │
+        └─────────────────────────────────────┘
+```
+
+**MCP 工具实现:**
+
+| 工具名称 | 说明 | 参数 | 返回值 |
+|---------|------|------|--------|
+| `search` | 在 Memory Prosthetic 中搜索内容 | `{ query: string, limit?: number }` | `{ results: SearchResult[], total: number }` |
+
+**MCP 工具定义:**
+
+```typescript
+// apps/mcp/src/tools/search.ts
+type SearchToolInput = {
+  query: string        // 搜索关键词（必需）
+  limit?: number       // 结果数量限制（可选，默认 10）
+}
+
+type SearchToolOutput = {
+  results: Array<{
+    id: string
+    title: string
+    url: string
+    snippet: string
+    score: number
+  }>
+  total: number
+  message?: string     // 错误或提示信息
+}
+```
+
+**API 客户端实现:**
+
+```typescript
+// apps/mcp/src/utils/api-client.ts
+type ApiClientConfig = {
+  baseUrl: string      // 默认: http://localhost:21890
+  timeout?: number     // 默认: 5000ms
+}
+
+type SearchRequest = {
+  query: string
+  limit?: number
+}
+
+type SearchResponse = {
+  success: true
+  data: {
+    results: SearchResult[]
+    total: number
+  }
+} | {
+  success: false
+  error: {
+    code: string
+    message: string
+  }
+}
+```
+
+**错误处理策略:**
+
+| 错误场景 | 检测方式 | 处理方式 |
+|---------|---------|---------|
+| 桌面应用未运行 | HTTP 连接失败 | 返回友好提示："Memory Prosthetic 桌面应用未运行，请先启动应用" |
+| 网络超时 | 请求超时 | 返回错误："连接超时，请检查桌面应用是否正常运行" |
+| API 错误 | HTTP 状态码非 200 | 返回错误消息和状态码 |
+| 无效参数 | 参数验证 | 返回参数错误提示 |
+
+**配置管理:**
+
+```typescript
+// apps/mcp/src/config/settings.ts
+type McpServerConfig = {
+  desktopApp: {
+    host: string       // 默认: 'localhost'
+    port: number       // 默认: 21890
+    timeout: number    // 默认: 5000ms
+  }
+  mcp: {
+    name: string       // MCP 服务器名称: 'memory-prosthetic'
+    version: string   // 版本号
+  }
+}
+```
+
+**配置来源优先级:**
+
+1. 环境变量: `MEMORY_PROSTHETIC_HOST`, `MEMORY_PROSTHETIC_PORT`
+2. 配置文件: `~/.memory-prosthetic/mcp-config.json` (可选)
+3. 默认值: `localhost:21890`
+
+**MCP 服务器启动流程:**
+
+```
+1. 读取配置（环境变量 → 配置文件 → 默认值）
+   │
+   ▼
+2. 验证桌面应用连接（GET /api/health）
+   │
+   ├─ 成功 → 继续
+   │
+   └─ 失败 → 记录警告（不阻止启动，允许后续重试）
+   │
+   ▼
+3. 初始化 MCP 服务器
+   │
+   ├─ 注册工具: search
+   │
+   ├─ 设置错误处理
+   │
+   └─ 启动 stdio/SSE 传输
+   │
+   ▼
+4. 等待 AI 助手连接
+```
+
+**MCP 搜索工具执行流程:**
+
+```
+AI 助手请求
+   │
+   ▼
+MCP Server 接收请求
+   │
+   ├─ 解析参数 (query, limit)
+   │
+   ├─ 验证参数
+   │
+   └─ 调用 API Client
+       │
+       ▼
+   HTTP POST /api/search
+       │
+       ├─ 成功 → 格式化结果 → 返回给 AI 助手
+       │
+       └─ 失败 → 错误处理 → 返回友好提示
+```
+
+**项目结构:**
+
+```
+apps/mcp/
+├── package.json
+├── tsconfig.json
+├── .env.example              # 配置示例
+├── src/
+│   ├── index.ts              # MCP 服务器入口
+│   ├── tools/
+│   │   └── search.ts         # 搜索工具实现
+│   ├── utils/
+│   │   └── api-client.ts     # HTTP API 客户端
+│   ├── config/
+│   │   └── settings.ts      # 配置管理
+│   └── types/
+│       └── mcp.ts            # MCP 类型定义
+└── README.md
+```
+
+**与桌面应用的集成点:**
+
+| 集成点 | 协议 | 端点 | 说明 |
+|--------|------|------|------|
+| 健康检查 | HTTP | `GET /api/health` | 检测桌面应用是否运行 |
+| 搜索接口 | HTTP | `POST /api/search` | 执行语义搜索 |
+
+**MCP 协议传输方式:**
+
+| 传输方式 | 说明 | 适用场景 |
+|---------|------|----------|
+| stdio | 标准输入输出 | 本地进程通信（推荐） |
+| SSE | Server-Sent Events | HTTP 服务器模式（可选） |
+
+**依赖关系:**
+
+```
+apps/mcp/
+├── @modelcontextprotocol/sdk  # MCP SDK（必需）
+├── @memory-prosthetic/shared  # 共享类型（可选，用于类型一致性）
+└── axios / node-fetch         # HTTP 客户端（必需）
+```
+
 ### Requirements to Structure Mapping
 
-| FR 类别 | 前端位置 | 后端位置 |
-|---------|----------|----------|
-| **内容收集 (FR1-FR5)** | `browser-extension/` | `commands/collect.rs` |
-| **内容搜索 (FR6-FR12)** | `routes/index.tsx`, `features/` | `commands/search.rs`, `embedding/` |
-| **内容存储 (FR13-FR16)** | - | `db/collections.rs` |
-| **内容组织 (FR31-FR53)** | `features/Sidebar.tsx`, `hooks/use-*.ts` | `commands/favorites.rs`, `commands/tags.rs`, `db/favorites.rs`, `db/tags.rs` |
-| **系统集成 (FR17-FR20)** | - | `src-tauri/` |
-| **应用通信 (FR21-FR23)** | `lib/api.ts` (插件) | `server/` |
-| **用户设置 (FR24-FR26)** | `routes/settings.tsx` | `commands/settings.rs` |
+| FR 类别 | 前端位置 | 后端位置 | MCP 位置 |
+|---------|----------|----------|----------|
+| **内容收集 (FR1-FR5)** | `browser-extension/` | `commands/collect.rs` | - |
+| **内容搜索 (FR6-FR12)** | `routes/index.tsx`, `features/` | `commands/search.rs`, `embedding/` | `tools/search.ts` |
+| **内容存储 (FR13-FR16)** | - | `db/collections.rs` | - |
+| **内容组织 (FR31-FR53)** | `features/Sidebar.tsx`, `hooks/use-*.ts` | `commands/favorites.rs`, `commands/tags.rs`, `db/favorites.rs`, `db/tags.rs` | - |
+| **系统集成 (FR17-FR20)** | - | `src-tauri/` | - |
+| **应用通信 (FR21-FR23)** | `lib/api.ts` (插件) | `server/` | `utils/api-client.ts` |
+| **用户设置 (FR24-FR26)** | `routes/settings.tsx` | `commands/settings.rs` | `config/settings.ts` |
+| **MCP 集成 (FR317-FR324)** | - | `server/` (HTTP API) | `apps/mcp/` |
 
 ### Data Flow
 
@@ -1161,6 +1433,47 @@ memory-prosthetic/
                                            │
                                            ▼
                                    TanStack Query 自动刷新
+```
+
+**MCP 搜索流程：**
+
+```
+AI 助手用户输入 → "使用 MP 搜索 React 文章"
+                                           │
+                                           ▼
+                                   AI 助手解析指令
+                                           │
+                                           ▼
+                                   MCP Protocol 调用
+                                           │
+                                           ▼
+                                   MCP Server (tools/search.ts)
+                                           │
+                                           ├─ 提取搜索关键词: "React"
+                                           │
+                                           └─ 调用 API Client
+                                                   │
+                                                   ▼
+                                           HTTP POST /api/search
+                                                   │
+                                                   ▼
+                                           Desktop HTTP Server
+                                                   │
+                                                   ├─ embedding::encode("React")
+                                                   │
+                                                   └─ db::vectors::similarity_search()
+                                                           │
+                                                           ▼
+                                                   db::collections::get_by_ids()
+                                                           │
+                                                           ▼
+                                           返回搜索结果
+                                                   │
+                                                   ▼
+                                           MCP Server 格式化结果
+                                                   │
+                                                   ▼
+                                           AI 助手呈现给用户
 ```
 
 ---

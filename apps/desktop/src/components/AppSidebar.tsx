@@ -22,7 +22,7 @@ type NavItem = {
 }
 
 const navItems: NavItem[] = [
-  { id: 'all', label: '全部', icon: Library, to: '/', count: 0 },
+  { id: 'all', label: '全部', icon: Library, to: '/all', count: 0 },
   { id: 'starred', label: '星标', icon: Star, to: '/starred', count: 0, color: 'text-yellow-500' },
   { id: 'recent', label: '最近', icon: Clock, to: '/recent', count: 0 },
   { id: 'graph', label: '图谱', icon: Network, to: '/graph', count: 0 },
@@ -90,6 +90,7 @@ export const AppSidebar = ({
     if (pathname === '/recent' || pathname.startsWith('/recent/article')) return 'recent'
     if (pathname === '/archived' || pathname.startsWith('/archived/article')) return 'archived'
     if (pathname === '/deleted' || pathname.startsWith('/deleted/article')) return 'deleted'
+    if (pathname === '/all' || pathname.startsWith('/all/article/')) return 'all'
     return 'all'
   }
 

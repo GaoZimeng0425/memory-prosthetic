@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@memory-prosthetic/ui/components/ui/dialog'
+import type { AutoCleanupDeleted } from '@/types/api'
 
 interface DeleteConfirmDialogProps {
   open: boolean
@@ -24,6 +25,7 @@ interface DeleteConfirmDialogProps {
   title?: string
   description?: string
   isPermanent?: boolean
+  autoCleanupDeleted?: AutoCleanupDeleted
 }
 
 export function DeleteConfirmDialog({
@@ -39,15 +41,16 @@ export function DeleteConfirmDialog({
     onOpenChange(false)
   }
 
+  const defaultDescription = isPermanent
+    ? '此操作不可恢复，确定要永久删除吗？'
+    : `内容将被移动到"最近删除"，可以随时恢复。`
+
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title || (isPermanent ? '永久删除内容' : '删除内容')}</DialogTitle>
-          <DialogDescription>
-            {description ||
-              (isPermanent ? '此操作不可恢复，确定要永久删除吗？' : '内容将被移动到"最近删除"，可以在30天内恢复。')}
-          </DialogDescription>
+          <DialogDescription>{description || defaultDescription}</DialogDescription>
         </DialogHeader>
 
         {isPermanent && (

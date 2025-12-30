@@ -16,14 +16,14 @@ import { Route as GraphRouteImport } from './routes/graph'
 import { Route as DeletedRouteImport } from './routes/deleted'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ArchivedRouteImport } from './routes/archived'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AllRouteImport } from './routes/all'
 import { Route as TagTagIdRouteImport } from './routes/tag.$tagId'
 import { Route as FavoriteFavoriteIdRouteImport } from './routes/favorite.$favoriteId'
-import { Route as ArticleArticleIdRouteImport } from './routes/article.$articleId'
 import { Route as StarredArticleArticleIdRouteImport } from './routes/starred.article.$articleId'
 import { Route as RecentArticleArticleIdRouteImport } from './routes/recent.article.$articleId'
 import { Route as DeletedArticleArticleIdRouteImport } from './routes/deleted.article.$articleId'
 import { Route as ArchivedArticleArticleIdRouteImport } from './routes/archived.article.$articleId'
+import { Route as AllArticleArticleIdRouteImport } from './routes/all.article.$articleId'
 import { Route as TagTagIdArticleArticleIdRouteImport } from './routes/tag.$tagId.article.$articleId'
 import { Route as FavoriteFavoriteIdArticleArticleIdRouteImport } from './routes/favorite.$favoriteId.article.$articleId'
 
@@ -62,9 +62,9 @@ const ArchivedRoute = ArchivedRouteImport.update({
   path: '/archived',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AllRoute = AllRouteImport.update({
+  id: '/all',
+  path: '/all',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TagTagIdRoute = TagTagIdRouteImport.update({
@@ -75,11 +75,6 @@ const TagTagIdRoute = TagTagIdRouteImport.update({
 const FavoriteFavoriteIdRoute = FavoriteFavoriteIdRouteImport.update({
   id: '/favorite/$favoriteId',
   path: '/favorite/$favoriteId',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArticleArticleIdRoute = ArticleArticleIdRouteImport.update({
-  id: '/article/$articleId',
-  path: '/article/$articleId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StarredArticleArticleIdRoute = StarredArticleArticleIdRouteImport.update({
@@ -102,6 +97,11 @@ const ArchivedArticleArticleIdRoute = ArchivedArticleArticleIdRouteImport.update
   path: '/article/$articleId',
   getParentRoute: () => ArchivedRoute,
 } as any)
+const AllArticleArticleIdRoute = AllArticleArticleIdRouteImport.update({
+  id: '/article/$articleId',
+  path: '/article/$articleId',
+  getParentRoute: () => AllRoute,
+} as any)
 const TagTagIdArticleArticleIdRoute = TagTagIdArticleArticleIdRouteImport.update({
   id: '/article/$articleId',
   path: '/article/$articleId',
@@ -114,7 +114,7 @@ const FavoriteFavoriteIdArticleArticleIdRoute = FavoriteFavoriteIdArticleArticle
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/all': typeof AllRouteWithChildren
   '/archived': typeof ArchivedRouteWithChildren
   '/chat': typeof ChatRoute
   '/deleted': typeof DeletedRouteWithChildren
@@ -122,9 +122,9 @@ export interface FileRoutesByFullPath {
   '/recent': typeof RecentRouteWithChildren
   '/search': typeof SearchRoute
   '/starred': typeof StarredRouteWithChildren
-  '/article/$articleId': typeof ArticleArticleIdRoute
   '/favorite/$favoriteId': typeof FavoriteFavoriteIdRouteWithChildren
   '/tag/$tagId': typeof TagTagIdRouteWithChildren
+  '/all/article/$articleId': typeof AllArticleArticleIdRoute
   '/archived/article/$articleId': typeof ArchivedArticleArticleIdRoute
   '/deleted/article/$articleId': typeof DeletedArticleArticleIdRoute
   '/recent/article/$articleId': typeof RecentArticleArticleIdRoute
@@ -133,7 +133,7 @@ export interface FileRoutesByFullPath {
   '/tag/$tagId/article/$articleId': typeof TagTagIdArticleArticleIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/all': typeof AllRouteWithChildren
   '/archived': typeof ArchivedRouteWithChildren
   '/chat': typeof ChatRoute
   '/deleted': typeof DeletedRouteWithChildren
@@ -141,9 +141,9 @@ export interface FileRoutesByTo {
   '/recent': typeof RecentRouteWithChildren
   '/search': typeof SearchRoute
   '/starred': typeof StarredRouteWithChildren
-  '/article/$articleId': typeof ArticleArticleIdRoute
   '/favorite/$favoriteId': typeof FavoriteFavoriteIdRouteWithChildren
   '/tag/$tagId': typeof TagTagIdRouteWithChildren
+  '/all/article/$articleId': typeof AllArticleArticleIdRoute
   '/archived/article/$articleId': typeof ArchivedArticleArticleIdRoute
   '/deleted/article/$articleId': typeof DeletedArticleArticleIdRoute
   '/recent/article/$articleId': typeof RecentArticleArticleIdRoute
@@ -153,7 +153,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/all': typeof AllRouteWithChildren
   '/archived': typeof ArchivedRouteWithChildren
   '/chat': typeof ChatRoute
   '/deleted': typeof DeletedRouteWithChildren
@@ -161,9 +161,9 @@ export interface FileRoutesById {
   '/recent': typeof RecentRouteWithChildren
   '/search': typeof SearchRoute
   '/starred': typeof StarredRouteWithChildren
-  '/article/$articleId': typeof ArticleArticleIdRoute
   '/favorite/$favoriteId': typeof FavoriteFavoriteIdRouteWithChildren
   '/tag/$tagId': typeof TagTagIdRouteWithChildren
+  '/all/article/$articleId': typeof AllArticleArticleIdRoute
   '/archived/article/$articleId': typeof ArchivedArticleArticleIdRoute
   '/deleted/article/$articleId': typeof DeletedArticleArticleIdRoute
   '/recent/article/$articleId': typeof RecentArticleArticleIdRoute
@@ -174,7 +174,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
+    | '/all'
     | '/archived'
     | '/chat'
     | '/deleted'
@@ -182,9 +182,9 @@ export interface FileRouteTypes {
     | '/recent'
     | '/search'
     | '/starred'
-    | '/article/$articleId'
     | '/favorite/$favoriteId'
     | '/tag/$tagId'
+    | '/all/article/$articleId'
     | '/archived/article/$articleId'
     | '/deleted/article/$articleId'
     | '/recent/article/$articleId'
@@ -193,7 +193,7 @@ export interface FileRouteTypes {
     | '/tag/$tagId/article/$articleId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
+    | '/all'
     | '/archived'
     | '/chat'
     | '/deleted'
@@ -201,9 +201,9 @@ export interface FileRouteTypes {
     | '/recent'
     | '/search'
     | '/starred'
-    | '/article/$articleId'
     | '/favorite/$favoriteId'
     | '/tag/$tagId'
+    | '/all/article/$articleId'
     | '/archived/article/$articleId'
     | '/deleted/article/$articleId'
     | '/recent/article/$articleId'
@@ -212,7 +212,7 @@ export interface FileRouteTypes {
     | '/tag/$tagId/article/$articleId'
   id:
     | '__root__'
-    | '/'
+    | '/all'
     | '/archived'
     | '/chat'
     | '/deleted'
@@ -220,9 +220,9 @@ export interface FileRouteTypes {
     | '/recent'
     | '/search'
     | '/starred'
-    | '/article/$articleId'
     | '/favorite/$favoriteId'
     | '/tag/$tagId'
+    | '/all/article/$articleId'
     | '/archived/article/$articleId'
     | '/deleted/article/$articleId'
     | '/recent/article/$articleId'
@@ -232,7 +232,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  AllRoute: typeof AllRouteWithChildren
   ArchivedRoute: typeof ArchivedRouteWithChildren
   ChatRoute: typeof ChatRoute
   DeletedRoute: typeof DeletedRouteWithChildren
@@ -240,7 +240,6 @@ export interface RootRouteChildren {
   RecentRoute: typeof RecentRouteWithChildren
   SearchRoute: typeof SearchRoute
   StarredRoute: typeof StarredRouteWithChildren
-  ArticleArticleIdRoute: typeof ArticleArticleIdRoute
   FavoriteFavoriteIdRoute: typeof FavoriteFavoriteIdRouteWithChildren
   TagTagIdRoute: typeof TagTagIdRouteWithChildren
 }
@@ -296,11 +295,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchivedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/all': {
+      id: '/all'
+      path: '/all'
+      fullPath: '/all'
+      preLoaderRoute: typeof AllRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tag/$tagId': {
@@ -315,13 +314,6 @@ declare module '@tanstack/react-router' {
       path: '/favorite/$favoriteId'
       fullPath: '/favorite/$favoriteId'
       preLoaderRoute: typeof FavoriteFavoriteIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/article/$articleId': {
-      id: '/article/$articleId'
-      path: '/article/$articleId'
-      fullPath: '/article/$articleId'
-      preLoaderRoute: typeof ArticleArticleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/starred/article/$articleId': {
@@ -352,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchivedArticleArticleIdRouteImport
       parentRoute: typeof ArchivedRoute
     }
+    '/all/article/$articleId': {
+      id: '/all/article/$articleId'
+      path: '/article/$articleId'
+      fullPath: '/all/article/$articleId'
+      preLoaderRoute: typeof AllArticleArticleIdRouteImport
+      parentRoute: typeof AllRoute
+    }
     '/tag/$tagId/article/$articleId': {
       id: '/tag/$tagId/article/$articleId'
       path: '/article/$articleId'
@@ -368,6 +367,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AllRouteChildren {
+  AllArticleArticleIdRoute: typeof AllArticleArticleIdRoute
+}
+
+const AllRouteChildren: AllRouteChildren = {
+  AllArticleArticleIdRoute: AllArticleArticleIdRoute,
+}
+
+const AllRouteWithChildren = AllRoute._addFileChildren(AllRouteChildren)
 
 interface ArchivedRouteChildren {
   ArchivedArticleArticleIdRoute: typeof ArchivedArticleArticleIdRoute
@@ -430,7 +439,7 @@ const TagTagIdRouteChildren: TagTagIdRouteChildren = {
 const TagTagIdRouteWithChildren = TagTagIdRoute._addFileChildren(TagTagIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  AllRoute: AllRouteWithChildren,
   ArchivedRoute: ArchivedRouteWithChildren,
   ChatRoute: ChatRoute,
   DeletedRoute: DeletedRouteWithChildren,
@@ -438,7 +447,6 @@ const rootRouteChildren: RootRouteChildren = {
   RecentRoute: RecentRouteWithChildren,
   SearchRoute: SearchRoute,
   StarredRoute: StarredRouteWithChildren,
-  ArticleArticleIdRoute: ArticleArticleIdRoute,
   FavoriteFavoriteIdRoute: FavoriteFavoriteIdRouteWithChildren,
   TagTagIdRoute: TagTagIdRouteWithChildren,
 }

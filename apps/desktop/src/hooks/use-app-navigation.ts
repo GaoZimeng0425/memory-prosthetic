@@ -7,7 +7,7 @@ export const useAppNavigation = () => {
   const params = useParams({ strict: false })
 
   const navigateToAll = () => {
-    void navigate({ to: '/' })
+    void navigate({ to: '/all' })
   }
 
   const navigateToStarred = () => {
@@ -37,7 +37,7 @@ export const useAppNavigation = () => {
   }
 
   const navigateToArticle = (articleId: number) => {
-    void navigate({ to: '/article/$articleId', params: { articleId: String(articleId) } })
+    void navigate({ to: '/all/article/$articleId', params: { articleId: String(articleId) }, resetScroll: false })
   }
 
   const navigateToArchived = () => {
@@ -65,8 +65,11 @@ export const useAppNavigation = () => {
     if (pathname.includes('/tag/') && pathname.includes('/article/')) {
       return 'tag'
     }
-    // Fallback for /article/$articleId (default route)
-    if (pathname.startsWith('/article/')) {
+    // Fallback for /all/article/$articleId (default route)
+    if (pathname.startsWith('/all/article/')) {
+      return 'all'
+    }
+    if (pathname === '/all') {
       return 'all'
     }
     return 'all'

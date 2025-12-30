@@ -31,6 +31,27 @@ function RootLayout() {
   const [isSearchWindow, setIsSearchWindow] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
 
+  // Redirect root route to /all
+  useEffect(() => {
+    if (!isSearchWindow && window.location.pathname === '/') {
+      console.log('[RootLayout] Redirecting root route to /all')
+      void navigate({ to: '/all', replace: true })
+    }
+  }, [navigate, isSearchWindow])
+
+  // Redirect old /article/$articleId route to /all/article/$articleId
+  useEffect(() => {
+    if (!isSearchWindow) {
+      const pathname = window.location.pathname
+      const articleMatch = pathname.match(/^\/article\/(\d+)$/)
+      if (articleMatch) {
+        const articleId = articleMatch[1]
+        console.log('[RootLayout] Redirecting old article route to /all/article/$articleId')
+        void navigate({ to: '/all/article/$articleId', params: { articleId }, replace: true })
+      }
+    }
+  }, [navigate, isSearchWindow])
+
   // Detect if current window is search window and ensure correct route
   useEffect(() => {
     const checkWindowType = async () => {
@@ -97,7 +118,7 @@ function RootLayout() {
         }
       }
       // Navigate to article route
-      void navigate({ to: '/article/$articleId', params: { articleId: String(id) } })
+      void navigate({ to: '/all/article/$articleId', params: { articleId: String(id) }, resetScroll: false })
     })
     return () => {
       void unlisten.then((fn) => fn())
@@ -145,7 +166,7 @@ function RootLayout() {
   // Handle search result selection
   const handleSearchResultSelect = useCallback(
     (result: SearchResult) => {
-      void navigate({ to: '/article/$articleId', params: { articleId: String(result.id) } })
+      void navigate({ to: '/all/article/$articleId', params: { articleId: String(result.id) } })
       setIsSearchOpen(false)
     },
     [navigate]

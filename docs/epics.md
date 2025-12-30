@@ -6,12 +6,13 @@ inputDocuments:
 workflowType: 'epics-and-stories'
 lastStep: 7
 status: 'complete'
-revision: 2
-revisionDate: '2025-12-22'
+revision: 3
+revisionDate: '2025-12-27'
 completedAt: '2025-12-22'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
 date: '2025-12-22'
+updateNote: '添加 Epic 8: MCP 集成，包含 8 个 Stories 覆盖 FR317-FR324'
 ---
 
 # Memory Prosthetic - Epic Breakdown
@@ -257,6 +258,14 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 | FR51 | Epic 7 | 永久删除内容 |
 | FR52 | Epic 7 | 自动清理"最近删除"（可选） |
 | FR53 | Epic 7 | 归档和删除功能统一在"其他"分类下 |
+| FR317 | Epic 8 | 提供 MCP 服务器，实现 MCP 协议标准接口 |
+| FR318 | Epic 8 | MCP 服务器接收自然语言搜索指令 |
+| FR319 | Epic 8 | MCP 服务器解析搜索指令，提取搜索关键词 |
+| FR320 | Epic 8 | MCP 服务器调用桌面应用的 `/api/search` 接口 |
+| FR321 | Epic 8 | MCP 服务器格式化搜索结果返回给 AI 助手 |
+| FR322 | Epic 8 | MCP 服务器检测桌面应用状态，未运行时返回友好提示 |
+| FR323 | Epic 8 | MCP 服务器支持配置桌面应用的 HTTP Server 地址和端口 |
+| FR324 | Epic 8 | MCP 服务器支持错误处理和降级策略 |
 
 ## Epic List
 
@@ -327,6 +336,16 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 **FRs covered:** FR31, FR32, FR33, FR34, FR35, FR36, FR37, FR38, FR39, FR40, FR41, FR42, FR43, FR44, FR45, FR46, FR47, FR48, FR49, FR50, FR51, FR52, FR53
 
 **技术实现:** 数据库 Schema 扩展（favorites, tags, collection_tags 表）、侧边栏 UI、筛选功能、状态管理
+
+---
+
+### Epic 8: MCP 集成 (MVP P0)
+
+**目标:** AI 助手可以通过 MCP 协议调用应用的搜索功能，实现自然语言交互，让用户在与 AI 助手对话时直接搜索已收集的内容。
+
+**FRs covered:** FR317, FR318, FR319, FR320, FR321, FR322, FR323, FR324
+
+**技术实现:** MCP Server (TypeScript/Node.js)、@modelcontextprotocol/sdk、HTTP API 客户端、配置管理
 
 ---
 
@@ -1827,5 +1846,310 @@ This document provides the complete epic and story breakdown for Memory Prosthet
 - React: `components/features/Sidebar.tsx` - "其他"分类区域
 - React: `components/features/OtherSection.tsx` - "其他"分类组件
 - 状态管理: 与收藏夹和标签区域独立的展开/折叠状态
+
+---
+
+## Epic 8: MCP 集成
+
+AI 助手可以通过 MCP 协议调用应用的搜索功能，实现自然语言交互，让用户在与 AI 助手对话时直接搜索已收集的内容。
+
+### Story 8.1: MCP 服务器项目初始化
+
+**As a** 开发者,
+**I want** 创建 MCP 服务器项目结构,
+**So that** 可以开始实现 MCP 协议集成。
+
+**Acceptance Criteria:**
+
+**Given** Monorepo 结构已存在
+**When** 创建 `apps/mcp/` 目录
+**Then** 项目结构包含：
+
+- `package.json` - 项目配置和依赖
+- `tsconfig.json` - TypeScript 配置
+- `src/index.ts` - MCP 服务器入口
+- `src/tools/` - 工具实现目录
+- `src/utils/` - 工具函数目录
+- `src/config/` - 配置管理目录
+- `.env.example` - 配置示例文件
+
+**Given** MCP 项目已创建
+**When** 安装依赖
+**Then** 包含以下核心依赖：
+
+- `@modelcontextprotocol/sdk` - MCP SDK
+- `typescript` - TypeScript 支持
+- `axios` 或 `node-fetch` - HTTP 客户端
+
+**技术细节:**
+
+- 项目位置: `apps/mcp/`
+- 依赖管理: Bun (与 Monorepo 一致)
+- TypeScript 配置: 与项目其他部分保持一致
+
+---
+
+### Story 8.2: MCP 服务器基础框架
+
+**As a** 系统,
+**I want** MCP 服务器能够启动并响应 MCP 协议消息,
+**So that** AI 助手可以连接到服务器。
+
+**Acceptance Criteria:**
+
+**Given** MCP 服务器已初始化
+**When** 启动服务器
+**Then** 服务器通过 stdio 或 SSE 传输方式启动
+**And** 实现 MCP 协议标准接口
+
+**Given** AI 助手连接到 MCP 服务器
+**When** 发送初始化请求
+**Then** 服务器返回服务器信息：
+
+- 服务器名称: "memory-prosthetic"
+- 版本号
+- 可用工具列表
+
+**Given** MCP 服务器正在运行
+**When** 接收到无效的 MCP 协议消息
+**Then** 返回适当的错误响应
+**And** 错误信息符合 MCP 协议规范
+
+**技术细节:**
+
+- MCP SDK: `@modelcontextprotocol/sdk`
+- 传输方式: stdio (推荐) 或 SSE
+- 入口文件: `src/index.ts`
+- 服务器初始化: 注册工具、设置错误处理
+
+---
+
+### Story 8.3: HTTP API 客户端实现
+
+**As a** MCP 服务器,
+**I want** 能够调用桌面应用的 HTTP API,
+**So that** 可以执行搜索操作。
+
+**Acceptance Criteria:**
+
+**Given** MCP 服务器已启动
+**When** 需要调用桌面应用 API
+**Then** HTTP 客户端可以发送请求到 `http://localhost:21890`
+**And** 支持配置自定义地址和端口
+
+**Given** HTTP 客户端发送请求
+**When** 桌面应用正在运行
+**Then** 请求成功返回响应
+**And** 响应数据被正确解析
+
+**Given** HTTP 客户端发送请求
+**When** 桌面应用未运行
+**Then** 捕获连接错误
+**And** 返回友好的错误信息
+
+**Given** HTTP 请求超时
+**When** 超过配置的超时时间（默认 5 秒）
+**Then** 返回超时错误
+**And** 错误信息提示检查桌面应用状态
+
+**技术细节:**
+
+- 文件: `src/utils/api-client.ts`
+- HTTP 客户端: axios 或 node-fetch
+- 配置: 从环境变量或配置文件读取
+- 错误处理: 区分连接错误、超时错误、API 错误
+
+---
+
+### Story 8.4: 搜索工具实现
+
+**As a** AI 助手用户,
+**I want** 通过自然语言指令搜索已收集的内容,
+**So that** 可以在对话中直接查询我的知识库。
+
+**Acceptance Criteria:**
+
+**Given** AI 助手已连接到 MCP 服务器
+**When** 用户输入"使用 MP 搜索 React 文章"
+**Then** MCP 服务器接收搜索工具调用
+**And** 解析指令提取搜索关键词"React"
+
+**Given** 搜索关键词已提取
+**When** MCP 服务器调用桌面应用 `/api/search` 接口
+**Then** 发送 POST 请求，包含 `{ query: "React", limit: 10 }`
+**And** 桌面应用返回搜索结果
+
+**Given** 搜索结果已返回
+**When** MCP 服务器格式化响应
+**Then** 返回符合 MCP 协议格式的结果
+**And** 包含以下信息：
+
+- 结果列表（标题、URL、摘要、相似度分数）
+- 总结果数量
+- 成功/错误状态
+
+**Given** 用户搜索无匹配内容
+**When** 桌面应用返回空结果
+**Then** MCP 服务器返回友好的提示信息
+**And** 提示用户尝试其他关键词
+
+**技术细节:**
+
+- 文件: `src/tools/search.ts`
+- 工具名称: `search`
+- 参数: `{ query: string, limit?: number }`
+- 自然语言解析: 提取关键词（简单实现：去除"使用 MP 搜索"等前缀）
+- API 调用: 使用 HTTP API 客户端
+
+---
+
+### Story 8.5: 配置管理
+
+**As a** 用户,
+**I want** 配置 MCP 服务器的桌面应用连接信息,
+**So that** 可以适应不同的部署环境。
+
+**Acceptance Criteria:**
+
+**Given** MCP 服务器启动
+**When** 读取配置
+**Then** 按优先级读取：
+
+1. 环境变量: `MEMORY_PROSTHETIC_HOST`, `MEMORY_PROSTHETIC_PORT`
+2. 配置文件: `~/.memory-prosthetic/mcp-config.json` (可选)
+3. 默认值: `localhost:21890`
+
+**Given** 用户设置了环境变量
+**When** MCP 服务器启动
+**Then** 使用环境变量中的配置
+**And** 忽略配置文件中的值
+
+**Given** 用户修改了配置文件
+**When** MCP 服务器重启
+**Then** 使用新的配置值
+**And** 配置验证通过（端口范围 1024-65535）
+
+**Given** 用户配置了无效端口
+**When** 配置验证失败
+**Then** 使用默认配置
+**And** 记录警告日志
+
+**技术细节:**
+
+- 文件: `src/config/settings.ts`
+- 配置类型: `McpServerConfig`
+- 配置验证: 端口范围、主机格式验证
+- 默认值: `localhost:21890`, 超时 5000ms
+
+---
+
+### Story 8.6: 桌面应用状态检测与错误处理
+
+**As a** AI 助手用户,
+**I want** 在桌面应用未运行时收到友好提示,
+**So that** 知道需要启动应用才能使用搜索功能。
+
+**Acceptance Criteria:**
+
+**Given** MCP 服务器尝试调用桌面应用 API
+**When** 桌面应用未运行
+**Then** HTTP 客户端捕获连接错误
+**And** MCP 服务器返回友好错误信息："Memory Prosthetic 桌面应用未运行，请先启动应用"
+
+**Given** MCP 服务器启动时
+**When** 可选：检测桌面应用状态
+**Then** 调用 `/api/health` 端点
+**And** 如果失败，记录警告但不阻止启动
+
+**Given** 搜索工具调用时
+**When** 桌面应用未运行
+**Then** 返回错误响应，包含：
+
+- 错误代码: "DESKTOP_APP_NOT_RUNNING"
+- 友好提示信息
+- 建议操作："请启动 Memory Prosthetic 桌面应用"
+
+**Given** 网络超时或连接错误
+**When** 请求失败
+**Then** 区分错误类型：
+
+- 连接被拒绝 → 应用未运行
+- 超时 → 应用可能无响应
+- 其他错误 → 返回通用错误信息
+
+**技术细节:**
+
+- 错误处理: `src/utils/api-client.ts`
+- 错误类型: 连接错误、超时错误、API 错误
+- 健康检查: 可选启动时检查，或按需检查
+- 错误消息: 用户友好，符合 MCP 协议格式
+
+---
+
+### Story 8.7: MCP 服务器打包与分发
+
+**As a** 开发者,
+**I want** MCP 服务器可以独立运行,
+**So that** 用户可以轻松配置到 AI 助手中。
+
+**Acceptance Criteria:**
+
+**Given** MCP 项目已实现
+**When** 构建项目
+**Then** TypeScript 编译为 JavaScript
+**And** 生成可执行的入口文件
+
+**Given** MCP 服务器已构建
+**When** 用户配置到 AI 助手（如 Claude Desktop）
+**Then** 可以通过命令行启动
+**And** 启动命令示例: `node apps/mcp/dist/index.js` 或 `bun apps/mcp/src/index.ts`
+
+**Given** MCP 服务器已安装
+**When** 用户查看配置示例
+**Then** `.env.example` 文件提供配置模板
+**And** README.md 包含安装和配置说明
+
+**技术细节:**
+
+- 构建工具: TypeScript 编译器或 Bun
+- 入口文件: `src/index.ts` 或编译后的 `dist/index.js`
+- 配置示例: `.env.example`
+- 文档: `apps/mcp/README.md` - 安装、配置、使用说明
+
+---
+
+### Story 8.8: MCP 服务器测试与验证
+
+**As a** 开发者,
+**I want** 验证 MCP 服务器功能正常,
+**So that** 确保 AI 助手可以正确使用搜索功能。
+
+**Acceptance Criteria:**
+
+**Given** MCP 服务器已实现
+**When** 运行测试
+**Then** 验证以下场景：
+
+- MCP 服务器可以启动
+- 可以注册搜索工具
+- 可以调用桌面应用 API（模拟或真实）
+- 错误处理正确工作
+
+**Given** 桌面应用正在运行
+**When** 通过 MCP 调用搜索工具
+**Then** 搜索结果正确返回
+**And** 结果格式符合 MCP 协议
+
+**Given** 桌面应用未运行
+**When** 通过 MCP 调用搜索工具
+**Then** 返回友好的错误提示
+**And** 错误信息清晰明确
+
+**技术细节:**
+
+- 测试框架: 可选 Jest 或 Bun 测试
+- 测试场景: 单元测试、集成测试
+- 模拟: 可以模拟桌面应用 HTTP API
+- 验证: MCP 协议合规性、错误处理、配置管理
 
 ---

@@ -5,6 +5,7 @@
 
 mod routes;
 mod handlers;
+mod mcp;
 
 pub use routes::create_router;
 

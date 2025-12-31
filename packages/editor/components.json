@@ -1,11 +1,11 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
-  "rsc": false,
+  "rsc": true,
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/styles/globals.css",
+    "css": "../../packages/ui/src/styles/globals.css",
     "baseColor": "zinc",
     "cssVariables": true
   },
@@ -18,8 +18,6 @@
     "hooks": "@memory-prosthetic/ui/hooks"
   },
   "registries": {
-    "@plate": "https://platejs.org/r/{name}.json",
-    "@kokonutui": "https://kokonutui.com/r/{name}.json",
-    "@smoothui": "https://smoothui.dev/r/{name}.json"
+    "@plate": "https://platejs.org/r/{name}.json"
   }
 }

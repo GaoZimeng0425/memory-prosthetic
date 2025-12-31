@@ -6,7 +6,7 @@ use rusqlite::{params, Connection, Result as SqliteResult};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 /// Database error types
 #[derive(Error, Debug)]
@@ -42,9 +42,24 @@ impl Database {
         let conn = Connection::open(&path)?;
 
         // Enable WAL mode for better concurrency
-        conn.execute_batch("PRAGMA journal_mode=WAL;")?;
-
-        info!("Database opened at: {:?}", path);
+        // If WAL mode fails (e.g., on network filesystems), fall back to DELETE mode
+        match conn.execute_batch("PRAGMA journal_mode=WAL;") {
+            Ok(_) => {
+                info!("Database opened with WAL mode at: {:?}", path);
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to enable WAL mode: {}. Falling back to DELETE mode.",
+                    e
+                );
+                // Try to set DELETE mode explicitly
+                if let Err(e2) = conn.execute_batch("PRAGMA journal_mode=DELETE;") {
+                    error!("Failed to set DELETE journal mode: {}", e2);
+                    return Err(DbError::Sqlite(e2));
+                }
+                info!("Database opened with DELETE mode at: {:?}", path);
+            }
+        }
 
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),

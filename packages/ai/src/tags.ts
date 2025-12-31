@@ -79,7 +79,6 @@ const generateTagsFallback = async (
   const config = await getAiConfig()
   const model = getAiModel(config)
 
-  const { generateText } = await import('ai')
   const { text } = await generateText({
     model,
     prompt: `提取标签：${title}\n${content.substring(0, 1000)}`,

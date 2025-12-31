@@ -3,7 +3,6 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
       "@memory-prosthetic/editor/*": ["../../packages/editor/src/*"],
       "@memory-prosthetic/editor": ["../../packages/editor/src/index.ts"],
       "@memory-prosthetic/ui": ["../../packages/ui/src/index.ts"],
@@ -14,6 +13,5 @@
       "@memory-prosthetic/ai/*": ["../../packages/ai/src/*"]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "../ui/src/components/ui/toolbar.tsx"]
 }

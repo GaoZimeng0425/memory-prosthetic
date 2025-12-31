@@ -27,7 +27,7 @@ use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
 use settings::{AppSettings, SettingsManager, ShortcutConfig, Theme};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, RunEvent, State, WindowEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WindowEvent};
 #[cfg(target_os = "macos")]
 use tauri::window::Color;
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -1544,21 +1544,64 @@ pub fn run() {
                 }
             }
 
-            // Get app data directory
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .expect("Failed to get app data directory");
+            // Helper function to emit error event to frontend
+            let emit_startup_error = |title: &str, message: &str, details: Option<&str>| {
+                let error_payload = serde_json::json!({
+                    "title": title,
+                    "message": message,
+                    "details": details.unwrap_or("")
+                });
 
-            info!("App data directory: {:?}", app_data_dir);
+                // Try to emit to main window first
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let _ = main_window.emit("startup:error", &error_payload);
+                } else {
+                    // If main window doesn't exist yet, emit to all windows
+                    let _ = app.emit("startup:error", &error_payload);
+                }
+            };
+
+            // Get app data directory
+            let app_data_dir = match app.path().app_data_dir() {
+                Ok(dir) => {
+                    info!("App data directory: {:?}", dir);
+                    dir
+                }
+                Err(e) => {
+                    tracing::error!("Failed to get app data directory: {}", e);
+                    let error_msg = format!(
+                        "无法获取应用数据目录: {}. 请检查系统权限和磁盘空间。",
+                        e
+                    );
+                    emit_startup_error("应用数据目录获取失败", &error_msg, Some(&e.to_string()));
+                    return Err(error_msg.into());
+                }
+            };
 
             // Initialize database
-            let db = db::init_database(app_data_dir.clone())
-                .expect("Failed to initialize database");
+            let db = match db::init_database(app_data_dir.clone()) {
+                Ok(db) => db,
+                Err(e) => {
+                    tracing::error!("Failed to initialize database: {}", e);
+                    let error_msg = format!(
+                        "数据库初始化失败: {}. 请检查应用数据目录权限和磁盘空间。",
+                        e
+                    );
+                    emit_startup_error("数据库初始化失败", &error_msg, Some(&e.to_string()));
+                    return Err(error_msg.into());
+                }
+            };
 
             // Initialize settings
-            let settings_manager = SettingsManager::new(app_data_dir.clone())
-                .expect("Failed to initialize settings");
+            let settings_manager = match SettingsManager::new(app_data_dir.clone()) {
+                Ok(manager) => manager,
+                Err(e) => {
+                    tracing::error!("Failed to initialize settings: {}", e);
+                    let error_msg = format!("设置初始化失败: {}.", e);
+                    emit_startup_error("设置初始化失败", &error_msg, Some(&e.to_string()));
+                    return Err(error_msg.into());
+                }
+            };
             let shortcut_config = settings_manager.get().search_shortcut.clone();
 
             // Initialize embedding model (optional - may not exist)
@@ -1593,8 +1636,13 @@ pub fn run() {
 
             // Start cleanup service in a separate thread with its own runtime
             std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new()
-                    .expect("Failed to create Tokio runtime");
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        tracing::error!("Failed to create Tokio runtime for cleanup service: {}", e);
+                        return;
+                    }
+                };
 
                 rt.block_on(async move {
                     let cleanup_service = cleanup::service::CleanupService::new(
@@ -1613,8 +1661,13 @@ pub fn run() {
 
             // Start HTTP server and embedding service in a separate thread with its own runtime
             std::thread::spawn(move || {
-                let rt = tokio::runtime::Runtime::new()
-                    .expect("Failed to create Tokio runtime");
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        tracing::error!("Failed to create Tokio runtime for HTTP server: {}", e);
+                        return;
+                    }
+                };
 
                 rt.block_on(async move {
                     // Start embedding service if model is available

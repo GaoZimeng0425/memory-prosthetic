@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use thiserror::Error;
+use tracing::{error, info, warn};
 
 /// Settings-related errors
 #[derive(Error, Debug)]
@@ -156,8 +157,41 @@ impl SettingsManager {
         let settings_path = app_data_dir.join("settings.json");
 
         let settings = if settings_path.exists() {
-            let content = fs::read_to_string(&settings_path)?;
-            serde_json::from_str(&content)?
+            match fs::read_to_string(&settings_path) {
+                Ok(content) => {
+                    match serde_json::from_str(&content) {
+                        Ok(settings) => settings,
+                        Err(e) => {
+                            // JSON 格式错误，备份原文件并使用默认设置
+                            tracing::warn!(
+                                "Settings file has invalid JSON format: {}. Using defaults and backing up original file.",
+                                e
+                            );
+
+                            // 备份损坏的文件
+                            let backup_path = settings_path.with_extension("json.bak");
+                            if let Err(backup_err) = fs::copy(&settings_path, &backup_path) {
+                                tracing::error!(
+                                    "Failed to backup corrupted settings file: {}",
+                                    backup_err
+                                );
+                            } else {
+                                tracing::info!(
+                                    "Backed up corrupted settings to: {:?}",
+                                    backup_path
+                                );
+                            }
+
+                            AppSettings::default()
+                        }
+                    }
+                }
+                Err(e) => {
+                    // 文件读取失败，使用默认设置
+                    tracing::warn!("Failed to read settings file: {}. Using defaults.", e);
+                    AppSettings::default()
+                }
+            }
         } else {
             AppSettings::default()
         };

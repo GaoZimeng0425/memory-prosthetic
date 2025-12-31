@@ -5,6 +5,8 @@
  * Maps REST-like endpoints to Tauri commands.
  */
 
+import { invoke } from '@tauri-apps/api/core'
+
 import type { RequestAdapter } from './adapter'
 
 /** Result wrapper from Tauri commands */
@@ -90,7 +92,6 @@ function getCommand(method: string, endpoint: string): string {
 export function createTauriAdapter(): RequestAdapter {
   // Dynamically import Tauri API to avoid issues in non-Tauri environments
   const invokeCommand = async <T>(command: string, args?: Record<string, unknown>): Promise<T> => {
-    const { invoke } = await import('@tauri-apps/api/core')
     const result = await invoke<CommandResult<T>>(command, args)
     return result.data
   }

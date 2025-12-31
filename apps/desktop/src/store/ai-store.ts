@@ -8,7 +8,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 import type { AiProvider } from '@memory-prosthetic/ai/config'
-import { getAiConfig, saveAiConfig } from '@memory-prosthetic/ai/config'
+import { getAiConfig, saveAiConfig, validateApiKey } from '@memory-prosthetic/ai/config'
 
 export type AiStoreState = {
   // State
@@ -132,8 +132,7 @@ export const useAiStore = create<AiStoreState>()(
         const { provider, apiKey, model, baseURL } = get()
         set({ isValidating: true, error: null })
         try {
-          const { validateApiKey: validate } = await import('@memory-prosthetic/ai/config')
-          const isValid = await validate(provider, apiKey, model, baseURL || undefined)
+          const isValid = await validateApiKey(provider, apiKey, model, baseURL || undefined)
           set({ isValidating: false })
           return isValid
         } catch (err) {

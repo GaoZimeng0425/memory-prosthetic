@@ -1,0 +1,16 @@
+{
+  "name": "editor",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@platejs/basic-nodes": "^52.0.11",
+    "platejs": "^52.0.15"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

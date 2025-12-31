@@ -130,7 +130,7 @@ export const ArticleReader = ({
         <div className="flex items-center gap-2">
           <Button
             aria-label="Toggle Fullscreen"
-            className="rounded-full shadow-lg hover:text-foreground"
+            className="rounded-full bg-secondary shadow-lg hover:text-foreground"
             onClick={onToggleMaximize}
             size="icon"
             title={isMaximized ? '退出全屏' : '全屏阅读'}
@@ -140,10 +140,10 @@ export const ArticleReader = ({
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full shadow-lg">
+          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
             <Button
               aria-label="原文视图"
-              className={cn(viewMode === 'markdown' && 'bg-background')}
+              className={cn(viewMode === 'markdown' && 'bg-primary/80 text-primary-foreground')}
               onClick={() => setViewMode('markdown')}
               size="sm"
               variant="ghost"
@@ -152,7 +152,7 @@ export const ArticleReader = ({
             </Button>
             <Button
               aria-label="网页视图"
-              className={cn(viewMode === 'webview' && 'bg-background')}
+              className={cn(viewMode === 'webview' && 'bg-primary/10 text-primary-foreground')}
               onClick={() => setViewMode('webview')}
               size="sm"
               variant="ghost"
@@ -163,7 +163,7 @@ export const ArticleReader = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full shadow-lg">
+          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
             {/* AI 分析按钮 */}
             <AiButton article={article} />
             {(article.status === 'archived' || article.status === 'deleted') && onRestore && (

@@ -1,6 +1,7 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createOpenAI } from '@ai-sdk/openai'
+import { invoke } from '@tauri-apps/api/core'
 import type { LanguageModel } from 'ai'
 
 export type AiProvider = 'openai' | 'anthropic' | 'custom' | 'deepseek'
@@ -24,9 +25,6 @@ const DEFAULT_CONFIG: AiConfig = {
 // 从设置存储中获取配置
 export const getAiConfig = async (): Promise<AiConfig> => {
   try {
-    // 动态导入 Tauri API（避免在非 Tauri 环境中报错）
-    const { invoke } = await import('@tauri-apps/api/core')
-
     // 从普通设置获取配置（不包含 API Key）
     const result = await invoke<{ data: Omit<AiConfig, 'apiKey'> | null }>('get_setting', {
       key: 'ai_config',
@@ -50,9 +48,6 @@ export const getAiConfig = async (): Promise<AiConfig> => {
 // 保存配置到设置存储
 export const saveAiConfig = async (config: AiConfig): Promise<void> => {
   try {
-    // 动态导入 Tauri API
-    const { invoke } = await import('@tauri-apps/api/core')
-
     // 分离 API Key 和普通配置
     const { apiKey, ...restConfig } = config
 
@@ -78,7 +73,6 @@ export const saveAiConfig = async (config: AiConfig): Promise<void> => {
 const getSecureApiKey = async (): Promise<string | null> => {
   try {
     // 使用 Tauri invoke 从后端获取 API Key
-    const { invoke } = await import('@tauri-apps/api/core')
     const result = await invoke<{ data: string | null }>('get_setting', {
       key: 'ai_api_key_secure',
     })
@@ -93,7 +87,6 @@ const getSecureApiKey = async (): Promise<string | null> => {
 const saveSecureApiKey = async (apiKey: string): Promise<void> => {
   try {
     // 使用 Tauri invoke 保存 API Key 到后端
-    const { invoke } = await import('@tauri-apps/api/core')
     await invoke('set_setting', {
       key: 'ai_api_key_secure',
       value: apiKey,
@@ -107,7 +100,6 @@ const saveSecureApiKey = async (apiKey: string): Promise<void> => {
 const clearSecureApiKey = async (): Promise<void> => {
   try {
     // 使用 Tauri invoke 清除 API Key
-    const { invoke } = await import('@tauri-apps/api/core')
     await invoke('set_setting', {
       key: 'ai_api_key_secure',
       value: null,

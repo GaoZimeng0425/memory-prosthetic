@@ -1,11 +1,12 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { emit } from '@tauri-apps/api/event'
+import { emit, listen } from '@tauri-apps/api/event'
 import ReactDOM from 'react-dom/client'
 
 import { getQueryClient, QueryProvider } from '@memory-prosthetic/shared/request'
 import { Toaster } from '@memory-prosthetic/ui/components/ui/sonner'
 import { type Theme, ThemeProvider } from '@memory-prosthetic/ui/hooks/use-theme'
+import { ErrorPage } from '@/components/pages/ErrorPage'
 import { AppRouterProvider } from '@/lib/router'
 import { AiConfigProvider } from '@/providers/AiConfigProvider'
 import type { AppSettings, CommandResult } from './types/api'
@@ -37,8 +38,61 @@ const handleThemeChange = async (theme: Theme) => {
   await emit('theme-changed', theme)
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
+// Main App component with error handling
+function App() {
+  const [startupError, setStartupError] = useState<{
+    title: string
+    message: string
+    details?: string
+  } | null>(null)
+
+  useEffect(() => {
+    // Listen for startup errors from backend
+    let unlistenFn: (() => void) | null = null
+
+    const setupErrorListener = async () => {
+      try {
+        const unlisten = await listen<{
+          title: string
+          message: string
+          details?: string
+        }>('startup:error', (event) => {
+          console.error('[App] Startup error received:', event.payload)
+          setStartupError(event.payload)
+        })
+        unlistenFn = unlisten
+      } catch (error) {
+        console.error('[App] Failed to setup error listener:', error)
+      }
+    }
+
+    void setupErrorListener()
+
+    // Cleanup on unmount
+    return () => {
+      if (unlistenFn) {
+        unlistenFn()
+      }
+    }
+  }, [])
+
+  // Show error page if startup error occurred
+  if (startupError) {
+    return (
+      <ErrorPage
+        details={startupError.details}
+        message={startupError.message}
+        onRetry={() => {
+          setStartupError(null)
+          window.location.reload()
+        }}
+        title={startupError.title}
+      />
+    )
+  }
+
+  // Normal app rendering
+  return (
     <QueryProvider>
       <ThemeProvider
         defaultTheme="dark"
@@ -52,5 +106,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         </AiConfigProvider>
       </ThemeProvider>
     </QueryProvider>
+  )
+}
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <App />
   </React.StrictMode>
 )

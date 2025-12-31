@@ -15,6 +15,8 @@ export default defineConfig({
       '@memory-prosthetic/shared': path.resolve(__dirname, '../../packages/shared/src'),
       '@memory-prosthetic/ai': path.resolve(__dirname, '../../packages/ai/src'),
       '@memory-prosthetic/ai/config': path.resolve(__dirname, '../../packages/ai/src/config.ts'),
+      '@memory-prosthetic/editor': path.resolve(__dirname, '../../packages/editor/src'),
+      '@memory-prosthetic/editor/*': path.resolve(__dirname, '../../packages/editor/src/*'),
     },
   },
 

@@ -8,6 +8,7 @@ import { ArrowUpIcon, CheckIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, XIco
 import { KEYS, NodeApi, nanoid, type Value } from 'platejs'
 import type { CreatePlateEditorOptions } from 'platejs/react'
 import { Plate, useEditorPlugin, useEditorRef, usePlateEditor, usePluginOption } from 'platejs/react'
+import { toast } from 'sonner'
 
 import { BasicMarksKit } from '@memory-prosthetic/editor/components/editor/plugins/basic-marks-kit'
 import { discussionPlugin, type TDiscussion } from '@memory-prosthetic/editor/components/editor/plugins/discussion-kit'
@@ -257,7 +258,10 @@ function CommentMoreDropdown(props: {
   const selectedEditCommentRef = React.useRef<boolean>(false)
 
   const onDeleteComment = React.useCallback(() => {
-    if (!comment.id) return alert('You are operating too quickly, please try again later.')
+    if (!comment.id) {
+      toast.error('操作过快，请稍后再试')
+      return
+    }
 
     // Find and update the discussion
     const updatedDiscussions = editor.getOption(discussionPlugin, 'discussions').map((discussion) => {

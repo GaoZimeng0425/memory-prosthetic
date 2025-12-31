@@ -99,7 +99,7 @@ export const AppSidebar = ({
   return (
     <aside
       className={cn(
-        'flex h-full flex-col border-sidebar-border border-r bg-sidebar transition-all duration-200',
+        'm-2 flex flex-col rounded-2xl border border-sidebar-border bg-sidebar shadow-lg transition-all duration-200',
         className,
         width
       )}

@@ -32,7 +32,7 @@ export function ArticleGroupSection({
       </div>
 
       {/* Items */}
-      <div className="space-y-1">
+      <div className="space-y-2 divide-y divide-border pb-2">
         {group.items.map((item) => (
           <ArticleListItem
             isSelected={selectedId === item.id}

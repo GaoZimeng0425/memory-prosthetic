@@ -46,8 +46,8 @@ export function ArticleListItem({
       <ContextMenuTrigger asChild>
         <div
           className={cn(
-            'group relative flex w-full gap-3 rounded-lg p-3 text-left transition-colors',
-            isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+            'group relative flex w-full gap-3 overflow-hidden rounded-lg border border-border bg-background p-3 text-left shadow transition-colors',
+            isSelected ? 'border-primary text-accent-foreground' : 'hover:bg-primary/5'
           )}
           onClick={() => onSelect(item.id)}
         >
@@ -55,7 +55,7 @@ export function ArticleListItem({
           {isSelected && <div className="absolute top-1/2 left-0 h-8 w-1 -translate-y-1/2 rounded-r-full bg-primary" />}
 
           {/* Main Content */}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 pb-8">
             {/* Title */}
             <h3 className="mb-2 line-clamp-2 font-medium text-sm leading-snug">{item.title}</h3>
 
@@ -69,10 +69,10 @@ export function ArticleListItem({
             )}
 
             {/* Meta Info: URL, Category, Time */}
-            <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground text-xs">
+            <div className="absolute right-0 bottom-0 left-0 flex items-center gap-2 whitespace-nowrap bg-muted-foreground/10 px-3 py-1 text-[10px] text-muted-foreground">
               <span className="truncate">{getDomain(item.url)}</span>
               <span>·</span>
-              <span>{favorite ? favorite.name : '未分类'}</span>
+              <span className="truncate">{favorite ? favorite.name : '未分类'}</span>
               <span>·</span>
               <span className="shrink-0">{formatTime(item.createdAt)}</span>
             </div>
@@ -94,10 +94,9 @@ export function ArticleListItem({
           )}
 
           {/* Star Toggle - Top right */}
-
           <Button
             className={cn(
-              'absolute top-2 right-2 size-3 transition-colors',
+              'absolute top-2 right-2 size-3 rounded-full bg-background transition-colors',
               item.starred ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground/40 hover:text-yellow-500'
             )}
             onClick={(e) => {
@@ -108,7 +107,7 @@ export function ArticleListItem({
             title={item.starred ? '取消星标' : '添加星标'}
             variant="ghost"
           >
-            <Star className={cn('size-full', item.starred && 'fill-current')} />
+            <Star className={cn('size-full text-yellow-400', item.starred && 'fill-current')} />
           </Button>
         </div>
       </ContextMenuTrigger>

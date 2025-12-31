@@ -4,7 +4,7 @@ import { normalizeNodeId } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 
 import { EditorKit } from '@memory-prosthetic/editor/components/editor/editor-kit'
-import { SettingsDialog } from '@memory-prosthetic/editor/components/editor/settings-dialog'
+// import { SettingsDialog } from '@memory-prosthetic/editor/components/editor/settings-dialog'
 import { Editor, EditorContainer } from '@memory-prosthetic/editor/components/ui/editor'
 
 export function PlateEditor() {
@@ -19,7 +19,7 @@ export function PlateEditor() {
         <Editor variant="default" />
       </EditorContainer>
 
-      <SettingsDialog />
+      {/* <SettingsDialog /> */}
     </Plate>
   )
 }

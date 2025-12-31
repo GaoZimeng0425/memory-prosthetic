@@ -243,11 +243,11 @@ function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
         </ContextMenuTrigger>
         <ContextMenuContent>
           <ContextMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
+            <Pencil className="mr-2 size-4" />
             重命名
           </ContextMenuItem>
           <ContextMenuItem className="text-destructive" disabled={isDeleting} onClick={handleDeleteClick}>
-            <Trash2 className="mr-2 h-4 w-4" />
+            <Trash2 className="mr-2 size-4 text-destructive" />
             删除
           </ContextMenuItem>
         </ContextMenuContent>

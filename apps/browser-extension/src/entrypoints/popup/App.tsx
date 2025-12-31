@@ -32,7 +32,7 @@ function App() {
   const { themeOptions, theme, setTheme } = useTheme()
 
   return (
-    <div className="w-80 bg-background p-4 text-foreground">
+    <div className="w-80 p-4 text-foreground">
       {/* Header */}
       <header className="mb-4 text-center">
         <h1 className="m-0 font-semibold text-foreground text-xl">记忆外挂</h1>

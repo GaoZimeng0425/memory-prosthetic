@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import type { Tag } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -43,7 +44,7 @@ export function EditTagDialog({ tag, open, onOpenChange }: EditTagDialogProps) {
     if (!tag) return
 
     if (!name.trim()) {
-      alert('请输入标签名称')
+      toast.error('请输入标签名称')
       return
     }
 
@@ -53,9 +54,10 @@ export function EditTagDialog({ tag, open, onOpenChange }: EditTagDialogProps) {
       setName('')
       onOpenChange(false)
       await refresh()
+      toast.success('标签已更新')
     } catch (error) {
       console.error('Failed to update tag:', error)
-      alert(`更新失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast.error(`更新失败: ${error instanceof Error ? error.message : '未知错误'}`)
     } finally {
       setIsUpdating(false)
     }

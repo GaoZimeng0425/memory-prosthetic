@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
@@ -33,7 +34,7 @@ export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
     e.preventDefault()
 
     if (!name.trim()) {
-      alert('请输入标签名称')
+      toast.error('请输入标签名称')
       return
     }
 
@@ -43,9 +44,10 @@ export function CreateTagDialog({ open, onOpenChange }: CreateTagDialogProps) {
       setName('')
       onOpenChange(false)
       await refresh()
+      toast.success('标签已创建')
     } catch (error) {
       console.error('Failed to create tag:', error)
-      alert(`创建失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast.error(`创建失败: ${error instanceof Error ? error.message : '未知错误'}`)
     } finally {
       setIsCreating(false)
     }

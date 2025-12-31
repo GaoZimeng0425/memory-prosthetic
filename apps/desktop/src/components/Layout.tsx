@@ -20,7 +20,7 @@ export const Layout = ({ sidebarStats, onSearchClick, onSettingsClick }: LayoutP
   const [sidebarState, setSidebarState] = useState<SidebarState>('expanded')
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden text-foreground">
       <DragRegion className="h-8 shrink-0 cursor-move" />
       {/* Sidebar */}
       <AppSidebar

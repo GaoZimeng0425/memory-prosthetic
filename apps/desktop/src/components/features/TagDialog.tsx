@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { Hash, Plus, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -70,9 +71,10 @@ export function TagDialog({ open, onOpenChange, selectedTagIds, onSelectionChang
       const newTagId = await onCreateTag(searchQuery.trim())
       onSelectionChange([...selectedTagIds, newTagId])
       setSearchQuery('')
+      toast.success('标签已创建')
     } catch (error) {
       console.error('Failed to create tag:', error)
-      alert(`创建标签失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast.error(`创建标签失败: ${error instanceof Error ? error.message : '未知错误'}`)
     }
   }
 

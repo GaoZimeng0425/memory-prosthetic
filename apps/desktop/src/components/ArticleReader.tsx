@@ -86,7 +86,6 @@ export const ArticleReader = ({
     isLoading: iframeLoading,
     iframeRef,
   } = useIframeCspDetection(article?.url ?? null, viewMode === 'webview')
-  console.log('🚀 : ArticleReader : iframeError:', iframeError)
 
   const handleCopyUrl = async () => {
     if (!article) return
@@ -117,12 +116,11 @@ export const ArticleReader = ({
       </div>
     )
   }
-  console.log(iframeError, '<<<')
 
   return (
     <div
       className={cn(
-        'flex flex-1 flex-col overflow-hidden bg-background',
+        'm-2 flex flex-1 flex-col overflow-hidden rounded-2xl bg-background shadow-lg',
         isMaximized && 'fixed inset-0 z-50',
         className
       )}

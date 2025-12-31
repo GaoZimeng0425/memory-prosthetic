@@ -91,7 +91,7 @@ export function ArticleList({
 
   if (isLoading && collections.length === 0) {
     return (
-      <div className="flex h-full w-80 flex-col border-border border-r bg-card">
+      <div className="flex h-full w-80 flex-col">
         <div className="flex items-center justify-center p-8">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
@@ -100,7 +100,7 @@ export function ArticleList({
   }
 
   return (
-    <div className={cn('flex h-full w-80 flex-col overflow-hidden border-border border-r bg-card', className)}>
+    <div className={cn('flex h-full w-80 flex-col overflow-hidden', className)}>
       {/* Filter Hint */}
       {filterHint?.type && (
         <div className="border-border border-b bg-muted/30 px-3 py-2">
@@ -137,7 +137,7 @@ export function ArticleList({
         {groups.length === 0 ? (
           <EmptyState hasFilter={!!filter} />
         ) : (
-          <div className="p-2">
+          <div className="space-y-1 divide-y divide-border p-2">
             {groups.map((group) => (
               <ArticleGroupSection
                 group={group}

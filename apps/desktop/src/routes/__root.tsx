@@ -6,6 +6,7 @@ import { listen } from '@tauri-apps/api/event'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { toast } from 'sonner'
 
 import { collections as collectionsApi } from '@/apis'
 import { AppSidebar, type SidebarState } from '@/components/AppSidebar'
@@ -34,7 +35,6 @@ function RootLayout() {
   // Redirect root route to /all
   useEffect(() => {
     if (!isSearchWindow && window.location.pathname === '/') {
-      console.log('[RootLayout] Redirecting root route to /all')
       void navigate({ to: '/all', replace: true })
     }
   }, [navigate, isSearchWindow])
@@ -236,7 +236,7 @@ function RootLayoutContent({
 
   return (
     <>
-      <div className="flex h-screen overflow-hidden bg-background text-foreground">
+      <div className="flex h-screen overflow-hidden bg-secondary text-foreground">
         <DragRegion className="h-8 shrink-0 cursor-move" />
         {/* Sidebar */}
         <AppSidebar
@@ -314,9 +314,10 @@ function DialogComponents() {
             if (favoriteDialogState.collectionId !== null) {
               try {
                 await setFavorite(favoriteDialogState.collectionId, favoriteId)
+                toast.success('收藏夹已设置')
               } catch (error) {
                 console.error('[DialogComponents] Failed to set favorite:', error)
-                alert(`设置收藏夹失败: ${error instanceof Error ? error.message : '未知错误'}`)
+                toast.error(`设置收藏夹失败: ${error instanceof Error ? error.message : '未知错误'}`)
               }
             }
           }}

@@ -41,6 +41,11 @@ impl Database {
 
         let conn = Connection::open(&path)?;
 
+        // Enable foreign key constraints (SQLite defaults to OFF)
+        if let Err(e) = conn.execute_batch("PRAGMA foreign_keys = ON;") {
+            warn!("Failed to enable foreign key constraints: {}", e);
+        }
+
         // Enable WAL mode for better concurrency
         // If WAL mode fails (e.g., on network filesystems), fall back to DELETE mode
         match conn.execute_batch("PRAGMA journal_mode=WAL;") {
@@ -92,7 +97,12 @@ impl Database {
 
     /// Run database migrations
     pub fn migrate(&self) -> Result<(), DbError> {
-        self.with_connection(|conn| {
+        self.with_connection_mut(|conn| {
+            // Ensure foreign keys are enabled for this connection
+            if let Err(e) = conn.execute_batch("PRAGMA foreign_keys = ON;") {
+                warn!("Failed to enable foreign key constraints in migration: {}", e);
+            }
+
             conn.execute_batch(
                 r#"
                 -- Collections table
@@ -133,20 +143,30 @@ impl Database {
             )?;
 
             // Migration: Add starred column if not exists (ignore error if already exists)
-            let _ = conn.execute(
+            // Note: starred is already in CREATE TABLE, but this handles existing databases
+            if let Err(e) = conn.execute(
                 "ALTER TABLE collections ADD COLUMN starred INTEGER NOT NULL DEFAULT 0",
                 [],
-            );
+            ) {
+                // Column already exists or other error - log but continue
+                debug!("Could not add starred column (may already exist): {}", e);
+            }
 
             // Migration: Add favorite_id and status columns to collections table
-            let _ = conn.execute(
+            if let Err(e) = conn.execute(
                 "ALTER TABLE collections ADD COLUMN favorite_id INTEGER",
                 [],
-            );
-            let _ = conn.execute(
+            ) {
+                debug!("Could not add favorite_id column (may already exist): {}", e);
+            }
+
+            // Note: In SQLite, adding NOT NULL column with DEFAULT is safe even with existing data
+            if let Err(e) = conn.execute(
                 "ALTER TABLE collections ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",
                 [],
-            );
+            ) {
+                debug!("Could not add status column (may already exist): {}", e);
+            }
 
             // Create favorites table
             conn.execute_batch(
@@ -205,13 +225,27 @@ impl Database {
 
             // Clean up duplicate "未分类" favorites if any exist
             // Keep only the oldest one and move collections from others to it
+            // Check if favorites table exists first
             let duplicate_count: i64 = match conn.query_row(
-                "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='favorites'",
                 [],
-                |row| row.get(0),
+                |row| row.get::<_, i64>(0),
             ) {
-                Ok(count) => count,
-                Err(_) => 0,
+                Ok(1) => {
+                    // Table exists, check for duplicates
+                    match conn.query_row(
+                        "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                        [],
+                        |row| row.get(0),
+                    ) {
+                        Ok(count) => count,
+                        Err(e) => {
+                            warn!("Error checking for duplicate '未分类' favorites: {}", e);
+                            0
+                        }
+                    }
+                }
+                Ok(_) | Err(_) => 0, // Table doesn't exist yet, skip cleanup
             };
 
             if duplicate_count > 1 {
@@ -252,16 +286,29 @@ impl Database {
             }
 
             // Create default "未分类" (Uncategorized) favorite if it doesn't exist
+            // Check if favorites table exists first
             let default_favorite_exists: i64 = match conn.query_row(
-                "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='favorites'",
                 [],
-                |row| row.get(0),
+                |row| row.get::<_, i64>(0),
             ) {
-                Ok(count) => count,
-                Err(e) => {
-                    // If query fails (e.g., table doesn't exist yet), log and continue
-                    error!("Error checking for default '未分类' favorite: {}", e);
-                    0 // Assume it doesn't exist
+                Ok(1) => {
+                    // Table exists, check for default favorite
+                    match conn.query_row(
+                        "SELECT COUNT(*) FROM favorites WHERE name = '未分类'",
+                        [],
+                        |row| row.get(0),
+                    ) {
+                        Ok(count) => count,
+                        Err(e) => {
+                            warn!("Error checking for default '未分类' favorite: {}", e);
+                            0 // Assume it doesn't exist
+                        }
+                    }
+                }
+                Ok(_) | Err(_) => {
+                    // Table doesn't exist yet, will be created below
+                    0
                 }
             };
 
@@ -330,34 +377,25 @@ impl Database {
             // ========== Knowledge Graph & AI Schema Extensions ==========
 
             // Add AI metadata columns to collections table
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN summary_type TEXT",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN content_type TEXT",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN domain TEXT",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN difficulty TEXT",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN language TEXT",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN quality_score REAL",
-                [],
-            );
-            let _ = conn.execute(
-                "ALTER TABLE collections ADD COLUMN processed_at INTEGER",
-                [],
-            );
+            // Ignore errors if columns already exist
+            let ai_columns = [
+                ("summary_type", "TEXT"),
+                ("content_type", "TEXT"),
+                ("domain", "TEXT"),
+                ("difficulty", "TEXT"),
+                ("language", "TEXT"),
+                ("quality_score", "REAL"),
+                ("processed_at", "INTEGER"),
+            ];
+
+            for (col_name, col_type) in &ai_columns {
+                if let Err(e) = conn.execute(
+                    &format!("ALTER TABLE collections ADD COLUMN {} {}", col_name, col_type),
+                    [],
+                ) {
+                    debug!("Could not add {} column (may already exist): {}", col_name, e);
+                }
+            }
 
             // Create associations table
             conn.execute_batch(

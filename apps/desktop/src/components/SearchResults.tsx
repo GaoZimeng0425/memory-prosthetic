@@ -15,7 +15,19 @@ export function SearchResults({ results, query }: SearchResultsProps) {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    // SQLite 格式: 'YYYY-MM-DD HH:MM:SS' -> 转换为 ISO 格式: 'YYYY-MM-DDTHH:MM:SSZ'
+    const isoString =
+      dateString.includes('T') || dateString.includes('Z') || dateString.includes('+') || dateString.includes('-')
+        ? dateString
+        : `${dateString.replace(' ', 'T')}Z`
+
+    const date = new Date(isoString)
+
+    if (Number.isNaN(date.getTime())) {
+      // 检查日期是否有效
+      return dateString // 如果解析失败，返回原始字符串
+    }
+
     return date.toLocaleDateString('zh-CN', {
       year: 'numeric',
       month: 'short',

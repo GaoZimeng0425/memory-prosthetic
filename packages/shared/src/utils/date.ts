@@ -12,13 +12,19 @@ const getLocalTimeZone = (): string => {
 /**
  * 解析日期字符串为本地时区的 TZDate
  * 后端存储 UTC 时间（SQLite datetime('now')），前端显示本地时间
+ * SQLite 格式: 'YYYY-MM-DD HH:MM:SS' -> 转换为 ISO 格式: 'YYYY-MM-DDTHH:MM:SSZ'
  */
 export const parseToLocalTZ = (dateString: string): TZDate => {
   const localTZ = getLocalTimeZone()
 
   // 如果已经有时区信息（Z 或 +/-），直接使用
-  // 否则追加 'Z' 将其当作 UTC 解析
-  const isoString = /[Zz]$/.test(dateString) || /[+-]\d{2}:\d{2}$/.test(dateString) ? dateString : `${dateString}Z`
+  if (/[Zz]$/.test(dateString) || /[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new TZDate(dateString, localTZ)
+  }
+
+  // SQLite 格式: 'YYYY-MM-DD HH:MM:SS' -> 转换为 ISO 格式: 'YYYY-MM-DDTHH:MM:SSZ'
+  // 将空格替换为 'T'，并追加 'Z' 表示 UTC
+  const isoString = `${dateString.replace(' ', 'T')}Z`
 
   return new TZDate(isoString, localTZ)
 }

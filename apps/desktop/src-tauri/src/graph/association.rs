@@ -4,9 +4,11 @@
 
 use crate::db::{Collection, Database, DbError};
 use crate::embedding::get_embedding_model;
+use chrono::NaiveDateTime;
 use std::collections::HashSet;
 use std::sync::Arc;
 use thiserror::Error;
+use tracing::warn;
 
 #[derive(Debug, Error)]
 pub enum CalculationError {
@@ -137,9 +139,29 @@ impl AssociationCalculator {
         collection1: &Collection,
         collection2: &Collection,
     ) -> Option<(f64, i64)> {
-        // Parse timestamps (ISO 8601 strings)
-        let time1 = chrono::DateTime::parse_from_rfc3339(&collection1.created_at).ok()?.timestamp();
-        let time2 = chrono::DateTime::parse_from_rfc3339(&collection2.created_at).ok()?.timestamp();
+        // Validate created_at fields are not empty
+        if collection1.created_at.is_empty() || collection2.created_at.is_empty() {
+            return None;
+        }
+
+        // Parse timestamps (SQLite datetime format: 'YYYY-MM-DD HH:MM:SS')
+        let time1 = match NaiveDateTime::parse_from_str(&collection1.created_at, "%Y-%m-%d %H:%M:%S") {
+            Ok(dt) => dt.and_utc().timestamp(),
+            Err(e) => {
+                warn!("Failed to parse created_at for collection {}: {} (value: '{}')",
+                    collection1.id, e, collection1.created_at);
+                return None;
+            }
+        };
+
+        let time2 = match NaiveDateTime::parse_from_str(&collection2.created_at, "%Y-%m-%d %H:%M:%S") {
+            Ok(dt) => dt.and_utc().timestamp(),
+            Err(e) => {
+                warn!("Failed to parse created_at for collection {}: {} (value: '{}')",
+                    collection2.id, e, collection2.created_at);
+                return None;
+            }
+        };
 
         let time_diff = (time1 - time2).abs();
         let days_diff = time_diff / 86400; // Convert to days

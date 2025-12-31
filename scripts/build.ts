@@ -1,6 +1,6 @@
 // @ts-expect-error - Bun types may not be available in TypeScript config
 import { $ } from 'bun'
-import { cpSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -8,6 +8,58 @@ const Filename = fileURLToPath(import.meta.url)
 const Dirname = dirname(Filename)
 const rootDir = resolve(Dirname, '..')
 const outputDir = join(rootDir, '.output')
+
+/**
+ * 升级版本号的 patch 版本（最后一位）
+ * @param version 版本号字符串，如 "0.1.0"
+ * @returns 升级后的版本号，如 "0.1.1"
+ */
+const bumpVersion = (version: string): string => {
+  const parts = version.split('.').map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) {
+    throw new Error(`无效的版本号格式: ${version}`)
+  }
+  parts[2] += 1 // 增加 patch 版本
+  return parts.join('.')
+}
+
+/**
+ * 更新 package.json 中的版本号
+ */
+const updatePackageVersion = (packagePath: string): string => {
+  const content = readFileSync(packagePath, 'utf-8')
+  const pkg = JSON.parse(content)
+  const oldVersion = pkg.version
+  const newVersion = bumpVersion(oldVersion)
+  pkg.version = newVersion
+  writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8')
+  return newVersion
+}
+
+/**
+ * 更新 tauri.conf.json 中的版本号
+ */
+const updateTauriVersion = (tauriConfigPath: string, newVersion: string): void => {
+  const content = readFileSync(tauriConfigPath, 'utf-8')
+  const config = JSON.parse(content)
+  config.version = newVersion
+  writeFileSync(tauriConfigPath, `${JSON.stringify(config, null, 2)}\n`, 'utf-8')
+}
+
+// 升级版本号
+console.log('🔄 升级版本号...\n')
+
+// 1. 升级 Desktop 版本号
+const desktopPackagePath = join(rootDir, 'apps/desktop/package.json')
+const desktopTauriConfigPath = join(rootDir, 'apps/desktop/src-tauri/tauri.conf.json')
+const desktopNewVersion = updatePackageVersion(desktopPackagePath)
+updateTauriVersion(desktopTauriConfigPath, desktopNewVersion)
+console.log(`  ✓ Desktop: ${desktopNewVersion}`)
+
+// 2. 升级 Browser Extension 版本号
+const extensionPackagePath = join(rootDir, 'apps/browser-extension/package.json')
+const extensionNewVersion = updatePackageVersion(extensionPackagePath)
+console.log(`  ✓ Browser Extension: ${extensionNewVersion}\n`)
 
 // 清理并创建输出目录
 if (existsSync(outputDir)) {

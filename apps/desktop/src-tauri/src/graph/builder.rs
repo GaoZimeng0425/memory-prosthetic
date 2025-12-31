@@ -3,9 +3,11 @@
 //! Builds graph data structures from associations
 
 use crate::db::{Association, AssociationRepository, CollectionRepository, Database, DbError};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
+use tracing::warn;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -177,11 +179,20 @@ impl GraphBuilder {
                 fav_repo.get_by_id(fid).ok().flatten().map(|f| f.name)
             });
 
-            // Parse collected_at timestamp
-            let collected_at = chrono::DateTime::parse_from_rfc3339(&collection.created_at)
-                .ok()
-                .map(|dt| dt.timestamp())
-                .unwrap_or(0);
+            // Parse collected_at timestamp (SQLite datetime format: 'YYYY-MM-DD HH:MM:SS')
+            let collected_at = if collection.created_at.is_empty() {
+                tracing::warn!("Collection {} has empty created_at, using 0", collection.id);
+                0
+            } else {
+                match NaiveDateTime::parse_from_str(&collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                    Ok(dt) => dt.and_utc().timestamp(),
+                    Err(e) => {
+                        warn!("Failed to parse created_at for collection {}: {} (value: '{}'), using 0",
+                            collection.id, e, collection.created_at);
+                        0
+                    }
+                }
+            };
 
             nodes.push(GraphNode {
                 id: collection.id,
@@ -318,11 +329,20 @@ impl GraphBuilder {
                 fav_repo.get_by_id(fid).ok().flatten().map(|f| f.name)
             });
 
-            // Parse collected_at timestamp
-            let collected_at = chrono::DateTime::parse_from_rfc3339(&collection.created_at)
-                .ok()
-                .map(|dt| dt.timestamp())
-                .unwrap_or(0);
+            // Parse collected_at timestamp (SQLite datetime format: 'YYYY-MM-DD HH:MM:SS')
+            let collected_at = if collection.created_at.is_empty() {
+                tracing::warn!("Collection {} has empty created_at, using 0", collection.id);
+                0
+            } else {
+                match NaiveDateTime::parse_from_str(&collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                    Ok(dt) => dt.and_utc().timestamp(),
+                    Err(e) => {
+                        warn!("Failed to parse created_at for collection {}: {} (value: '{}'), using 0",
+                            collection.id, e, collection.created_at);
+                        0
+                    }
+                }
+            };
 
             nodes.push(GraphNode {
                 id: collection.id,

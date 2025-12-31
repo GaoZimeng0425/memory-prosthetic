@@ -13,5 +13,5 @@
       "@memory-prosthetic/ai/*": ["../../packages/ai/src/*"]
     }
   },
-  "include": ["src", "../ui/src/components/ui/toolbar.tsx"]
+  "include": ["src"]
 }

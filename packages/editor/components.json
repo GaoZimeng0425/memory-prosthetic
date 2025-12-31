@@ -11,7 +11,7 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@memory-prosthetic/ui/components",
+    "components": "@memory-prosthetic/editor/components",
     "utils": "@memory-prosthetic/ui/utils/tw",
     "ui": "@memory-prosthetic/ui/components/ui",
     "lib": "@memory-prosthetic/ui/utils",

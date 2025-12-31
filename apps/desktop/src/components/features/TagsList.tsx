@@ -7,10 +7,21 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Hash, Pencil, Plus, SortAsc, SortDesc, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import type { Tag } from '@memory-prosthetic/shared'
 import type { TagSortOrder } from '@memory-prosthetic/shared/apis'
 import { compareDates } from '@memory-prosthetic/shared/utils/date'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@memory-prosthetic/ui/components/ui/alert-dialog'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
   ContextMenu,
@@ -186,27 +197,24 @@ function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
   const { collections } = useCollections({ tagIds: [tag.id], status: 'active' })
   const { deleteTag } = useTags()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const count = collections.length
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
     setIsDeleting(true)
     try {
-      const hasContent = count > 0
-      if (hasContent) {
-        const confirmed = window.confirm(
-          `标签"${tag.name}"被 ${count} 条内容使用。删除后，这些内容的标签关联将被移除。确定要删除吗？`
-        )
-        if (!confirmed) {
-          return
-        }
-      }
-
       await deleteTag(tag.id)
+      setIsDeleteDialogOpen(false)
+      toast.success('标签已删除')
       onTagChange?.()
     } catch (error) {
       console.error('Failed to delete tag:', error)
-      alert(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
+      toast.error(`删除失败: ${error instanceof Error ? error.message : '未知错误'}`)
     } finally {
       setIsDeleting(false)
     }
@@ -238,7 +246,7 @@ function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
             <Pencil className="mr-2 h-4 w-4" />
             重命名
           </ContextMenuItem>
-          <ContextMenuItem className="text-destructive" disabled={isDeleting} onClick={handleDelete}>
+          <ContextMenuItem className="text-destructive" disabled={isDeleting} onClick={handleDeleteClick}>
             <Trash2 className="mr-2 h-4 w-4" />
             删除
           </ContextMenuItem>
@@ -255,6 +263,30 @@ function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
         open={isEditDialogOpen}
         tag={tag}
       />
+
+      <AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>删除标签</AlertDialogTitle>
+            <AlertDialogDescription>
+              {count > 0
+                ? `标签"${tag.name}"被 ${count} 条内容使用。删除后，这些内容的标签关联将被移除。确定要删除吗？`
+                : `确定要删除标签"${tag.name}"吗？`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={handleDeleteConfirm}
+            >
+              {isDeleting ? '删除中...' : '删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

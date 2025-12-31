@@ -34,6 +34,7 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
 
     // 监听安全策略违规事件（CSP）
     const handleSecurityPolicyViolation = (event: SecurityPolicyViolationEvent) => {
+      console.log('handleSecurityPolicyViolation')
       if (
         event.violatedDirective === 'frame-ancestors' ||
         event.violatedDirective === 'frame-src' ||
@@ -53,6 +54,7 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
 
     // 监听全局错误事件来捕获 CSP 错误
     const handleGlobalError = (event: ErrorEvent) => {
+      console.log('handleGlobalError')
       const errorMessage = event.message || event.error?.toString() || ''
       // 检查是否是 CSP frame-ancestors 错误
       if (
@@ -102,9 +104,15 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
 
           // 如果 href 与预期 URL 不匹配（且不是跨域导致的），可能是被阻止
           // 注意：跨域时可能无法访问 location.href，会抛出错误
-        } catch {
+        } catch (error) {
           // 跨域访问 location 会抛出错误，这是正常的
           // 继续其他检测方法
+          if ((error as Error)?.message.includes('"allow-same-origin"')) {
+            setError(true)
+            setIsLoading(false)
+            hasDetectedError = true
+            return
+          }
         }
 
         // 方法2: 检查 iframe 的尺寸和可见性
@@ -132,13 +140,14 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
         if (!hasDetectedError) {
           setIsLoading(false)
         }
-      } catch {
+      } catch (_error: unknown) {
         // 如果检测过程出错，可能是跨域限制，但不一定是 CSP 错误
         setIsLoading(false)
       }
     }
 
     const handleLoad = () => {
+      console.log('handleLoad')
       // 页面加载后，延迟检查是否真的加载成功
       checkTimeoutId = setTimeout(() => {
         detectCSPError()
@@ -146,6 +155,7 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
     }
 
     const handleError = () => {
+      console.log('handleError')
       hasDetectedError = true
       setError(true)
       setIsLoading(false)
@@ -162,7 +172,7 @@ export const useIframeCspDetection = (url: string | null, enabled: boolean): Use
       if (!hasDetectedError) {
         detectCSPError()
       }
-    }, 3000)
+    }, 10000)
 
     // 监听安全策略违规事件
     document.addEventListener('securitypolicyviolation', handleSecurityPolicyViolation)

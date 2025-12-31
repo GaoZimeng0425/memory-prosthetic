@@ -2,7 +2,12 @@
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "root": true,
   "assist": {
-    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**"],
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/packages/ui/src/components/ui/**",
+      "!**/packages/editor/src/components/ui/**"
+    ],
     "actions": {
       "source": {
         "organizeImports": {
@@ -72,7 +77,8 @@
       "!**/*/generated-new.ts",
       "!**/*/generated-v2.ts",
       "!**/node_modules",
-      "!**/packages/ui/src/components/ui/**"
+      "!**/packages/ui/src/components/ui/**",
+      "!**/packages/editor/src/components/ui/**"
     ],
     "indentStyle": "space",
     "indentWidth": 2,
@@ -103,7 +109,13 @@
       "react": "recommended",
       "project": "recommended"
     },
-    "includes": ["**", "!**/node_modules", "!**/packages/ui/src/components/ui/**", "!**/.next"],
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/packages/ui/src/components/ui/**",
+      "!**/packages/editor/src/components/ui/**",
+      "!**/.next"
+    ],
     "rules": {
       "recommended": true,
       "a11y": {

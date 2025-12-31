@@ -69,7 +69,7 @@ export function ArticleListItem({
             )}
 
             {/* Meta Info: URL, Category, Time */}
-            <div className="flex items-center gap-2 text-muted-foreground text-xs">
+            <div className="flex items-center gap-2 whitespace-nowrap text-muted-foreground text-xs">
               <span className="truncate">{getDomain(item.url)}</span>
               <span>·</span>
               <span>{favorite ? favorite.name : '未分类'}</span>

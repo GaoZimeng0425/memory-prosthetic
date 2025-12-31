@@ -67,7 +67,7 @@ export function ArticlesLayout({
     <>
       {/* Article List */}
       <ArticleList
-        className="pt-4"
+        className="shrink-0 pt-4"
         collections={collections}
         filterHint={filterHint}
         isLoading={isLoading}
@@ -82,7 +82,7 @@ export function ArticlesLayout({
       {/* Article Reader */}
       <ArticleReader
         article={article ?? null}
-        className="pt-4"
+        className="shrink-0 grow pt-4"
         isLoading={isArticleLoading}
         isMaximized={isReaderMaximized}
         onArchive={onArchive}

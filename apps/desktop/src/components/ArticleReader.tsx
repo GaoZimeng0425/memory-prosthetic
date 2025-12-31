@@ -86,6 +86,7 @@ export const ArticleReader = ({
     isLoading: iframeLoading,
     iframeRef,
   } = useIframeCspDetection(article?.url ?? null, viewMode === 'webview')
+  console.log('🚀 : ArticleReader : iframeError:', iframeError)
 
   const handleCopyUrl = async () => {
     if (!article) return
@@ -116,6 +117,7 @@ export const ArticleReader = ({
       </div>
     )
   }
+  console.log(iframeError, '<<<')
 
   return (
     <div
@@ -243,123 +245,131 @@ export const ArticleReader = ({
         </div>
       </div>
 
-      {/* Content */}
-      {viewMode === 'webview' ? (
-        <div className="relative flex-1 overflow-hidden">
-          {iframeLoading && !iframeError ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="text-muted-foreground text-sm">正在加载网页...</p>
-            </div>
-          ) : iframeError ? (
-            <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-              <div className="rounded-full bg-muted p-4">
-                <Globe className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="mb-2 font-medium text-lg">无法在应用内显示此网页</h3>
-                <p className="mb-4 max-w-md text-muted-foreground text-sm">
-                  该网站设置了安全策略，不允许在应用内嵌入显示。您可以在外部浏览器中打开此网页。
-                </p>
-                <div className="flex items-center justify-center gap-2">
-                  <Button onClick={() => onOpenUrl(article.url)} size="sm" variant="default">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    在浏览器中打开
-                  </Button>
-                  <Button onClick={() => setViewMode('markdown')} size="sm" variant="outline">
-                    返回原文视图
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : (
+      <div className="flex flex-1 overflow-hidden">
+        {/* Content */}
+        {viewMode === 'webview' ? (
+          <div className="relative h-full w-full">
+            {/* iframe 始终渲染，确保 ref 可以正常赋值 */}
             <iframe
               allow="clipboard-read; clipboard-write"
-              className="h-full w-full border-0"
+              className={cn(
+                'h-full w-full border-0',
+                (iframeLoading || iframeError) && 'pointer-events-none opacity-0'
+              )}
               ref={iframeRef}
               sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
               src={article.url}
               title={article.title}
             />
-          )}
-        </div>
-      ) : (
-        <ScrollArea className="min-h-0 flex-1" ref={scrollAreaRef}>
-          <article className="mx-auto max-w-3xl px-8 py-8">
-            {/* Header */}
-            <header className="mb-8">
-              <h1 className="mb-4 font-bold text-2xl leading-tight tracking-tight">{article.title}</h1>
-
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
-                  <div className="flex items-center gap-1.5">
-                    <Globe className="h-4 w-4" />
-                    <Link className="hover:text-foreground" href={article.url}>
-                      {getDomain(article.url)}
-                    </Link>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatDateTime(article.createdAt)}</span>
+            {/* 加载状态覆盖层 */}
+            {iframeLoading && !iframeError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-8 text-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <p className="text-muted-foreground text-sm">正在加载网页...</p>
+              </div>
+            )}
+            {/* 错误状态覆盖层 */}
+            {iframeError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-8 text-center">
+                <div className="rounded-full bg-muted p-4">
+                  <Globe className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="mb-2 font-medium text-lg">无法在应用内显示此网页</h3>
+                  <p className="mb-4 max-w-md text-muted-foreground text-sm">
+                    该网站设置了安全策略，不允许在应用内嵌入显示。您可以在外部浏览器中打开此网页。
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <Button onClick={() => onOpenUrl(article.url)} size="sm" variant="default">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      在浏览器中打开
+                    </Button>
+                    <Button onClick={() => setViewMode('markdown')} size="sm" variant="outline">
+                      返回原文视图
+                    </Button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <ScrollArea className="min-h-0 flex-1" ref={scrollAreaRef}>
+            <article className="mx-auto max-w-3xl px-8 py-8">
+              {/* Header */}
+              <header className="mb-8">
+                <h1 className="mb-4 font-bold text-2xl leading-tight tracking-tight">{article.title}</h1>
 
-                {/* AI Summary Section */}
-                {article.summary && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-4">
-                    <div className="mb-2 flex items-center gap-1.5">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <span className="font-medium text-sm">AI 摘要</span>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Globe className="h-4 w-4" />
+                      <Link className="hover:text-foreground" href={article.url}>
+                        {getDomain(article.url)}
+                      </Link>
                     </div>
-                    <p className="text-foreground text-sm leading-relaxed">{article.summary}</p>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatDateTime(article.createdAt)}</span>
+                    </div>
                   </div>
-                )}
 
-                {/* Tags Section */}
-                {collectionTags.length > 0 && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="font-medium text-sm">标签</span>
+                  {/* AI Summary Section */}
+                  {article.summary && (
+                    <div className="rounded-lg border border-border bg-muted/30 p-4">
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="font-medium text-sm">AI 摘要</span>
+                      </div>
+                      <p className="text-foreground text-sm leading-relaxed">{article.summary}</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {collectionTags.map((tag) => (
-                        <TagBadge key={tag.id} onRemove={() => removeTag(tag.id)} tag={tag} />
-                      ))}
+                  )}
+
+                  {/* Tags Section */}
+                  {collectionTags.length > 0 && (
+                    <div className="rounded-lg border border-border bg-muted/30 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="font-medium text-sm">标签</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {collectionTags.map((tag) => (
+                          <TagBadge key={tag.id} onRemove={() => removeTag(tag.id)} tag={tag} />
+                        ))}
+                      </div>
                     </div>
+                  )}
+                </div>
+              </header>
+
+              <Separator className="mb-8" />
+
+              {/* Body */}
+              <div className="max-w-none select-auto">
+                {article.content ? (
+                  <MarkdownUI markdown={article.content} scrollAreaRef={scrollAreaRef} />
+                ) : (
+                  <div className="rounded-lg border border-border bg-muted/30 p-6 text-center">
+                    <p className="text-muted-foreground">没有可显示的内容</p>
+                    <Button className="mt-4" onClick={() => onOpenUrl(article.url)} size="sm" variant="outline">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      在浏览器中查看
+                    </Button>
                   </div>
                 )}
               </div>
-            </header>
 
-            <Separator className="mb-8" />
-
-            {/* Body */}
-            <div className="max-w-none select-auto">
-              {article.content ? (
-                <MarkdownUI markdown={article.content} scrollAreaRef={scrollAreaRef} />
-              ) : (
-                <div className="rounded-lg border border-border bg-muted/30 p-6 text-center">
-                  <p className="text-muted-foreground">没有可显示的内容</p>
-                  <Button className="mt-4" onClick={() => onOpenUrl(article.url)} size="sm" variant="outline">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    在浏览器中查看
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-12 border-border border-t pt-6">
-              <p className="text-muted-foreground text-xs">收集于 {formatDateTime(article.createdAt)}</p>
-              <p className="mt-1 truncate text-muted-foreground text-xs">
-                <Link className="hover:text-foreground" href={article.url}>
-                  {article.url}
-                </Link>
-              </p>
-            </div>
-          </article>
-        </ScrollArea>
-      )}
+              {/* Footer */}
+              <div className="mt-12 border-border border-t pt-6">
+                <p className="text-muted-foreground text-xs">收集于 {formatDateTime(article.createdAt)}</p>
+                <p className="mt-1 truncate text-muted-foreground text-xs">
+                  <Link className="hover:text-foreground" href={article.url}>
+                    {article.url}
+                  </Link>
+                </p>
+              </div>
+            </article>
+          </ScrollArea>
+        )}
+      </div>
     </div>
   )
 }

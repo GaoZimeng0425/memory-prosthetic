@@ -11,6 +11,7 @@ import {
 } from '@memory-prosthetic/ui/components/ui/select'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
 import { Slider } from '@memory-prosthetic/ui/components/ui/slider'
+import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import type { ReaderLayout } from '@/store/reader-store'
 import { BACKGROUND_COLOR_OPTIONS, useReaderStore } from '@/store/reader-store'
@@ -69,7 +70,8 @@ type ReaderSettingsProps = {
 
 export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
   const {
-    backgroundColor,
+    lightBackgroundColor,
+    darkBackgroundColor,
     fontSize,
     fontFamily,
     layout,
@@ -80,6 +82,12 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
     setFontFamily,
     setLayout,
   } = useReaderStore()
+  const { resolvedTheme } = useTheme()
+
+  // Filter background color options based on current theme
+  const currentTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+  const availableColors = BACKGROUND_COLOR_OPTIONS.filter((color) => color.theme === currentTheme)
+  const currentBackgroundColor = currentTheme === 'dark' ? darkBackgroundColor : lightBackgroundColor
 
   return (
     <Popover>
@@ -91,19 +99,23 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
           {/* Background Color Section */}
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-muted-foreground text-xs">阅读器背景色</span>
+              <span className="text-muted-foreground text-xs">
+                {resolvedTheme === 'dark' ? '深色外观下的阅读器背景色' : '阅读器背景色'}
+              </span>
               <span className="text-muted-foreground text-xs">推荐全屏模式使用</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {BACKGROUND_COLOR_OPTIONS.map((color) => (
+              {availableColors.map((color) => (
                 <button
                   className={cn(
                     'group relative flex flex-col items-center gap-1.5 rounded-md border-2 border-border/20 p-2 transition-colors',
                     color.className,
-                    backgroundColor === color.value ? 'border-foreground' : 'border-border/20 hover:border-border'
+                    currentBackgroundColor === color.value
+                      ? 'border-foreground'
+                      : 'border-border/20 hover:border-border'
                   )}
                   key={color.value}
-                  onClick={() => setBackgroundColor(color.value)}
+                  onClick={() => setBackgroundColor(color.value, currentTheme)}
                   type="button"
                 >
                   <div className={cn('flex h-12 w-full items-center justify-center')}>

@@ -7,14 +7,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type ReaderBackgroundColor = 'snow' | 'latte' | 'mint' | 'sky'
+export type ReaderBackgroundColor = 'snow' | 'latte' | 'mint' | 'sky' | 'graphite' | 'obsidian' | 'glacier' | 'stardust'
 
 export type ReaderLayout = 'narrow-left' | 'narrow-center' | 'wide' | 'full-width'
 
 export type ReaderStoreState = {
   // Appearance
-  backgroundColor: ReaderBackgroundColor
-  backgroundColorClassName: string
+  lightBackgroundColor: ReaderBackgroundColor
+  darkBackgroundColor: ReaderBackgroundColor
   fontSize: number
   fontFamily: string
 
@@ -22,7 +22,8 @@ export type ReaderStoreState = {
   layout: ReaderLayout
 
   // Actions
-  setBackgroundColor: (color: ReaderBackgroundColor) => void
+  setBackgroundColor: (color: ReaderBackgroundColor, theme: 'light' | 'dark') => void
+  getBackgroundColorClassName: (theme: 'light' | 'dark') => string
   setFontSize: (size: number) => void
   increaseFontSize: () => void
   decreaseFontSize: () => void
@@ -39,16 +40,22 @@ export const BACKGROUND_COLOR_OPTIONS: {
   value: ReaderBackgroundColor
   label: string
   className: string
+  theme: 'light' | 'dark'
 }[] = [
-  { value: 'snow', label: '白雪', className: 'bg-white' },
-  { value: 'latte', label: '拿铁', className: 'bg-amber-50' },
-  { value: 'mint', label: '薄荷', className: 'bg-green-50' },
-  { value: 'sky', label: '晴空', className: 'bg-blue-50' },
+  { value: 'snow', label: '白雪', className: 'bg-white', theme: 'light' },
+  { value: 'latte', label: '拿铁', className: 'bg-amber-50', theme: 'light' },
+  { value: 'mint', label: '薄荷', className: 'bg-green-50', theme: 'light' },
+  { value: 'sky', label: '晴空', className: 'bg-blue-50', theme: 'light' },
+  { value: 'graphite', label: '石墨', className: 'bg-zinc-900', theme: 'dark' },
+  { value: 'obsidian', label: '黑曜', className: 'bg-black', theme: 'dark' },
+  { value: 'glacier', label: '冰川', className: 'bg-slate-900', theme: 'dark' },
+  { value: 'stardust', label: '星河', className: 'bg-purple-950', theme: 'dark' },
 ]
 
 const initialState: Omit<
   ReaderStoreState,
   | 'setBackgroundColor'
+  | 'getBackgroundColorClassName'
   | 'setFontSize'
   | 'increaseFontSize'
   | 'decreaseFontSize'
@@ -56,8 +63,8 @@ const initialState: Omit<
   | 'setLayout'
   | 'reset'
 > = {
-  backgroundColorClassName: BACKGROUND_COLOR_OPTIONS.find((option) => option.value === 'snow')?.className || '',
-  backgroundColor: 'snow',
+  lightBackgroundColor: 'snow',
+  darkBackgroundColor: 'graphite',
   fontSize: DEFAULT_FONT_SIZE,
   fontFamily: 'Helvetica',
   layout: 'narrow-center',
@@ -68,11 +75,18 @@ export const useReaderStore = create<ReaderStoreState>()(
     (set, get) => ({
       ...initialState,
 
-      setBackgroundColor: (color: ReaderBackgroundColor) => {
-        set({
-          backgroundColor: color,
-          backgroundColorClassName: BACKGROUND_COLOR_OPTIONS.find((option) => option.value === color)?.className,
-        })
+      setBackgroundColor: (color: ReaderBackgroundColor, theme: 'light' | 'dark') => {
+        if (theme === 'light') {
+          set({ lightBackgroundColor: color })
+        } else {
+          set({ darkBackgroundColor: color })
+        }
+      },
+
+      getBackgroundColorClassName: (theme: 'light' | 'dark') => {
+        const { lightBackgroundColor, darkBackgroundColor } = get()
+        const backgroundColor = theme === 'light' ? lightBackgroundColor : darkBackgroundColor
+        return BACKGROUND_COLOR_OPTIONS.find((option) => option.value === backgroundColor)?.className || ''
       },
 
       setFontSize: (size: number) => {

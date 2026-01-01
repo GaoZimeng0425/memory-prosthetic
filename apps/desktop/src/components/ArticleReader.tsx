@@ -77,7 +77,7 @@ export const ArticleReader = ({
   const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
   const { openTagDialog, openFavoriteDialog } = useDialog()
   const [viewMode, setViewMode] = useState<ViewMode>('markdown')
-  const { backgroundColorClassName, fontSize, fontFamily, layout } = useReaderStore()
+  const { fontSize, fontFamily, layout, getBackgroundColorClassName } = useReaderStore()
   const { resolvedTheme } = useTheme()
 
   // 当文章切换时，重置为原文视图
@@ -85,6 +85,9 @@ export const ArticleReader = ({
   useEffect(() => {
     setViewMode('markdown')
   }, [article?.id])
+
+  // 根据当前主题获取背景色类名
+  const backgroundColorClassName = getBackgroundColorClassName(resolvedTheme === 'dark' ? 'dark' : 'light')
 
   // 使用 hook 检测 iframe CSP 错误
   const {
@@ -128,7 +131,7 @@ export const ArticleReader = ({
       className={cn(
         'm-2 flex flex-1 flex-col overflow-hidden rounded-2xl bg-background shadow-lg',
         isMaximized && 'fixed inset-0 z-50',
-        resolvedTheme === 'light' && backgroundColorClassName,
+        backgroundColorClassName,
         className
       )}
     >

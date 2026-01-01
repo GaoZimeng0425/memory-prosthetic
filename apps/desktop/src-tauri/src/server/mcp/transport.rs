@@ -3,14 +3,16 @@
 use axum::{
     body::Body,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::Response,
-    routing::{post, MethodRouter},
+    routing::{delete, get, post, MethodRouter},
     Router,
 };
+use futures_util::stream;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{error, info};
 
 use super::service::McpService;
@@ -45,22 +47,20 @@ struct JsonRpcError {
 
 /// Create MCP router
 pub fn create_mcp_router(state: Arc<AppState>) -> Router {
-    let mcp_service = Arc::new(McpService::new(state));
-
-    let mcp_route = MethodRouter::new()
-        .post(handle_mcp_request)
-        .options(handle_options);
-
     Router::new()
-        .route("/mcp", mcp_route)
-        .with_state(mcp_service)
+        .route("/mcp", post(handle_mcp_post))
+        .route("/mcp", get(handle_mcp_get))
+        .route("/mcp", delete(handle_mcp_delete))
+        .route("/mcp", MethodRouter::new().options(handle_options))
+        .with_state(state)
 }
 
-/// Handle MCP HTTP request
-async fn handle_mcp_request(
-    State(service): State<Arc<McpService>>,
+/// Handle MCP POST request (JSON-RPC messages)
+async fn handle_mcp_post(
+    State(app_state): State<Arc<AppState>>,
     body: Body,
 ) -> Result<Response<Body>, StatusCode> {
+    let service = Arc::new(McpService::new(app_state));
     // Extract body as string
     let body_bytes = axum::body::to_bytes(body, usize::MAX)
         .await
@@ -135,14 +135,22 @@ async fn handle_jsonrpc_request(
         }
         // MCP protocol methods
         "notifications/initialized" => {
-            // Handle initialized notification (no response needed for notifications)
+            // Handle initialized notification
+            // According to JSON-RPC 2.0, notifications (requests without id) should not receive a response
+            // However, if the request has an id, we should respond
             info!("MCP initialized notification received");
-            return JsonRpcResponse {
-                jsonrpc: "2.0".to_string(),
-                id: None, // Notifications don't have IDs
-                result: None,
-                error: None,
-            };
+            if id.is_some() {
+                // If it has an id, it's not a notification, respond with success
+                Ok(Value::Null)
+            } else {
+                // True notification, return early with no response
+                return JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: None,
+                    result: None,
+                    error: None,
+                };
+            }
         }
         _ => Err(McpModuleError::MethodNotFound(format!(
             "Method '{}' not found",
@@ -185,8 +193,8 @@ async fn handle_options() -> Response<Body> {
     Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "POST, OPTIONS")
-        .header("Access-Control-Allow-Headers", "Content-Type")
+        .header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        .header("Access-Control-Allow-Headers", "Content-Type, mcp-session-id")
         .header("Access-Control-Max-Age", "86400")
         .body(Body::empty())
         .unwrap()
@@ -206,8 +214,62 @@ fn create_http_response(response: JsonRpcResponse) -> Result<Response<Body>, Sta
         .status(StatusCode::OK)
         .header("Content-Type", "application/json; charset=utf-8")
         .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "POST, OPTIONS")
-        .header("Access-Control-Allow-Headers", "Content-Type")
+        .header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        .header("Access-Control-Allow-Headers", "Content-Type, mcp-session-id")
         .body(Body::from(response_body))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+/// Handle MCP GET request (SSE connection for notifications)
+/// For Streamable HTTP, GET requests establish SSE stream for server-to-client notifications
+/// Note: We're using JSON Response Mode, so GET requests are optional
+async fn handle_mcp_get(
+    State(_app_state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Response<Body>, StatusCode> {
+    let session_id = headers
+        .get("mcp-session-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("default");
+
+    info!("MCP GET request received (SSE stream) for session: {}", session_id);
+
+    // For JSON Response Mode, we don't need SSE
+    // Return a simple response indicating the server is ready
+    let response = serde_json::json!({
+        "jsonrpc": "2.0",
+        "result": {
+            "status": "ready",
+            "mode": "json-response"
+        }
+    });
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json; charset=utf-8")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(Body::from(serde_json::to_string(&response).unwrap()))
+        .unwrap())
+}
+
+/// Handle MCP DELETE request (close session)
+async fn handle_mcp_delete(
+    State(_app_state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> Result<Response<Body>, StatusCode> {
+    let session_id = headers
+        .get("mcp-session-id")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("default");
+
+    info!("MCP DELETE request received (close session) for session: {}", session_id);
+
+    // Close session (for now, just return success)
+    // In the future, we can implement proper session cleanup here
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json; charset=utf-8")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(Body::empty())
+        .unwrap())
 }

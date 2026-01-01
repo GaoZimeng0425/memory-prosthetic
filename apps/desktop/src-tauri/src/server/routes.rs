@@ -3,7 +3,7 @@
 //! Defines all API routes and their handlers.
 
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -18,10 +18,30 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     let main_router = Router::new()
         // Health check
         .route("/api/health", get(handlers::health))
-        // Content collection
+        // Content collection (legacy endpoint, kept for backward compatibility)
         .route("/api/collect", post(handlers::collect))
         // Semantic search
         .route("/api/search", post(handlers::search))
+        // Collections
+        .route("/api/collections", get(handlers::get_collections))
+        .route("/api/collections", post(handlers::create_collection))
+        .route("/api/collections/{id}", get(handlers::get_collection))
+        .route("/api/collections/{id}", put(handlers::update_collection))
+        .route("/api/collections/{id}", delete(handlers::delete_collection))
+        .route("/api/collections/{id}/archive", post(handlers::archive_collection))
+        .route("/api/collections/{id}/restore", post(handlers::restore_collection))
+        // Favorites
+        .route("/api/favorites", get(handlers::get_favorites))
+        .route("/api/favorites", post(handlers::create_favorite))
+        .route("/api/favorites/{id}", get(handlers::get_favorite))
+        .route("/api/favorites/{id}", put(handlers::update_favorite))
+        .route("/api/favorites/{id}", delete(handlers::delete_favorite))
+        // Tags
+        .route("/api/tags", get(handlers::get_tags))
+        .route("/api/tags", post(handlers::create_tag))
+        .route("/api/tags/{id}", get(handlers::get_tag))
+        .route("/api/tags/{id}", put(handlers::update_tag))
+        .route("/api/tags/{id}", delete(handlers::delete_tag))
         .with_state(state.clone());
 
     // Create MCP router with same state

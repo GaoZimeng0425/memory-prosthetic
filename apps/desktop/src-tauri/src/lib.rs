@@ -1677,19 +1677,45 @@ pub fn run() {
                         std::mem::forget(service);
                     }
 
-                    let config = server::ServerConfig::default();
+                    // Read port from settings
+                    let port = {
+                        let settings = server_state.settings.lock().unwrap();
+                        settings.get().server_port
+                    };
+
+                    let config = server::ServerConfig {
+                        port,
+                        host: "127.0.0.1".to_string(), // Always use 127.0.0.1 to avoid proxy issues
+                    };
+
+                    info!("Starting HTTP server on port {} (from settings)", port);
                     match server::start_server(server_state, config).await {
                         Ok(server) => {
-                            info!("HTTP server started on http://{}", server.addr());
+                            let server_addr = server.addr();
+                            info!("✅ HTTP server successfully started on http://{}", server_addr);
+                            info!("   - Browser extension can connect to: http://{}/api/*", server_addr);
+                            info!("   - MCP server available at: http://{}/mcp", server_addr);
+
                             // Keep server alive by looping forever
                             std::mem::forget(server);
+
                             // Keep the runtime alive
                             loop {
                                 tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
                             }
                         }
                         Err(e) => {
-                            tracing::error!("Failed to start HTTP server: {}", e);
+                            tracing::error!("❌ Failed to start HTTP server: {}", e);
+                            tracing::error!("   This may be due to:");
+                            tracing::error!("   - Port {} is already in use", port);
+                            tracing::error!("   - Insufficient permissions");
+                            tracing::error!("   - Network interface issue");
+                            tracing::error!("   Browser extension and MCP will not work until this is resolved.");
+
+                            // Keep the thread alive so we can see the error
+                            loop {
+                                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                            }
                         }
                     }
                 });

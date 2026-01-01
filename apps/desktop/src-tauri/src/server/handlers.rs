@@ -3,7 +3,7 @@
 //! Implements the API endpoint logic.
 
 use axum::{
-    extract::State,
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::info;
 
-use crate::db::{CollectionRepository, EmbeddingsRepository};
+use crate::db::{
+    CollectionRepository, CollectionStatus, EmbeddingsRepository, FavoriteRepository,
+    TagRepository,
+};
 use crate::embedding::get_embedding_model;
 use crate::AppState;
 
@@ -285,4 +288,1012 @@ pub async fn search(
             query: payload.query,
         },
     }))
+}
+
+// ============================================
+// Collections Handlers
+// ============================================
+
+/// GET /api/collections - Get collections list
+#[derive(Deserialize)]
+pub struct GetCollectionsQuery {
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub offset: Option<i64>,
+    #[serde(default)]
+    pub favorite_id: Option<i64>,
+    #[serde(default)]
+    pub tag_id: Option<i64>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default)]
+    pub uncategorized: Option<bool>,
+}
+
+pub async fn get_collections(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<GetCollectionsQuery>,
+) -> Result<Json<ApiResponse<Vec<crate::db::CollectionListItem>>>, (StatusCode, Json<ApiError>)> {
+    info!("Get collections request received");
+
+    let repo = CollectionRepository::new(&state.db);
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+
+    // Only filter by uncategorized if explicitly set to true
+    // If uncategorized is None or false, don't filter by favorite_id at all (show all)
+    let is_uncategorized = params.uncategorized == Some(true);
+    let favorite_id_filter = if is_uncategorized {
+        None // This will be handled specially in the repository
+    } else {
+        params.favorite_id
+    };
+
+    let tag_ids = params.tag_id.map(|id| vec![id]);
+    let status = params
+        .status
+        .as_deref()
+        .and_then(|s| match s {
+            "active" => Some(CollectionStatus::Active),
+            "archived" => Some(CollectionStatus::Archived),
+            "deleted" => Some(CollectionStatus::Deleted),
+            _ => None,
+        })
+        .or(Some(CollectionStatus::Active));
+
+    match repo.list(limit, offset, favorite_id_filter, is_uncategorized, tag_ids.as_deref(), status) {
+        Ok(collections) => Ok(Json(ApiResponse {
+            success: true,
+            data: collections,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// GET /api/collections/:id - Get a single collection
+pub async fn get_collection(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<crate::db::Collection>>, (StatusCode, Json<ApiError>)> {
+    info!("Get collection request received: id={}", id);
+
+    let repo = CollectionRepository::new(&state.db);
+    match repo.get_by_id(id) {
+        Ok(Some(collection)) => Ok(Json(ApiResponse {
+            success: true,
+            data: collection,
+        })),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Collection with id {} not found", id),
+                },
+            }),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// POST /api/collections - Create a new collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateCollectionRequest {
+    pub url: String,
+    pub title: String,
+    pub content: String,
+    pub favorite_id: Option<i64>,
+    pub tags: Option<Vec<i64>>,
+}
+
+pub async fn create_collection(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<CreateCollectionRequest>,
+) -> Result<Json<ApiResponse<crate::db::Collection>>, (StatusCode, Json<ApiError>)> {
+    info!("Create collection request received: url={}", payload.url);
+
+    if payload.url.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "INVALID_REQUEST".to_string(),
+                    message: "URL is required".to_string(),
+                },
+            }),
+        ));
+    }
+
+    if payload.title.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "INVALID_REQUEST".to_string(),
+                    message: "Title is required".to_string(),
+                },
+            }),
+        ));
+    }
+
+    let repo = CollectionRepository::new(&state.db);
+    let input = crate::db::CreateCollection {
+        url: payload.url,
+        title: payload.title,
+        content: payload.content,
+    };
+
+    match repo.upsert(&input) {
+        Ok(id) => {
+            // Set favorite_id if provided
+            if let Some(favorite_id) = payload.favorite_id {
+                if let Err(e) = repo.set_favorite(id, Some(favorite_id)) {
+                    info!("Failed to set favorite_id: {}", e);
+                }
+            }
+
+            // Add tags if provided
+            if let Some(tag_ids) = payload.tags {
+                if !tag_ids.is_empty() {
+                    let tag_repo = crate::db::CollectionTagRepository::new(&state.db);
+                    if let Err(e) = tag_repo.add_tags(id, &tag_ids) {
+                        info!("Failed to add tags: {}", e);
+                    }
+                }
+            }
+
+            // Get the created collection
+            match repo.get_by_id(id) {
+                Ok(Some(collection)) => Ok(Json(ApiResponse {
+                    success: true,
+                    data: collection,
+                })),
+                Ok(None) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "NOT_FOUND".to_string(),
+                            message: "Collection created but not found".to_string(),
+                        },
+                    }),
+                )),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "DB_ERROR".to_string(),
+                            message: e.to_string(),
+                        },
+                    }),
+                )),
+            }
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// PUT /api/collections/:id - Update a collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCollectionRequest {
+    pub title: Option<String>,
+    pub favorite_id: Option<i64>,
+    pub tags: Option<Vec<i64>>,
+    pub status: Option<String>,
+}
+
+pub async fn update_collection(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(payload): Json<UpdateCollectionRequest>,
+) -> Result<Json<ApiResponse<crate::db::Collection>>, (StatusCode, Json<ApiError>)> {
+    info!("Update collection request received: id={}", id);
+
+    let repo = CollectionRepository::new(&state.db);
+
+    // Check if collection exists
+    if repo.get_by_id(id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )
+    })?.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Collection with id {} not found", id),
+                },
+            }),
+        ));
+    }
+
+    // Update title if provided
+    if let Some(title) = payload.title {
+        if let Err(e) = state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET title = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![&title, id],
+            )?;
+            Ok(())
+        }) {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            ));
+        }
+    }
+
+    // Update favorite_id if provided
+    if let Some(favorite_id) = payload.favorite_id {
+        if let Err(e) = repo.set_favorite(id, Some(favorite_id)) {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            ));
+        }
+    }
+
+    // Update tags if provided
+    if let Some(tag_ids) = payload.tags {
+        let tag_repo = crate::db::CollectionTagRepository::new(&state.db);
+        // Get existing tags
+        let existing_tags = tag_repo.get_tags_by_collection(id).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            )
+        })?;
+        let existing_tag_ids: Vec<i64> = existing_tags.iter().map(|t| t.id).collect();
+
+        // Remove tags not in new list
+        for existing_id in &existing_tag_ids {
+            if !tag_ids.contains(existing_id) {
+                if let Err(e) = tag_repo.remove_tag(id, *existing_id) {
+                    info!("Failed to remove tag: {}", e);
+                }
+            }
+        }
+
+        // Add new tags
+        for tag_id in &tag_ids {
+            if !existing_tag_ids.contains(tag_id) {
+                if let Err(e) = tag_repo.add_tags(id, &[*tag_id]) {
+                    info!("Failed to add tag: {}", e);
+                }
+            }
+        }
+    }
+
+    // Update status if provided
+    if let Some(status_str) = payload.status {
+        let status = match status_str.as_str() {
+            "active" => CollectionStatus::Active,
+            "archived" => CollectionStatus::Archived,
+            "deleted" => CollectionStatus::Deleted,
+            _ => {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "INVALID_REQUEST".to_string(),
+                            message: format!("Invalid status: {}", status_str),
+                        },
+                    }),
+                ));
+            }
+        };
+
+        match status {
+            CollectionStatus::Archived => {
+                if let Err(e) = repo.archive(id) {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiError {
+                            success: false,
+                            error: ApiErrorDetail {
+                                code: "DB_ERROR".to_string(),
+                                message: e.to_string(),
+                            },
+                        }),
+                    ));
+                }
+            }
+            CollectionStatus::Active => {
+                if let Err(e) = repo.restore(id) {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiError {
+                            success: false,
+                            error: ApiErrorDetail {
+                                code: "DB_ERROR".to_string(),
+                                message: e.to_string(),
+                            },
+                        }),
+                    ));
+                }
+            }
+            CollectionStatus::Deleted => {
+                if let Err(e) = repo.delete(id) {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiError {
+                            success: false,
+                            error: ApiErrorDetail {
+                                code: "DB_ERROR".to_string(),
+                                message: e.to_string(),
+                            },
+                        }),
+                    ));
+                }
+            }
+        }
+    }
+
+    // Get updated collection
+    match repo.get_by_id(id) {
+        Ok(Some(collection)) => Ok(Json(ApiResponse {
+            success: true,
+            data: collection,
+        })),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Collection with id {} not found", id),
+                },
+            }),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// DELETE /api/collections/:id - Delete a collection
+#[derive(Deserialize)]
+pub struct DeleteCollectionQuery {
+    #[serde(default)]
+    pub permanent: Option<bool>,
+}
+
+pub async fn delete_collection(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Query(params): Query<DeleteCollectionQuery>,
+) -> Result<Json<ApiResponse<bool>>, (StatusCode, Json<ApiError>)> {
+    info!("Delete collection request received: id={}, permanent={:?}", id, params.permanent);
+
+    let repo = CollectionRepository::new(&state.db);
+    let deleted = if params.permanent.unwrap_or(false) {
+        repo.permanently_delete(id).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            )
+        })?
+    } else {
+        repo.delete(id).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            )
+        })?
+    };
+
+    Ok(Json(ApiResponse {
+        success: true,
+        data: deleted,
+    }))
+}
+
+/// POST /api/collections/:id/archive - Archive a collection
+pub async fn archive_collection(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiError>)> {
+    info!("Archive collection request received: id={}", id);
+
+    let repo = CollectionRepository::new(&state.db);
+    match repo.archive(id) {
+        Ok(()) => Ok(Json(ApiResponse {
+            success: true,
+            data: (),
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// POST /api/collections/:id/restore - Restore a collection
+pub async fn restore_collection(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiError>)> {
+    info!("Restore collection request received: id={}", id);
+
+    let repo = CollectionRepository::new(&state.db);
+    match repo.restore(id) {
+        Ok(()) => Ok(Json(ApiResponse {
+            success: true,
+            data: (),
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+// ============================================
+// Favorites Handlers
+// ============================================
+
+/// GET /api/favorites - Get all favorites
+pub async fn get_favorites(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<Vec<crate::db::Favorite>>>, (StatusCode, Json<ApiError>)> {
+    info!("Get favorites request received");
+
+    let repo = FavoriteRepository::new(&state.db);
+    match repo.list() {
+        Ok(favorites) => Ok(Json(ApiResponse {
+            success: true,
+            data: favorites,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// GET /api/favorites/:id - Get a single favorite
+pub async fn get_favorite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<crate::db::Favorite>>, (StatusCode, Json<ApiError>)> {
+    info!("Get favorite request received: id={}", id);
+
+    let repo = FavoriteRepository::new(&state.db);
+    match repo.get_by_id(id) {
+        Ok(Some(favorite)) => Ok(Json(ApiResponse {
+            success: true,
+            data: favorite,
+        })),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Favorite with id {} not found", id),
+                },
+            }),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// POST /api/favorites - Create a new favorite
+pub async fn create_favorite(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<crate::db::CreateFavorite>,
+) -> Result<Json<ApiResponse<crate::db::Favorite>>, (StatusCode, Json<ApiError>)> {
+    info!("Create favorite request received: name={}", payload.name);
+
+    if payload.name.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "INVALID_REQUEST".to_string(),
+                    message: "Name is required".to_string(),
+                },
+            }),
+        ));
+    }
+
+    let repo = FavoriteRepository::new(&state.db);
+    match repo.create(&payload) {
+        Ok(id) => {
+            match repo.get_by_id(id) {
+                Ok(Some(favorite)) => Ok(Json(ApiResponse {
+                    success: true,
+                    data: favorite,
+                })),
+                Ok(None) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "NOT_FOUND".to_string(),
+                            message: "Favorite created but not found".to_string(),
+                        },
+                    }),
+                )),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "DB_ERROR".to_string(),
+                            message: e.to_string(),
+                        },
+                    }),
+                )),
+            }
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// PUT /api/favorites/:id - Update a favorite
+pub async fn update_favorite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(payload): Json<crate::db::UpdateFavorite>,
+) -> Result<Json<ApiResponse<crate::db::Favorite>>, (StatusCode, Json<ApiError>)> {
+    info!("Update favorite request received: id={}", id);
+
+    let repo = FavoriteRepository::new(&state.db);
+
+    // Check if favorite exists
+    if repo.get_by_id(id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )
+    })?.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Favorite with id {} not found", id),
+                },
+            }),
+        ));
+    }
+
+    match repo.update(id, &payload) {
+        Ok(()) => {
+            match repo.get_by_id(id) {
+                Ok(Some(favorite)) => Ok(Json(ApiResponse {
+                    success: true,
+                    data: favorite,
+                })),
+                Ok(None) => Err((
+                    StatusCode::NOT_FOUND,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "NOT_FOUND".to_string(),
+                            message: format!("Favorite with id {} not found", id),
+                        },
+                    }),
+                )),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "DB_ERROR".to_string(),
+                            message: e.to_string(),
+                        },
+                    }),
+                )),
+            }
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// DELETE /api/favorites/:id - Delete a favorite
+pub async fn delete_favorite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<bool>>, (StatusCode, Json<ApiError>)> {
+    info!("Delete favorite request received: id={}", id);
+
+    let repo = FavoriteRepository::new(&state.db);
+    match repo.delete(id) {
+        Ok(deleted) => Ok(Json(ApiResponse {
+            success: true,
+            data: deleted,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+// ============================================
+// Tags Handlers
+// ============================================
+
+/// GET /api/tags - Get all tags
+#[derive(Deserialize)]
+pub struct GetTagsQuery {
+    #[serde(default)]
+    pub sort: Option<String>,
+}
+
+pub async fn get_tags(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<GetTagsQuery>,
+) -> Result<Json<ApiResponse<Vec<crate::db::Tag>>>, (StatusCode, Json<ApiError>)> {
+    info!("Get tags request received");
+
+    let repo = TagRepository::new(&state.db);
+    let sort_order = match params.sort.as_deref() {
+        Some("name") => Some(crate::db::TagSortOrder::NameAsc),
+        Some("created_at") => Some(crate::db::TagSortOrder::CreatedDesc),
+        Some("usage") => Some(crate::db::TagSortOrder::UsageDesc),
+        _ => Some(crate::db::TagSortOrder::NameAsc),
+    };
+
+    match repo.list(sort_order) {
+        Ok(tags) => Ok(Json(ApiResponse {
+            success: true,
+            data: tags,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// GET /api/tags/:id - Get a single tag
+pub async fn get_tag(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<crate::db::Tag>>, (StatusCode, Json<ApiError>)> {
+    info!("Get tag request received: id={}", id);
+
+    let repo = TagRepository::new(&state.db);
+    match repo.get_by_id(id) {
+        Ok(Some(tag)) => Ok(Json(ApiResponse {
+            success: true,
+            data: tag,
+        })),
+        Ok(None) => Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Tag with id {} not found", id),
+                },
+            }),
+        )),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// POST /api/tags - Create a new tag
+pub async fn create_tag(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<crate::db::CreateTag>,
+) -> Result<Json<ApiResponse<crate::db::Tag>>, (StatusCode, Json<ApiError>)> {
+    info!("Create tag request received: name={}", payload.name);
+
+    if payload.name.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "INVALID_REQUEST".to_string(),
+                    message: "Name is required".to_string(),
+                },
+            }),
+        ));
+    }
+
+    let repo = TagRepository::new(&state.db);
+    match repo.create(&payload) {
+        Ok(id) => {
+            match repo.get_by_id(id) {
+                Ok(Some(tag)) => Ok(Json(ApiResponse {
+                    success: true,
+                    data: tag,
+                })),
+                Ok(None) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "NOT_FOUND".to_string(),
+                            message: "Tag created but not found".to_string(),
+                        },
+                    }),
+                )),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "DB_ERROR".to_string(),
+                            message: e.to_string(),
+                        },
+                    }),
+                )),
+            }
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// PUT /api/tags/:id - Update a tag
+pub async fn update_tag(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Json(payload): Json<crate::db::UpdateTag>,
+) -> Result<Json<ApiResponse<crate::db::Tag>>, (StatusCode, Json<ApiError>)> {
+    info!("Update tag request received: id={}", id);
+
+    let repo = TagRepository::new(&state.db);
+
+    // Check if tag exists
+    if repo.get_by_id(id).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )
+    })?.is_none() {
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "NOT_FOUND".to_string(),
+                    message: format!("Tag with id {} not found", id),
+                },
+            }),
+        ));
+    }
+
+    match repo.update(id, &payload) {
+        Ok(()) => {
+            match repo.get_by_id(id) {
+                Ok(Some(tag)) => Ok(Json(ApiResponse {
+                    success: true,
+                    data: tag,
+                })),
+                Ok(None) => Err((
+                    StatusCode::NOT_FOUND,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "NOT_FOUND".to_string(),
+                            message: format!("Tag with id {} not found", id),
+                        },
+                    }),
+                )),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiError {
+                        success: false,
+                        error: ApiErrorDetail {
+                            code: "DB_ERROR".to_string(),
+                            message: e.to_string(),
+                        },
+                    }),
+                )),
+            }
+        }
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// DELETE /api/tags/:id - Delete a tag
+pub async fn delete_tag(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+) -> Result<Json<ApiResponse<bool>>, (StatusCode, Json<ApiError>)> {
+    info!("Delete tag request received: id={}", id);
+
+    let repo = TagRepository::new(&state.db);
+    match repo.delete(id) {
+        Ok(deleted) => Ok(Json(ApiResponse {
+            success: true,
+            data: deleted,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
 }

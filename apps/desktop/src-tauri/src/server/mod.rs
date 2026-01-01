@@ -87,17 +87,51 @@ pub async fn start_server(
     info!("HTTP server starting on http://{}", local_addr);
 
     // Spawn server task
-    tokio::spawn(async move {
-        axum::serve(listener, app)
+    let server_handle = tokio::spawn(async move {
+        let result = axum::serve(listener, app)
             .with_graceful_shutdown(async {
                 let _ = shutdown_rx.await;
                 info!("HTTP server shutting down gracefully");
             })
-            .await
-            .unwrap_or_else(|e| {
+            .await;
+
+        match result {
+            Ok(_) => {
+                info!("HTTP server stopped normally");
+            }
+            Err(e) => {
                 error!("HTTP server error: {}", e);
-            });
+                error!("HTTP server failed to start or crashed. Check logs for details.");
+            }
+        }
     });
+
+    // Give the server a moment to start and verify it's actually listening
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+    // Check if the server task is still alive
+    if server_handle.is_finished() {
+        error!("HTTP server task exited immediately after spawn. Server may have failed to start.");
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "HTTP server task exited immediately"
+        ));
+    }
+
+    // Verify the server is actually listening by trying to connect
+    match tokio::net::TcpStream::connect(local_addr).await {
+        Ok(_) => {
+            info!("✅ HTTP server successfully started and listening on http://{}", local_addr);
+        }
+        Err(e) => {
+            error!("❌ HTTP server task is running but port is not accessible: {}", e);
+            error!("   This may indicate a binding issue or the server failed to start properly.");
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Server task running but port not accessible: {}", e)
+            ));
+        }
+    }
 
     Ok(HttpServer {
         shutdown_tx: Some(shutdown_tx),

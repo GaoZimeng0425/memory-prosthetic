@@ -351,8 +351,25 @@ Markdown 内容 → 文本分块 → all-MiniLM-L6-v2 → 向量 → sqlite-vec
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/api/health` | GET | 健康检查 |
-| `/api/collect` | POST | 收集内容 |
-| `/api/search` | GET | 搜索（可选，供插件预览） |
+| `/api/collect` | POST | 收集内容（向后兼容，推荐使用 `/api/collections`） |
+| `/api/search` | POST | 语义搜索 |
+| `/api/collections` | GET | 获取收集列表（支持分页和筛选） |
+| `/api/collections` | POST | 创建收集 |
+| `/api/collections/:id` | GET | 获取单个收集 |
+| `/api/collections/:id` | PUT | 更新收集 |
+| `/api/collections/:id` | DELETE | 删除收集（支持永久删除参数） |
+| `/api/collections/:id/archive` | POST | 归档收集 |
+| `/api/collections/:id/restore` | POST | 恢复收集 |
+| `/api/favorites` | GET | 获取收藏夹列表 |
+| `/api/favorites` | POST | 创建收藏夹 |
+| `/api/favorites/:id` | GET | 获取单个收藏夹 |
+| `/api/favorites/:id` | PUT | 更新收藏夹 |
+| `/api/favorites/:id` | DELETE | 删除收藏夹 |
+| `/api/tags` | GET | 获取标签列表（支持排序） |
+| `/api/tags` | POST | 创建标签 |
+| `/api/tags/:id` | GET | 获取单个标签 |
+| `/api/tags/:id` | PUT | 更新标签 |
+| `/api/tags/:id` | DELETE | 删除标签 |
 
 **Tauri Commands 设计:**
 

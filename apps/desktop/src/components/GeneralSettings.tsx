@@ -28,7 +28,6 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
   const [recordedKeys, setRecordedKeys] = useState<ShortcutConfig | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCopyingMcpConfig, setIsCopyingMcpConfig] = useState(false)
-  const [isOpeningCursorConfig, setIsOpeningCursorConfig] = useState(false)
   const { theme, setTheme, themeOptions } = useTheme()
 
   const mcpServerUrl = `http://127.0.0.1:${settings.serverPort}/mcp`
@@ -80,17 +79,6 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
       toast.error(`复制失败: ${String(err)}`)
     } finally {
       setIsCopyingMcpConfig(false)
-    }
-  }
-
-  const openCursorConfig = async () => {
-    setIsOpeningCursorConfig(true)
-    try {
-      toast.success('已打开 Cursor 配置文件')
-    } catch (err) {
-      toast.error(`打开配置文件失败: ${String(err)}`)
-    } finally {
-      setIsOpeningCursorConfig(false)
     }
   }
 
@@ -326,28 +314,18 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
               {mcpServerUrl}
             </Badge>
           </div>
-
-          <div className="rounded-md border bg-muted/30 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-medium text-sm">Cursor 配置</p>
-              <div className="flex gap-2">
-                <Button disabled={isCopyingMcpConfig} onClick={copyMcpConfig} size="sm" variant="outline">
-                  <Copy className="mr-1 h-4 w-4" />
-                  复制配置
-                </Button>
-                <Button disabled={isOpeningCursorConfig} onClick={openCursorConfig} size="sm" variant="default">
-                  <Code className="mr-1 h-4 w-4" />
-                  打开 Cursor 配置
-                </Button>
-              </div>
-            </div>
-            <pre className="overflow-x-auto rounded bg-background p-3 text-xs">
-              <code>{mcpConfigForCursor}</code>
-            </pre>
-            <p className="mt-2 text-muted-foreground text-xs">
-              点击"打开 Cursor 配置"将自动打开配置文件并添加此配置。你也可以手动复制配置到 Cursor 的 MCP 配置文件中。
-            </p>
-          </div>
+          <pre className="relative overflow-x-auto rounded bg-background p-3 text-xs">
+            <Button
+              className="absolute top-2 right-2"
+              disabled={isCopyingMcpConfig}
+              onClick={copyMcpConfig}
+              size="icon"
+              variant="outline"
+            >
+              <Copy className="size-4" />
+            </Button>
+            <code className="select-auto">{mcpConfigForCursor}</code>
+          </pre>
         </CardContent>
       </Card>
 

@@ -10,6 +10,7 @@ import {
   Minimize2,
   MoreVertical,
   Move,
+  PaintbrushIcon,
   RotateCcw,
   Sparkles,
   Star,
@@ -30,13 +31,16 @@ import {
 } from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
+import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { AiButton } from '@/components/features/AiButton'
 import { TagBadge } from '@/components/features/TagBadge'
 import { Link } from '@/components/Link'
+import { ReaderSettings } from '@/components/ReaderSettings'
 import { useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
 import { useIframeCspDetection } from '@/hooks/use-iframe-csp-detection'
+import { useReaderStore } from '@/store/reader-store'
 import type { Collection } from '@/types/api'
 
 type ArticleReaderProps = {
@@ -73,6 +77,8 @@ export const ArticleReader = ({
   const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
   const { openTagDialog, openFavoriteDialog } = useDialog()
   const [viewMode, setViewMode] = useState<ViewMode>('markdown')
+  const { backgroundColorClassName, fontSize, fontFamily, layout } = useReaderStore()
+  const { resolvedTheme } = useTheme()
 
   // 当文章切换时，重置为原文视图
   // biome-ignore lint/correctness/useExhaustiveDependencies: 当文章切换时，重置为原文视图
@@ -122,6 +128,7 @@ export const ArticleReader = ({
       className={cn(
         'm-2 flex flex-1 flex-col overflow-hidden rounded-2xl bg-background shadow-lg',
         isMaximized && 'fixed inset-0 z-50',
+        resolvedTheme === 'light' && backgroundColorClassName,
         className
       )}
     >
@@ -166,6 +173,14 @@ export const ArticleReader = ({
           <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
             {/* AI 分析按钮 */}
             <AiButton article={article} />
+            <ReaderSettings
+              trigger={
+                <Button size="icon" variant="ghost">
+                  <PaintbrushIcon />
+                </Button>
+              }
+            />
+
             {(article.status === 'archived' || article.status === 'deleted') && onRestore && (
               <Button aria-label="Restore" onClick={() => onRestore(article.id)} size="icon" variant="ghost">
                 <RotateCcw className="size-4" />
@@ -291,8 +306,20 @@ export const ArticleReader = ({
             )}
           </div>
         ) : (
-          <ScrollArea className="min-h-0 flex-1" ref={scrollAreaRef}>
-            <article className="mx-auto max-w-3xl px-8 py-8">
+          <ScrollArea className={cn('min-h-0 flex-1')} ref={scrollAreaRef}>
+            <article
+              className={cn(
+                'mx-auto px-8 py-8',
+                layout === 'narrow-left' && 'max-w-2xl',
+                layout === 'narrow-center' && 'max-w-3xl',
+                layout === 'wide' && 'max-w-5xl',
+                layout === 'full-width' && 'max-w-full'
+              )}
+              style={{
+                fontSize: `${fontSize}px`,
+                fontFamily: fontFamily === 'System' ? 'system-ui, sans-serif' : fontFamily,
+              }}
+            >
               {/* Header */}
               <header className="mb-8">
                 <h1 className="mb-4 font-bold text-2xl leading-tight tracking-tight">{article.title}</h1>

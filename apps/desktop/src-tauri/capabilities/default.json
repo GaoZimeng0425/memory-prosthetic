@@ -3,5 +3,12 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main"],
-  "permissions": ["core:default", "opener:default", "window-state:default", "core:window:allow-start-dragging"]
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "window-state:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-create",
+    "core:webview:allow-create-webview-window"
+  ]
 }

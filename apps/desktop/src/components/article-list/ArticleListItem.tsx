@@ -46,7 +46,7 @@ export function ArticleListItem({
       <ContextMenuTrigger asChild>
         <div
           className={cn(
-            'group relative flex w-full gap-3 overflow-hidden rounded-lg border border-border bg-background p-3 text-left shadow transition-colors',
+            'group relative flex w-full gap-3 overflow-hidden rounded-lg border border-primary/10 bg-background p-3 text-left shadow transition-colors',
             isSelected ? 'border-primary text-accent-foreground' : 'hover:bg-primary/5'
           )}
           onClick={() => onSelect(item.id)}

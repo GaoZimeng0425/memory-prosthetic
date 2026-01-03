@@ -56,10 +56,6 @@ export const AppSidebar = ({
   const [isCreateTagOpen, setIsCreateTagOpen] = useState(false)
   const location = useLocation()
 
-  if (state === 'hidden') {
-    return null
-  }
-
   const isCollapsed = state === 'collapsed'
   const width = isCollapsed ? 'w-14' : 'w-56'
 
@@ -69,6 +65,10 @@ export const AppSidebar = ({
     } else {
       onStateChange('expanded')
     }
+  }
+
+  if (state === 'hidden') {
+    return null
   }
 
   const getCounts = () => ({
@@ -104,30 +104,11 @@ export const AppSidebar = ({
         width
       )}
     >
-      {/* Header */}
-      <div
-        className={cn('flex h-14 items-center border-sidebar-border border-b px-3', isCollapsed && 'justify-center')}
-      >
-        {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg">
-              <img alt="Memory Prosthetic" className="size-8" src="/logo-icon.svg" />
-            </div>
-            <span className="font-semibold text-sidebar-foreground">Memory</span>
-          </div>
-        )}
-        {isCollapsed && (
-          <div className="flex size-8 items-center justify-center rounded-lg">
-            <img alt="Memory Prosthetic" className="size-8" src="/logo-icon.svg" />
-          </div>
-        )}
-      </div>
-
       {/* Search Button */}
-      <div className={cn('p-2', isCollapsed && 'px-1')}>
+      <div className={cn('flex gap-1 p-2', isCollapsed && 'px-1')}>
         <Button
           className={cn(
-            'w-full justify-start gap-2 text-muted-foreground hover:text-foreground',
+            'grow justify-start gap-2 text-muted-foreground hover:text-foreground',
             isCollapsed && 'justify-center px-0'
           )}
           onClick={onSearchClick}

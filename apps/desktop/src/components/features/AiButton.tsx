@@ -14,6 +14,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { BookOpen, Brain, FileText, Key, Lightbulb, Loader2, Settings, Sparkles } from 'lucide-react'
 
 import type { AiMetadata, Collection } from '@memory-prosthetic/shared'
+import { AITextLoading } from '@memory-prosthetic/ui/components/kokonutui/ai-text-loading'
+import { ShimmerText } from '@memory-prosthetic/ui/components/kokonutui/shimmer-text'
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@memory-prosthetic/ui/components/ui/popover'
@@ -176,9 +178,9 @@ export const AiButton = ({ article }: AiButtonProps) => {
             {/* 处理中状态 */}
             {isProcessing && (
               <div className="flex flex-col items-center justify-center py-8">
-                <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
-                <p className="font-medium text-sm">正在分析文章...</p>
-                <p className="mt-1 text-muted-foreground text-xs">AI 正在生成摘要、标签和分类</p>
+                <AITextLoading />
+                <ShimmerText className="p-0 font-medium text-sm" text="正在分析文章..." />
+                <ShimmerText className="mt-1 p-0 text-xs" text="AI 正在生成摘要、标签和分类" />
               </div>
             )}
 

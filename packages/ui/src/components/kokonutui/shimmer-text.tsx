@@ -1,7 +1,6 @@
 'use client'
 
 /**
- * @author: @dorianbaffier
  * @description: Shimmer Text
  * @version: 1.0.0
  * @date: 2025-06-26
@@ -11,16 +10,17 @@
  */
 
 import { motion } from 'motion/react'
+
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
-interface Text_01Props {
+interface ShimmerTextProps {
   text: string
   className?: string
 }
 
-export default function ShimmerText({ text = 'Text Shimmer', className }: Text_01Props) {
+export function ShimmerText({ text = 'Text Shimmer', className }: ShimmerTextProps) {
   return (
-    <div className="flex items-center justify-center p-8">
+    <div className="flex items-center justify-center">
       <motion.div
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden px-4 py-2"
@@ -32,7 +32,7 @@ export default function ShimmerText({ text = 'Text Shimmer', className }: Text_0
             backgroundPosition: ['200% center', '-200% center'],
           }}
           className={cn(
-            'bg-[length:200%_100%] bg-gradient-to-r from-neutral-950 via-neutral-400 to-neutral-950 bg-clip-text font-bold text-3xl text-transparent dark:from-white dark:via-neutral-600 dark:to-white',
+            'bg-linear-to-r bg-size-[200%_100%] from-neutral-950 via-neutral-400 to-neutral-950 bg-clip-text font-bold text-3xl text-transparent dark:from-white dark:via-neutral-600 dark:to-white',
             className
           )}
           transition={{

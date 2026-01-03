@@ -19,6 +19,7 @@ import { SearchOverlay } from '@/components/SearchOverlay'
 import { DialogProvider, useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
 import { useCollections } from '@/hooks/use-collections'
+import { useHotkey } from '@/hooks/use-hotkey'
 import { useTags } from '@/hooks/use-tags'
 import type { SearchResult } from '@/types/api'
 
@@ -148,20 +149,13 @@ function RootLayout() {
   }, [isSearchWindow])
 
   // Global keyboard shortcuts (only in main window)
-  useEffect(() => {
-    if (isSearchWindow) return // Don't listen in search window
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+\: Toggle sidebar
-      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
-        e.preventDefault()
-        setSidebarState((s) => (s === 'expanded' ? 'collapsed' : 'expanded'))
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isSearchWindow])
+  // Cmd+\: Toggle sidebar
+  useHotkey({
+    key: 'b',
+    metaKey: true,
+    enabled: !isSearchWindow,
+    onPress: () => setSidebarState((s) => (s === 'expanded' ? 'collapsed' : 'expanded')),
+  })
 
   // Handle search result selection
   const handleSearchResultSelect = useCallback(
@@ -233,6 +227,13 @@ function RootLayoutContent({
   const handleSettingsClick = () => {
     openSettingsDialog()
   }
+
+  // CMD + , to open settings
+  useHotkey({
+    key: ',',
+    metaKey: true,
+    onPress: handleSettingsClick,
+  })
 
   return (
     <>

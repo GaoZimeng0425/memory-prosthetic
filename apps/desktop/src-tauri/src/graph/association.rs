@@ -164,22 +164,25 @@ impl AssociationCalculator {
         };
 
         let time_diff = (time1 - time2).abs();
-        let days_diff = time_diff / 86400; // Convert to days
+        let minutes_diff = time_diff / 60; // Convert to minutes
 
-        // Time window: 30 days
-        if days_diff > 30 {
+        // Time window: 10 minutes (600 seconds)
+        const TIME_WINDOW_SECONDS: i64 = 600; // 10 minutes
+        if time_diff > TIME_WINDOW_SECONDS {
             return None;
         }
 
-        // Weight calculation: max(0, 1 - 间隔天数 / 30)
-        let mut weight = (1.0 - (days_diff as f64 / 30.0)).max(0.0);
+        // Weight calculation: max(0, 1 - 间隔分钟数 / 10)
+        // 距离越近，权重越高；10分钟内线性衰减
+        let mut weight = (1.0 - (minutes_diff as f64 / 10.0)).max(0.0);
 
-        // Time cluster boost: within 1 hour
-        if time_diff < 3600 {
+        // Time cluster boost: within 1 minute (very close in time)
+        if time_diff < 60 {
             weight *= 1.5;
         }
 
-        Some((weight.min(1.0), days_diff))
+        // Return minutes difference for display (instead of days)
+        Some((weight.min(1.0), minutes_diff))
     }
 
     /// Calculate domain-based association

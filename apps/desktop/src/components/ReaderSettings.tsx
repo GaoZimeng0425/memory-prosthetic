@@ -11,7 +11,7 @@ import {
 } from '@memory-prosthetic/ui/components/ui/select'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
 import { Slider } from '@memory-prosthetic/ui/components/ui/slider'
-import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
+import { ThemeSwitcher, useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import type { ReaderLayout } from '@/store/reader-store'
 import { BACKGROUND_COLOR_OPTIONS, useReaderStore } from '@/store/reader-store'
@@ -96,8 +96,14 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
         <div className="p-4">
           <h3 className="mb-4 font-semibold text-sm">阅读器设置</h3>
 
+          <div className="flex items-center justify-between">
+            <ThemeSwitcher />
+          </div>
+
+          <Separator className="my-6" />
+
           {/* Background Color Section */}
-          <div className="mb-6">
+          <div className="">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-muted-foreground text-xs">
                 {resolvedTheme === 'dark' ? '深色外观下的阅读器背景色' : '阅读器背景色'}
@@ -127,10 +133,10 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
             </div>
           </div>
 
-          <Separator className="mb-6" />
+          <Separator className="my-6" />
 
           {/* Layout Section */}
-          <div className="mb-6">
+          <div className="">
             <div className="mb-2">
               <span className="text-muted-foreground text-xs">内容布局</span>
             </div>
@@ -152,10 +158,10 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
             </div>
           </div>
 
-          <Separator className="mb-6" />
+          <Separator className="my-6" />
 
           {/* Font Size Section */}
-          <div className="mb-6">
+          <div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-muted-foreground text-xs">字体大小</span>
               <span className="text-foreground text-xs">{fontSize}px</span>
@@ -190,7 +196,7 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
             </div>
           </div>
 
-          <Separator className="mb-6" />
+          <Separator className="my-6" />
 
           {/* Font Family Section */}
           <div>

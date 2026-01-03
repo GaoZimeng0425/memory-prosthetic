@@ -10,6 +10,7 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
+import * as React from 'react'
 import {
   Bell,
   CircleUserRound,
@@ -27,7 +28,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import * as React from 'react'
+
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 interface ToolbarItem {
@@ -126,7 +127,7 @@ export function Toolbar({ className, activeColor = 'text-primary', onSearch }: T
           {activeNotification && (
             <motion.div
               animate="animate"
-              className="-top-8 -translate-x-1/2 absolute left-1/2 z-50 transform"
+              className="absolute -top-8 left-1/2 z-50 -translate-x-1/2 transform"
               exit="exit"
               initial="initial"
               transition={{ duration: 0.3 }}
@@ -137,7 +138,7 @@ export function Toolbar({ className, activeColor = 'text-primary', onSearch }: T
               </div>
               <motion.div
                 animate="animate"
-                className="-bottom-1 absolute left-1/2 h-[2px] w-full origin-left bg-primary"
+                className="absolute -bottom-1 left-1/2 h-[2px] w-full origin-left bg-primary"
                 exit="exit"
                 initial="initial"
                 variants={lineVariants as any}

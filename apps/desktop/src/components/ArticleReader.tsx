@@ -39,7 +39,8 @@ import { Link } from '@/components/Link'
 import { ReaderSettings } from '@/components/ReaderSettings'
 import { useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
-import { useIframeCspDetection } from '@/hooks/use-iframe-csp-detection'
+import { useResizeObserver } from '@/hooks/use-resize-observer'
+import { useWebviewWindow } from '@/hooks/use-webview-window'
 import { useReaderStore } from '@/store/reader-store'
 import type { Collection } from '@/types/api'
 
@@ -74,6 +75,7 @@ export const ArticleReader = ({
   isLoading,
 }: ArticleReaderProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const webviewContainerRef = useRef<HTMLDivElement>(null)
   const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
   const { openTagDialog, openFavoriteDialog } = useDialog()
   const [viewMode, setViewMode] = useState<ViewMode>('markdown')
@@ -89,12 +91,39 @@ export const ArticleReader = ({
   // 根据当前主题获取背景色类名
   const backgroundColorClassName = getBackgroundColorClassName(resolvedTheme === 'dark' ? 'dark' : 'light')
 
-  // 使用 hook 检测 iframe CSP 错误
+  // 使用原生 webview 窗口（绕过 CSP 限制）
   const {
-    error: iframeError,
-    isLoading: iframeLoading,
-    iframeRef,
-  } = useIframeCspDetection(article?.url ?? null, viewMode === 'webview')
+    isLoading: webviewLoading,
+    error: webviewError,
+    openWebview,
+    updateWebview,
+    closeWebview,
+  } = useWebviewWindow(viewMode === 'webview')
+
+  // 当切换到 webview 模式时，打开原生 webview 窗口
+  useEffect(() => {
+    if (viewMode === 'webview' && article?.url) {
+      // 等待 DOM 更新后获取容器元素的位置
+      const timer = setTimeout(() => {
+        void openWebview(article.url, article.title, webviewContainerRef.current)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+    void closeWebview()
+  }, [viewMode, article?.url, article?.title, openWebview, closeWebview])
+
+  // 监听容器大小变化，同步更新 webview 的位置和大小
+  useResizeObserver(webviewContainerRef, {
+    onResize: () => {
+      if (viewMode === 'webview' && webviewContainerRef.current) {
+        void updateWebview(webviewContainerRef.current)
+      }
+    },
+    debounceMs: 100,
+    enabled: viewMode === 'webview',
+  })
+
+  // 不再使用 iframe，改用原生 webview 窗口
 
   const handleCopyUrl = async () => {
     if (!article) return
@@ -162,7 +191,7 @@ export const ArticleReader = ({
             </Button>
             <Button
               aria-label="网页视图"
-              className={cn(viewMode === 'webview' && 'bg-primary/10 text-primary-foreground')}
+              className={cn(viewMode === 'webview' && 'bg-primary/80 text-primary-foreground')}
               onClick={() => setViewMode('webview')}
               size="sm"
               variant="ghost"
@@ -261,39 +290,27 @@ export const ArticleReader = ({
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden" ref={webviewContainerRef}>
         {/* Content */}
         {viewMode === 'webview' ? (
           <div className="relative h-full w-full">
-            {/* iframe 始终渲染，确保 ref 可以正常赋值 */}
-            <iframe
-              allow="clipboard-read; clipboard-write"
-              className={cn(
-                'h-full w-full border-0',
-                (iframeLoading || iframeError) && 'pointer-events-none opacity-0'
-              )}
-              ref={iframeRef}
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-top-navigation"
-              src={article.url}
-              title={article.title}
-            />
-            {/* 加载状态覆盖层 */}
-            {iframeLoading && !iframeError && (
+            {/* 原生 webview 窗口状态显示 */}
+            {webviewLoading && !webviewError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-8 text-center">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="text-muted-foreground text-sm">正在加载网页...</p>
+                <p className="text-muted-foreground text-sm">正在打开网页窗口...</p>
               </div>
             )}
             {/* 错误状态覆盖层 */}
-            {iframeError && (
+            {webviewError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background p-8 text-center">
                 <div className="rounded-full bg-muted p-4">
                   <Globe className="h-8 w-8 text-muted-foreground" />
                 </div>
                 <div>
-                  <h3 className="mb-2 font-medium text-lg">无法在应用内显示此网页</h3>
+                  <h3 className="mb-2 font-medium text-lg">无法打开网页窗口</h3>
                   <p className="mb-4 max-w-md text-muted-foreground text-sm">
-                    该网站设置了安全策略，不允许在应用内嵌入显示。您可以在外部浏览器中打开此网页。
+                    无法创建网页窗口。您可以在外部浏览器中打开此网页。
                   </p>
                   <div className="flex items-center justify-center gap-2">
                     <Button onClick={() => onOpenUrl(article.url)} size="sm" variant="default">
@@ -304,6 +321,20 @@ export const ArticleReader = ({
                       返回原文视图
                     </Button>
                   </div>
+                </div>
+              </div>
+            )}
+            {/* webview 窗口已打开，显示提示信息（短暂显示后隐藏） */}
+            {!webviewLoading && !webviewError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/80 p-8 text-center backdrop-blur-sm">
+                <div className="rounded-full bg-muted p-4">
+                  <Globe className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="mb-2 font-medium text-lg">网页正在加载中...</h3>
+                  <p className="mb-4 max-w-md text-muted-foreground text-sm">
+                    网页内容将在上方显示，可以完全绕过跨域限制。
+                  </p>
                 </div>
               </div>
             )}

@@ -8,6 +8,7 @@ import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { search } from '@/apis'
+import { useHotkey } from '@/hooks/use-hotkey'
 import type { CommandResult, SearchResult } from '@/types/api'
 
 interface SearchOverlayProps {
@@ -179,19 +180,21 @@ const useKeyboardNavigation = (
 
 // Global shortcut handler
 const useGlobalShortcut = (isOpen: boolean, onOpen: () => void) => {
-  useEffect(() => {
-    if (isOpen) return
+  // Cmd+K to open search
+  useHotkey({
+    key: 'k',
+    metaKey: true,
+    enabled: !isOpen,
+    onPress: onOpen,
+  })
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === ' ')) {
-        e.preventDefault()
-        onOpen()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, onOpen])
+  // Cmd+Space to open search
+  useHotkey({
+    key: ' ',
+    metaKey: true,
+    enabled: !isOpen,
+    onPress: onOpen,
+  })
 }
 
 // Click outside handler

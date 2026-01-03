@@ -155,6 +155,12 @@ impl GraphBuilder {
             *degrees.entry(assoc.target_id).or_insert(0) += 1;
         }
 
+        // Create a map of collections for quick lookup (before consuming collections)
+        let collections_map: std::collections::HashMap<i64, crate::db::Collection> = collections
+            .iter()
+            .map(|c| (c.id, c.clone()))
+            .collect();
+
         // Build nodes
         let mut nodes = Vec::new();
         for collection in collections {
@@ -222,24 +228,75 @@ impl GraphBuilder {
             }
         }
 
-        // Build edges
+        // Build edges - 过滤掉不符合新时间窗口的旧时间关联
         let edges: Vec<GraphEdge> = all_associations
             .into_iter()
-            .map(|a| GraphEdge {
-                id: a.id,
-                source_id: a.source_id,
-                target_id: a.target_id,
-                r#type: a.r#type,
-                weight: a.weight,
-                confidence: a.confidence,
-                // 关联详情
-                semantic_similarity: a.semantic_similarity,
-                shared_tags: a.shared_tags,
-                shared_folders: a.shared_folders,
-                time_interval: a.time_interval,
-                domain: a.domain,
-                keyword_overlap: a.keyword_overlap,
-                topic_match: a.topic_match,
+            .filter_map(|a| {
+                // 对于时间关联，检查是否符合新的10分钟窗口
+                if a.r#type == "time" {
+                    // 获取两个 collection 的实际时间差
+                    let source_collection = match collections_map.get(&a.source_id) {
+                        Some(c) => c,
+                        None => return None, // 如果找不到 collection，过滤掉
+                    };
+                    let target_collection = match collections_map.get(&a.target_id) {
+                        Some(c) => c,
+                        None => return None, // 如果找不到 collection，过滤掉
+                    };
+
+                    // 解析时间戳
+                    let time1 = match NaiveDateTime::parse_from_str(&source_collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                        Ok(dt) => dt.and_utc().timestamp(),
+                        Err(_) => return None,
+                    };
+                    let time2 = match NaiveDateTime::parse_from_str(&target_collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                        Ok(dt) => dt.and_utc().timestamp(),
+                        Err(_) => return None,
+                    };
+
+                    let time_diff = (time1 - time2).abs();
+                    const TIME_WINDOW_SECONDS: i64 = 600; // 10 minutes
+
+                    // 如果时间差 > 10分钟，过滤掉这个旧的时间关联
+                    if time_diff > TIME_WINDOW_SECONDS {
+                        return None;
+                    }
+
+                    // 计算分钟差用于显示
+                    let minutes_diff = time_diff / 60;
+                    Some(GraphEdge {
+                        id: a.id,
+                        source_id: a.source_id,
+                        target_id: a.target_id,
+                        r#type: a.r#type,
+                        weight: a.weight,
+                        confidence: a.confidence,
+                        semantic_similarity: a.semantic_similarity,
+                        shared_tags: a.shared_tags,
+                        shared_folders: a.shared_folders,
+                        time_interval: Some(minutes_diff),
+                        domain: a.domain,
+                        keyword_overlap: a.keyword_overlap,
+                        topic_match: a.topic_match,
+                    })
+                } else {
+                    // 非时间关联，直接使用
+                    Some(GraphEdge {
+                        id: a.id,
+                        source_id: a.source_id,
+                        target_id: a.target_id,
+                        r#type: a.r#type,
+                        weight: a.weight,
+                        confidence: a.confidence,
+                        semantic_similarity: a.semantic_similarity,
+                        shared_tags: a.shared_tags,
+                        shared_folders: a.shared_folders,
+                        time_interval: a.time_interval,
+                        domain: a.domain,
+                        keyword_overlap: a.keyword_overlap,
+                        topic_match: a.topic_match,
+                    })
+                }
             })
             .collect();
 
@@ -308,6 +365,12 @@ impl GraphBuilder {
             *degrees.entry(assoc.source_id).or_insert(0) += 1;
             *degrees.entry(assoc.target_id).or_insert(0) += 1;
         }
+
+        // Create a map of collections for quick lookup (before consuming collections)
+        let collections_map: std::collections::HashMap<i64, crate::db::Collection> = collections
+            .iter()
+            .map(|c| (c.id, c.clone()))
+            .collect();
 
         // Build nodes
         let mut nodes = Vec::new();
@@ -379,24 +442,75 @@ impl GraphBuilder {
             }
         }
 
-        // Build edges
+        // Build edges - 过滤掉不符合新时间窗口的旧时间关联
         let edges: Vec<GraphEdge> = all_associations
             .into_iter()
-            .map(|a| GraphEdge {
-                id: a.id,
-                source_id: a.source_id,
-                target_id: a.target_id,
-                r#type: a.r#type,
-                weight: a.weight,
-                confidence: a.confidence,
-                // 关联详情
-                semantic_similarity: a.semantic_similarity,
-                shared_tags: a.shared_tags,
-                shared_folders: a.shared_folders,
-                time_interval: a.time_interval,
-                domain: a.domain,
-                keyword_overlap: a.keyword_overlap,
-                topic_match: a.topic_match,
+            .filter_map(|a| {
+                // 对于时间关联，检查是否符合新的10分钟窗口
+                if a.r#type == "time" {
+                    // 获取两个 collection 的实际时间差
+                    let source_collection = match collections_map.get(&a.source_id) {
+                        Some(c) => c,
+                        None => return None, // 如果找不到 collection，过滤掉
+                    };
+                    let target_collection = match collections_map.get(&a.target_id) {
+                        Some(c) => c,
+                        None => return None, // 如果找不到 collection，过滤掉
+                    };
+
+                    // 解析时间戳
+                    let time1 = match NaiveDateTime::parse_from_str(&source_collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                        Ok(dt) => dt.and_utc().timestamp(),
+                        Err(_) => return None,
+                    };
+                    let time2 = match NaiveDateTime::parse_from_str(&target_collection.created_at, "%Y-%m-%d %H:%M:%S") {
+                        Ok(dt) => dt.and_utc().timestamp(),
+                        Err(_) => return None,
+                    };
+
+                    let time_diff = (time1 - time2).abs();
+                    const TIME_WINDOW_SECONDS: i64 = 600; // 10 minutes
+
+                    // 如果时间差 > 10分钟，过滤掉这个旧的时间关联
+                    if time_diff > TIME_WINDOW_SECONDS {
+                        return None;
+                    }
+
+                    // 计算分钟差用于显示
+                    let minutes_diff = time_diff / 60;
+                    Some(GraphEdge {
+                        id: a.id,
+                        source_id: a.source_id,
+                        target_id: a.target_id,
+                        r#type: a.r#type,
+                        weight: a.weight,
+                        confidence: a.confidence,
+                        semantic_similarity: a.semantic_similarity,
+                        shared_tags: a.shared_tags,
+                        shared_folders: a.shared_folders,
+                        time_interval: Some(minutes_diff),
+                        domain: a.domain,
+                        keyword_overlap: a.keyword_overlap,
+                        topic_match: a.topic_match,
+                    })
+                } else {
+                    // 非时间关联，直接使用
+                    Some(GraphEdge {
+                        id: a.id,
+                        source_id: a.source_id,
+                        target_id: a.target_id,
+                        r#type: a.r#type,
+                        weight: a.weight,
+                        confidence: a.confidence,
+                        semantic_similarity: a.semantic_similarity,
+                        shared_tags: a.shared_tags,
+                        shared_folders: a.shared_folders,
+                        time_interval: a.time_interval,
+                        domain: a.domain,
+                        keyword_overlap: a.keyword_overlap,
+                        topic_match: a.topic_match,
+                    })
+                }
             })
             .collect();
 

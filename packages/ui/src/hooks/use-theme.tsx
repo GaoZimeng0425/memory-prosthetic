@@ -1,6 +1,9 @@
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react'
 import { Monitor, Moon, Sun } from 'lucide-react'
 
+import { Button } from '../components/ui/button'
+import { ButtonGroup } from '../components/ui/button-group'
+
 export type Theme = 'light' | 'dark' | 'system'
 type ResolvedTheme = 'light' | 'dark'
 
@@ -135,6 +138,24 @@ export function ThemeProvider({
     >
       {children}
     </ThemeContext.Provider>
+  )
+}
+
+export const ThemeSwitcher = () => {
+  const { theme, setTheme, themeOptions } = useTheme()
+  return (
+    <ButtonGroup className="[--radius:9999rem]" data-size="sm">
+      {themeOptions.map((option) => (
+        <Button
+          key={option.value}
+          onClick={() => setTheme(option.value)}
+          size="icon"
+          variant={theme === option.value ? 'default' : 'outline'}
+        >
+          {option.icon}
+        </Button>
+      ))}
+    </ButtonGroup>
   )
 }
 

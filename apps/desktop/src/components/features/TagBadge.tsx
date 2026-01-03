@@ -33,11 +33,11 @@ export function TagBadge({ tag, onClick, onRemove, variant = 'secondary', size =
       onClick={onClick}
       variant={variant}
     >
-      <Hash className="h-3 w-3" />
+      <Hash className="size-3" />
       <span>{tag.name}</span>
       {onRemove && (
         <Button
-          className="h-4 w-4 p-0 hover:bg-transparent"
+          className="size-4 p-0 hover:bg-transparent"
           onClick={(e) => {
             e.stopPropagation()
             onRemove()

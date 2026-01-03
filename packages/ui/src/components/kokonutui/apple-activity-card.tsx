@@ -11,6 +11,7 @@
  */
 
 import { motion } from 'motion/react'
+
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 interface ActivityData {
@@ -69,23 +70,23 @@ const CircleProgress = ({ data, index }: CircleProgressProps) => {
 
   return (
     <motion.div
+      animate={{ opacity: 1, scale: 1 }}
       className="absolute inset-0 flex items-center justify-center"
       initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.8, delay: index * 0.2, ease: 'easeOut' }}
     >
       <div className="relative">
         <svg
-          width={data.size}
+          aria-label={`${data.label} Activity Progress - ${data.value}%`}
+          className="-rotate-90 transform"
           height={data.size}
           viewBox={`0 0 ${data.size} ${data.size}`}
-          className="transform -rotate-90"
-          aria-label={`${data.label} Activity Progress - ${data.value}%`}
+          width={data.size}
         >
           <title>{`${data.label} Activity Progress - ${data.value}%`}</title>
 
           <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient id={gradientId} x1="0%" x2="100%" y1="0%" y2="100%">
               <stop
                 offset="0%"
                 style={{
@@ -104,33 +105,33 @@ const CircleProgress = ({ data, index }: CircleProgressProps) => {
           </defs>
 
           <circle
+            className="text-zinc-200/50 dark:text-zinc-800/50"
             cx={data.size / 2}
             cy={data.size / 2}
-            r={radius}
             fill="none"
+            r={radius}
             stroke="currentColor"
             strokeWidth={strokeWidth}
-            className="text-zinc-200/50 dark:text-zinc-800/50"
           />
 
           <motion.circle
+            animate={{ strokeDashoffset: progress }}
             cx={data.size / 2}
             cy={data.size / 2}
-            r={radius}
             fill="none"
-            stroke={gradientUrl}
-            strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: progress }}
+            r={radius}
+            stroke={gradientUrl}
+            strokeDasharray={circumference}
+            strokeLinecap="round"
+            strokeWidth={strokeWidth}
+            style={{
+              filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.15))',
+            }}
             transition={{
               duration: 1.8,
               delay: index * 0.2,
               ease: 'easeInOut',
-            }}
-            strokeLinecap="round"
-            style={{
-              filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.15))',
             }}
           />
         </svg>
@@ -142,17 +143,17 @@ const CircleProgress = ({ data, index }: CircleProgressProps) => {
 const DetailedActivityInfo = () => {
   return (
     <motion.div
-      className="flex flex-col gap-6 ml-8"
-      initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
+      className="ml-8 flex flex-col gap-6"
+      initial={{ opacity: 0, x: 20 }}
       transition={{ duration: 0.5, delay: 0.3 }}
     >
       {activities.map((activity) => (
-        <motion.div key={activity.label} className="flex flex-col">
-          <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{activity.label}</span>
-          <span className="text-2xl font-semibold" style={{ color: activity.color }}>
+        <motion.div className="flex flex-col" key={activity.label}>
+          <span className="font-medium text-sm text-zinc-600 dark:text-zinc-400">{activity.label}</span>
+          <span className="font-semibold text-2xl" style={{ color: activity.color }}>
             {activity.current}/{activity.target}
-            <span className="text-base ml-1 text-zinc-600 dark:text-zinc-400">{activity.unit}</span>
+            <span className="ml-1 text-base text-zinc-600 dark:text-zinc-400">{activity.unit}</span>
           </span>
         </motion.div>
       ))}
@@ -169,22 +170,22 @@ export default function AppleActivityCard({
 }) {
   return (
     <div
-      className={cn('relative w-full max-w-3xl mx-auto p-8 rounded-3xl', 'text-zinc-900 dark:text-white', className)}
+      className={cn('relative mx-auto w-full max-w-3xl rounded-3xl p-8', 'text-zinc-900 dark:text-white', className)}
     >
       <div className="flex flex-col items-center gap-8">
         <motion.h2
-          className="text-2xl font-medium text-zinc-900 dark:text-white"
-          initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
+          className="font-medium text-2xl text-zinc-900 dark:text-white"
+          initial={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5 }}
         >
           {title}
         </motion.h2>
 
         <div className="flex items-center">
-          <div className="relative w-[180px] h-[180px]">
+          <div className="relative h-[180px] w-[180px]">
             {activities.map((activity, index) => (
-              <CircleProgress key={activity.label} data={activity} index={index} />
+              <CircleProgress data={activity} index={index} key={activity.label} />
             ))}
           </div>
           <DetailedActivityInfo />

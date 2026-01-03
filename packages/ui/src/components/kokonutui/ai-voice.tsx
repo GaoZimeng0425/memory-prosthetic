@@ -1,7 +1,6 @@
 'use client'
 
 /**
- * @author: @kokonutui
  * @description: AI Voice
  * @version: 1.0.0
  * @date: 2025-06-26
@@ -10,8 +9,9 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
+import { useEffect, useState } from 'react'
 import { Mic } from 'lucide-react'
-import { useState, useEffect } from 'react'
+
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 export default function AI_Voice() {
@@ -77,22 +77,22 @@ export default function AI_Voice() {
 
   return (
     <div className="w-full py-4">
-      <div className="relative max-w-xl w-full mx-auto flex items-center flex-col gap-2">
+      <div className="relative mx-auto flex w-full max-w-xl flex-col items-center gap-2">
         <button
           className={cn(
-            'group w-16 h-16 rounded-xl flex items-center justify-center transition-colors',
+            'group flex h-16 w-16 items-center justify-center rounded-xl transition-colors',
             submitted ? 'bg-none' : 'bg-none hover:bg-black/5 dark:hover:bg-white/5'
           )}
-          type="button"
           onClick={handleClick}
+          type="button"
         >
           {submitted ? (
             <div
-              className="w-6 h-6 rounded-sm animate-spin bg-black  dark:bg-white cursor-pointer pointer-events-auto"
+              className="pointer-events-auto h-6 w-6 animate-spin cursor-pointer rounded-sm bg-black dark:bg-white"
               style={{ animationDuration: '3s' }}
             />
           ) : (
-            <Mic className="w-6 h-6 text-black/90 dark:text-white/90" />
+            <Mic className="h-6 w-6 text-black/90 dark:text-white/90" />
           )}
         </button>
 
@@ -105,14 +105,15 @@ export default function AI_Voice() {
           {formatTime(time)}
         </span>
 
-        <div className="h-4 w-64 flex items-center justify-center gap-0.5">
+        <div className="flex h-4 w-64 items-center justify-center gap-0.5">
           {[...Array(48)].map((_, i) => (
             <div
-              key={i}
               className={cn(
                 'w-0.5 rounded-full transition-all duration-300',
-                submitted ? 'bg-black/50 dark:bg-white/50 animate-pulse' : 'bg-black/10 dark:bg-white/10 h-1'
+                submitted ? 'animate-pulse bg-black/50 dark:bg-white/50' : 'h-1 bg-black/10 dark:bg-white/10'
               )}
+              // biome-ignore lint/suspicious/noArrayIndexKey: ignore
+              key={i}
               style={
                 submitted && isClient
                   ? {
@@ -125,7 +126,7 @@ export default function AI_Voice() {
           ))}
         </div>
 
-        <p className="h-4 text-xs text-black/70 dark:text-white/70">{submitted ? 'Listening...' : 'Click to speak'}</p>
+        <p className="h-4 text-black/70 text-xs dark:text-white/70">{submitted ? 'Listening...' : 'Click to speak'}</p>
       </div>
     </div>
   )

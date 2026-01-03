@@ -10,8 +10,8 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
-import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 
 interface Greeting {
   text: string

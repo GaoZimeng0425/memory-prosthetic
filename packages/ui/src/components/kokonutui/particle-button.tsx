@@ -1,7 +1,6 @@
 'use client'
 
 /**
- * @author: @dorianbaffier
  * @description: Particle Button
  * @version: 1.0.0
  * @date: 2025-06-26
@@ -44,6 +43,7 @@ function SuccessParticles({ buttonRef }: { buttonRef: React.RefObject<HTMLButton
             x: 0,
             y: 0,
           }}
+          // biome-ignore lint/suspicious/noArrayIndexKey: ignore
           key={i}
           style={{ left: centerX, top: centerY }}
           transition={{

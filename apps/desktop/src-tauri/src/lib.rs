@@ -254,6 +254,105 @@ fn show_main_window(app: AppHandle) -> Result<(), CommandError> {
     Ok(())
 }
 
+/// Create a webview as a child of the main window (embedded, not a separate window)
+/// This uses macOS native layout to embed webview inside the main window
+#[tauri::command]
+fn create_webview(
+    app: AppHandle,
+    url: String,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), CommandError> {
+    // Get the main window as Window (not WebviewWindow) to use add_child
+    let main_window = app
+        .get_window("main")
+        .ok_or_else(|| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: "Main window not found".to_string(),
+        })?;
+
+    // Close existing webview if it exists (by label)
+    if let Some(existing_webview) = app.get_webview("webview") {
+        let _ = existing_webview.close();
+        // Wait a bit for the webview to close
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    // Create webview builder
+    let webview_builder = tauri::webview::WebviewBuilder::new(
+        "webview",
+        tauri::WebviewUrl::External(url.parse().map_err(|e| CommandError {
+            code: "INVALID_URL".to_string(),
+            message: format!("Invalid URL: {}", e),
+        })?),
+    );
+
+    // Add webview as a child of the main window (embedded, not a separate window)
+    // This uses macOS native layout to embed the webview
+    // Note: add_child is available on Window trait, which WebviewWindow implements
+    let position = tauri::LogicalPosition::new(x as f64, y as f64);
+    let size = tauri::LogicalSize::new(width as f64, height as f64);
+
+    // Use the Window trait method add_child
+    // WebviewWindow implements Window trait, so we can call add_child directly
+    use tauri::Window;
+    main_window
+        .add_child(webview_builder, position, size)
+        .map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: format!("Failed to create embedded webview: {}", e),
+        })?;
+
+    Ok(())
+}
+
+/// Update the embedded webview position and size
+#[tauri::command]
+fn update_webview(
+    app: AppHandle,
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+) -> Result<(), CommandError> {
+    // Get the webview
+    if let Some(webview) = app.get_webview("webview") {
+        // Update webview position and size
+        let position = tauri::LogicalPosition::new(x as f64, y as f64);
+        let size = tauri::LogicalSize::new(width as f64, height as f64);
+
+        webview
+            .set_position(position)
+            .map_err(|e| CommandError {
+                code: "WINDOW_ERROR".to_string(),
+                message: format!("Failed to set webview position: {}", e),
+            })?;
+
+        webview
+            .set_size(size)
+            .map_err(|e| CommandError {
+                code: "WINDOW_ERROR".to_string(),
+                message: format!("Failed to set webview size: {}", e),
+            })?;
+    }
+    Ok(())
+}
+
+/// Close the embedded webview
+#[tauri::command]
+fn close_webview(app: AppHandle) -> Result<(), CommandError> {
+    // Use app.get_webview() to get webview by label
+    if let Some(webview) = app.get_webview("webview") {
+        webview.close().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+    }
+    Ok(())
+}
+
 /// Helper to toggle search window
 fn toggle_search(app: &AppHandle) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("search") {
@@ -1753,6 +1852,9 @@ pub fn run() {
             hide_search_window,
             show_search_window,
             show_main_window,
+            create_webview,
+            update_webview,
+            close_webview,
             get_settings,
             get_setting,
             set_setting,

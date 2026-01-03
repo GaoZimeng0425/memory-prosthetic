@@ -201,7 +201,7 @@ const CustomLink = ({
 
   // Regular external link
   return (
-    <Button variant="link" {...props} className="h-auto p-0 text-inherit">
+    <Button variant="link" {...props} asChild className="h-auto p-0 text-inherit">
       <a href={href} rel="noopener noreferrer" target="_blank">
         {children}
       </a>
@@ -219,6 +219,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
     <Streamdown
       className={cn('markdown-content', className)}
       components={{
+        p: (props) => <div {...props} />,
         a: (props) => <CustomLink {...props} scrollAreaRef={scrollAreaRef} />,
       }}
       mermaid={{

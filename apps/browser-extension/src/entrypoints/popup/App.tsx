@@ -1,8 +1,7 @@
-import { CheckCircle2, Clock, FileText, Loader2, XCircle } from 'lucide-react'
+import { Clock, FileText, Loader2, XCircle } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
-import { ButtonGroup } from '@memory-prosthetic/ui/components/ui/button-group'
-import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
+import { ThemeSwitcher } from '@memory-prosthetic/ui/hooks/use-theme'
 import { useCollect } from '@/hooks/use-collect'
 import { useConnection } from '@/hooks/use-connection'
 
@@ -29,7 +28,6 @@ function App() {
 
   // Truncate content for preview
   const previewText = preview?.content.slice(0, 200) || ''
-  const { themeOptions, theme, setTheme } = useTheme()
 
   return (
     <div className="w-80 p-4 text-foreground">
@@ -99,13 +97,6 @@ function App() {
       )}
 
       {/* Collection Feedback */}
-      {isSuccess && (
-        <div className="mb-4 flex items-center justify-center gap-2 rounded-lg bg-green-500/20 p-3 text-green-500">
-          <CheckCircle2 className="size-5" />
-          <span className="font-medium text-sm">已收集 ✓</span>
-        </div>
-      )}
-
       {isError && (
         <div className="mb-4 rounded-lg bg-destructive/20 p-3 text-destructive">
           <div className="flex items-center justify-center gap-2">
@@ -153,21 +144,8 @@ function App() {
       </div>
 
       {/* Footer */}
-      <footer className="border-border border-t pt-3 text-center">
-        <ButtonGroup>
-          {themeOptions.map((option) => (
-            <Button
-              key={option.value}
-              onClick={() => {
-                setTheme(option.value)
-              }}
-              size="icon"
-              variant={theme === option.value ? 'default' : 'outline'}
-            >
-              {option.icon}
-            </Button>
-          ))}
-        </ButtonGroup>
+      <footer className="flex items-center justify-end border-border border-t pt-3">
+        <ThemeSwitcher />
       </footer>
     </div>
   )

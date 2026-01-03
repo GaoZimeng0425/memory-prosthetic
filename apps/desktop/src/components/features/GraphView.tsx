@@ -751,7 +751,16 @@ const NodeAssociationTooltipComponent = ({ edge, x, y }: NodeAssociationTooltipP
         break
       case 'time':
         if (edge.timeInterval !== undefined) {
-          return `${edge.timeInterval}天内`
+          // 后端已经处理了旧数据转换（天数转分钟），这里直接使用分钟数
+          const minutes = Math.round(edge.timeInterval)
+
+          if (minutes < 1) {
+            return '不到1分钟'
+          }
+          if (minutes === 1) {
+            return '1分钟'
+          }
+          return `${minutes}分钟`
         }
         break
       case 'domain':

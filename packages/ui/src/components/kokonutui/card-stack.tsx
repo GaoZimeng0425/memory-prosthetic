@@ -10,8 +10,9 @@
  * @github: https://github.com/kokonut-labs/kokonutui
  */
 
-import { motion } from 'motion/react'
 import { useState } from 'react'
+import { motion } from 'motion/react'
+
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 interface Specification {
@@ -119,14 +120,14 @@ const Card = ({ product, index, totalCards, isExpanded }: CardProps) => {
       }}
       className={cn(
         'absolute inset-0 w-full rounded-2xl p-6',
-        'bg-gradient-to-br from-white/40 via-neutral-50/30 to-neutral-100/20',
+        'bg-linear-to-br from-white/40 via-neutral-50/30 to-neutral-100/20',
         'dark:from-neutral-800/40 dark:via-neutral-900/30 dark:to-black/20',
         'border border-white/20 dark:border-neutral-800/20',
         'before:absolute before:inset-0 before:rounded-2xl',
-        'before:bg-gradient-to-b before:from-white/20 before:via-neutral-100/10 before:to-transparent',
+        'before:bg-linear-to-b before:from-white/20 before:via-neutral-100/10 before:to-transparent',
         'dark:before:from-white/5 dark:before:via-neutral-500/5 dark:before:to-transparent',
         'before:opacity-100 before:transition-opacity before:duration-500',
-        'after:absolute after:inset-0 after:rounded-2xl after:bg-gradient-to-br',
+        'after:absolute after:inset-0 after:rounded-2xl after:bg-linear-to-br',
         'after:from-white/80 after:to-neutral-100/70 dark:after:from-neutral-900/80 dark:after:to-black/70',
         'after:z-[-1] after:blur-xl',
         'backdrop-blur-xl backdrop-saturate-150',
@@ -134,7 +135,7 @@ const Card = ({ product, index, totalCards, isExpanded }: CardProps) => {
         'hover:border-white/30 dark:hover:border-neutral-700/30',
         'hover:shadow-[0_12px_40px_rgb(0,0,0,0.12)] dark:hover:shadow-[0_12px_40px_rgb(0,0,0,0.4)]',
         'hover:backdrop-blur-2xl',
-        'hover:bg-gradient-to-br hover:from-white/50 hover:via-neutral-50/40 hover:to-neutral-100/30',
+        'hover:bg-linear-to-br hover:from-white/50 hover:via-neutral-50/40 hover:to-neutral-100/30',
         'dark:hover:from-neutral-800/50 dark:hover:via-neutral-900/40 dark:hover:to-black/30',
         'transition-all duration-500 ease-out',
         'transform-gpu overflow-hidden'
@@ -186,7 +187,7 @@ const Card = ({ product, index, totalCards, isExpanded }: CardProps) => {
 
         <div
           className={cn(
-            'aspect-[16/11] w-full overflow-hidden rounded-lg',
+            'aspect-16/11 w-full overflow-hidden rounded-lg',
             'bg-neutral-100 dark:bg-neutral-900',
             'transition-transform duration-300 ease-out',
             'group-hover:scale-[1.02]',
@@ -202,7 +203,7 @@ const Card = ({ product, index, totalCards, isExpanded }: CardProps) => {
             <h2 className="text-left font-bold text-3xl text-gray-900 tracking-tight dark:text-white">
               {product.title}
             </h2>
-            <span className="block bg-gradient-to-r from-gray-400 via-gray-300 to-gray-500 bg-clip-text text-left font-semibold text-3xl text-transparent tracking-tight dark:from-gray-200 dark:via-white dark:to-gray-300">
+            <span className="block bg-linear-to-r from-gray-400 via-gray-300 to-gray-500 bg-clip-text text-left font-semibold text-3xl text-transparent tracking-tight dark:from-gray-200 dark:via-white dark:to-gray-300">
               {product.subtitle}
             </span>
           </div>

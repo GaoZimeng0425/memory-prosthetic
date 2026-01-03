@@ -15,7 +15,7 @@ type SettingsDialogProps = {
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto md:max-w-xl lg:max-w-2xl xl:max-w-5xl">
+      <DialogContent className="h-[85vh] max-w-lg overflow-y-auto md:max-w-xl lg:max-w-2xl xl:max-w-5xl">
         <DialogHeader>
           <DialogTitle>设置</DialogTitle>
           <DialogDescription>管理应用程序设置和偏好</DialogDescription>

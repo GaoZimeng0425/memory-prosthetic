@@ -155,7 +155,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-80">
+      <PopoverContent align="end" className="z-10 w-80 bg-popover">
         {/* Header */}
         <div className="flex items-center justify-between border-b">
           <div className="flex items-center gap-2">

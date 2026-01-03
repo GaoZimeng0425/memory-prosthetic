@@ -8,6 +8,8 @@ type UseWebviewWindowReturn = {
   error: boolean
   openWebview: (url: string, title: string, containerElement?: HTMLElement | null) => Promise<void>
   updateWebview: (containerElement?: HTMLElement | null) => Promise<void>
+  hideWebview: () => Promise<void>
+  showWebview: () => Promise<void>
   closeWebview: () => Promise<void>
 }
 
@@ -134,6 +136,25 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
     }
   }, [])
 
+  const hideWebview = useCallback(async () => {
+    try {
+      await invoke('hide_webview')
+    } catch (err) {
+      // 忽略错误，webview 可能不存在
+      console.debug('Failed to hide webview:', err)
+    }
+  }, [])
+
+  const showWebview = useCallback(async () => {
+    try {
+      await invoke('show_webview')
+      console.log('🚀 Webview shown')
+    } catch (err) {
+      // 忽略错误，webview 可能不存在
+      console.debug('Failed to show webview:', err)
+    }
+  }, [])
+
   const closeWebview = useCallback(async () => {
     try {
       await invoke('close_webview')
@@ -166,6 +187,8 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
     error,
     openWebview,
     updateWebview,
+    hideWebview,
+    showWebview,
     closeWebview,
   }
 }

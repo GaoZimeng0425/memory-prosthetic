@@ -92,7 +92,7 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
   return (
     <Popover>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-0">
+      <PopoverContent align="end" className="z-10 w-80 bg-popover p-0">
         <div className="p-4">
           <h3 className="mb-4 font-semibold text-sm">阅读器设置</h3>
 

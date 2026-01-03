@@ -1,39 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { Activity, useEffect, useRef, useState } from 'react'
 import {
   Archive,
   Calendar,
   ExternalLink,
   Globe,
-  Hash,
-  Link2,
   Maximize2,
   Minimize2,
-  MoreVertical,
-  Move,
   PaintbrushIcon,
   RotateCcw,
   Sparkles,
-  Star,
-  Trash2,
 } from 'lucide-react'
-import { toast } from 'sonner'
 
 import { formatDateTime, getDomain } from '@memory-prosthetic/shared/utils/date'
 import { MarkdownUI } from '@memory-prosthetic/ui/components/markdown-ui'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ButtonGroup } from '@memory-prosthetic/ui/components/ui/button-group'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { Separator } from '@memory-prosthetic/ui/components/ui/separator'
 import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { AiButton } from '@/components/features/AiButton'
+import { ArticleActionsMenu } from '@/components/features/ArticleActionsMenu'
 import { TagBadge } from '@/components/features/TagBadge'
 import { Link } from '@/components/Link'
 import { ReaderSettings } from '@/components/ReaderSettings'
@@ -125,16 +112,6 @@ export const ArticleReader = ({
 
   // 不再使用 iframe，改用原生 webview 窗口
 
-  const handleCopyUrl = async () => {
-    if (!article) return
-    try {
-      await navigator.clipboard.writeText(article.url)
-      toast.success('链接已复制到剪贴板')
-    } catch {
-      toast.error('复制失败')
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center bg-background">
@@ -165,7 +142,7 @@ export const ArticleReader = ({
       )}
     >
       {/* Toolbar */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-border border-b px-4">
+      <div className="relative z-10 flex h-14 shrink-0 items-center justify-between border-border border-b px-4">
         <div className="flex items-center gap-2">
           <Button
             aria-label="Toggle Fullscreen"
@@ -202,91 +179,40 @@ export const ArticleReader = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
-            {/* AI 分析按钮 */}
-            <AiButton article={article} />
-            <ReaderSettings
-              trigger={
-                <Button size="icon" variant="ghost">
-                  <PaintbrushIcon />
+          <Activity mode={viewMode === 'webview' ? 'hidden' : 'visible'}>
+            <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
+              {/* AI 分析按钮 */}
+              <AiButton article={article} />
+              <ReaderSettings
+                trigger={
+                  <Button size="icon" variant="ghost">
+                    <PaintbrushIcon />
+                  </Button>
+                }
+              />
+
+              {(article.status === 'archived' || article.status === 'deleted') && onRestore && (
+                <Button aria-label="Restore" onClick={() => onRestore(article.id)} size="icon" variant="ghost">
+                  <RotateCcw className="size-4" />
                 </Button>
-              }
-            />
-
-            {(article.status === 'archived' || article.status === 'deleted') && onRestore && (
-              <Button aria-label="Restore" onClick={() => onRestore(article.id)} size="icon" variant="ghost">
-                <RotateCcw className="size-4" />
-              </Button>
-            )}
-            {article.status === 'active' && onArchive && (
-              <Button aria-label="Archive" onClick={() => onArchive(article.id)} size="icon" variant="ghost">
-                <Archive className="size-4" />
-              </Button>
-            )}
-            {/* 阅读器动作下拉菜单 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="text-muted-foreground hover:text-foreground" size="icon" variant="ghost">
-                  <MoreVertical className="h-4 w-4" />
-                  <span className="sr-only">更多操作</span>
+              )}
+              {article.status === 'active' && onArchive && (
+                <Button aria-label="Archive" onClick={() => onArchive(article.id)} size="icon" variant="ghost">
+                  <Archive className="size-4" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 bg-popover">
-                <div className="border-border border-b px-3 py-2">
-                  <DropdownMenuLabel className="px-0 font-semibold">阅读器动作</DropdownMenuLabel>
-                </div>
-                <div className="grid grid-cols-4 gap-0 p-2">
-                  {/* 第一行 */}
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-                    onClick={() => article && onOpenUrl(article.url)}
-                  >
-                    <Globe className="size-5 text-foreground" />
-                    <span className="text-foreground text-xs">使用浏览器访问</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-                    onClick={handleCopyUrl}
-                  >
-                    <Link2 className="size-5 text-foreground" />
-                    <span className="text-foreground text-xs">复制网页链接</span>
-                  </DropdownMenuItem>
-
-                  {/* 第二行 */}
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-                    onClick={() => article && openTagDialog(article.id)}
-                  >
-                    <Hash className="size-5 text-foreground" />
-                    <span className="text-foreground text-xs">标签</span>
-                  </DropdownMenuItem>
-
-                  {/* 第三行 */}
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-                    onClick={() => article && onSetFavorite && openFavoriteDialog(article.id)}
-                  >
-                    <Move className="size-5 text-foreground" />
-                    <span className="text-foreground text-xs">移动</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-                    onClick={() => article && onToggleStar && onToggleStar(article.id)}
-                  >
-                    <Star className={cn('size-5', article?.starred && 'fill-current text-yellow-500')} />
-                    <span className="text-foreground text-xs">星标</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-destructive/10 focus:text-destructive"
-                    onClick={() => article && onDelete(article.id)}
-                  >
-                    <Trash2 className="size-5 text-destructive" />
-                    <span className="text-destructive text-xs">删除</span>
-                  </DropdownMenuItem>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </ButtonGroup>
+              )}
+              {/* 阅读器动作下拉菜单 */}
+              <ArticleActionsMenu
+                article={article}
+                onDelete={onDelete}
+                onOpenFavoriteDialog={openFavoriteDialog}
+                onOpenTagDialog={openTagDialog}
+                onOpenUrl={onOpenUrl}
+                onSetFavorite={onSetFavorite}
+                onToggleStar={onToggleStar}
+              />
+            </ButtonGroup>
+          </Activity>
         </div>
       </div>
 

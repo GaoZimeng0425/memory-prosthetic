@@ -305,6 +305,11 @@ fn create_webview(
             message: format!("Failed to create embedded webview: {}", e),
         })?;
 
+    // Note: Embedded webviews created with add_child are child views, not separate windows.
+    // They should naturally appear below UI elements rendered in the main window.
+    // If z-index issues persist, we may need to adjust the webview's position or use
+    // a different approach for UI overlays.
+
     Ok(())
 }
 
@@ -336,6 +341,30 @@ fn update_webview(
                 code: "WINDOW_ERROR".to_string(),
                 message: format!("Failed to set webview size: {}", e),
             })?;
+    }
+    Ok(())
+}
+
+/// Hide the embedded webview (temporarily, without closing)
+#[tauri::command]
+fn hide_webview(app: AppHandle) -> Result<(), CommandError> {
+    if let Some(webview) = app.get_webview("webview") {
+        webview.hide().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: format!("Failed to hide webview: {}", e),
+        })?;
+    }
+    Ok(())
+}
+
+/// Show the embedded webview (make it visible again)
+#[tauri::command]
+fn show_webview(app: AppHandle) -> Result<(), CommandError> {
+    if let Some(webview) = app.get_webview("webview") {
+        webview.show().map_err(|e| CommandError {
+            code: "WINDOW_ERROR".to_string(),
+            message: format!("Failed to show webview: {}", e),
+        })?;
     }
     Ok(())
 }
@@ -1854,6 +1883,8 @@ pub fn run() {
             show_main_window,
             create_webview,
             update_webview,
+            hide_webview,
+            show_webview,
             close_webview,
             get_settings,
             get_setting,

@@ -23,11 +23,14 @@ export interface HealthResponse {
 
 /**
  * POST /api/collect request body
+ * Note: Field names must be camelCase to match backend serde(rename_all = "camelCase")
  */
 export interface CollectRequest {
   url: string
   title: string
   content: string
+  favoriteId?: number
+  tags?: number[]
 }
 
 /**

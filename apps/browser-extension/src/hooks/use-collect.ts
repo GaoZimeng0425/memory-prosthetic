@@ -16,6 +16,8 @@ interface UseCollectResult {
   status: CollectStatus
   error: string | null
   preview: ExtractedContent | null
+  selectedFavoriteId: number | undefined
+  setSelectedFavoriteId: (favoriteId: number | undefined) => void
   collect: () => void
   confirmCollect: () => void
   cancelPreview: () => void
@@ -92,16 +94,12 @@ export function useCollect(): UseCollectResult {
   const [status, setStatus] = useState<CollectStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [preview, setPreview] = useState<ExtractedContent | null>(null)
+  const [selectedFavoriteId, setSelectedFavoriteId] = useState<number | undefined>(undefined)
 
   const collectMutation = useMutation({
     ...collections.mutations.collect(),
-    onSuccess: (data) => {
-      if (!data.success) {
-        setError(data.error.message)
-        setStatus('error')
-        return
-      }
-
+    onSuccess: () => {
+      // After unwrapResponse, data is { id: number }
       setStatus('success')
 
       // Auto reset after 2 seconds
@@ -110,8 +108,15 @@ export function useCollect(): UseCollectResult {
         setPreview(null)
       }, 2000)
     },
-    onError: (err) => {
-      setError(err instanceof Error ? err.message : '收集失败')
+    onError: (err: unknown) => {
+      // HTTP adapter throws error for error responses, so we can get the message from error
+      let errorMessage = '收集失败'
+      if (err instanceof Error) {
+        errorMessage = err.message || '收集失败'
+      } else if (typeof err === 'object' && err !== null && 'message' in err) {
+        errorMessage = String(err.message)
+      }
+      setError(errorMessage)
       setStatus('error')
     },
   })
@@ -153,7 +158,10 @@ export function useCollect(): UseCollectResult {
     setStatus('collecting')
     setError(null)
 
-    collectMutation.mutate(preview)
+    collectMutation.mutate({
+      ...preview,
+      favoriteId: selectedFavoriteId,
+    })
   }
 
   const cancelPreview = () => {
@@ -172,6 +180,8 @@ export function useCollect(): UseCollectResult {
     status,
     error,
     preview,
+    selectedFavoriteId,
+    setSelectedFavoriteId,
     collect,
     confirmCollect,
     cancelPreview,

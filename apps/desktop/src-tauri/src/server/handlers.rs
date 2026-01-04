@@ -39,6 +39,8 @@ pub struct CollectRequest {
     pub url: String,
     pub title: String,
     pub content: String,
+    pub favorite_id: Option<i64>,
+    pub tags: Option<Vec<i64>>,
 }
 
 /// API success response wrapper
@@ -158,6 +160,23 @@ pub async fn collect(
     match repo.upsert(&input) {
         Ok(id) => {
             info!("Content collected successfully: id={}", id);
+
+            // Set favorite_id if provided
+            if let Some(favorite_id) = payload.favorite_id {
+                if let Err(e) = repo.set_favorite(id, Some(favorite_id)) {
+                    info!("Failed to set favorite_id: {}", e);
+                }
+            }
+
+            // Add tags if provided
+            if let Some(tag_ids) = payload.tags {
+                if !tag_ids.is_empty() {
+                    let tag_repo = crate::db::CollectionTagRepository::new(&state.db);
+                    if let Err(e) = tag_repo.add_tags(id, &tag_ids) {
+                        info!("Failed to add tags: {}", e);
+                    }
+                }
+            }
 
             // Embedding service runs in background and will pick up new collections automatically
 

@@ -7,7 +7,7 @@
 import { type MutationOptions, queryOptions } from '@tanstack/react-query'
 
 import type { RequestAdapter } from '../request/adapter'
-import type { CollectRequest, CollectResponse } from '../types/api'
+import type { CollectRequest, CollectSuccessResponse } from '../types/api'
 import type { Collection, CollectionListItem, CollectionStats, Tag } from '../types/collection'
 
 const ENDPOINTS = {
@@ -59,7 +59,7 @@ export function createCollectionsApi(adapter: RequestAdapter) {
     getById: (id: number) => adapter.get<Collection>(ENDPOINTS.collection, { id } as Record<string, unknown>),
 
     /** Collect new content */
-    collect: (data: CollectRequest) => adapter.post<CollectResponse>(ENDPOINTS.collect, data),
+    collect: (data: CollectRequest) => adapter.post<CollectSuccessResponse['data']>(ENDPOINTS.collect, data),
 
     /** Delete a collection */
     delete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collection}/${id}`),
@@ -119,7 +119,7 @@ export function createCollectionsApi(adapter: RequestAdapter) {
 
   const mutations = {
     /** Collect content mutation options */
-    collect: (): MutationOptions<CollectResponse, Error, CollectRequest> => ({
+    collect: (): MutationOptions<CollectSuccessResponse['data'], unknown, CollectRequest> => ({
       mutationKey: ['collect'],
       mutationFn: api.collect,
     }),

@@ -2,6 +2,7 @@ import { Clock, FileText, Loader2, XCircle } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ThemeSwitcher } from '@memory-prosthetic/ui/hooks/use-theme'
+import { FavoriteSelector } from '@/components/FavoriteSelector'
 import { useCollect } from '@/hooks/use-collect'
 import { useConnection } from '@/hooks/use-connection'
 
@@ -11,9 +12,10 @@ function App() {
     status: collectStatus,
     error: collectError,
     preview,
+    selectedFavoriteId,
+    setSelectedFavoriteId,
     collect,
     confirmCollect,
-    cancelPreview,
     reset,
   } = useCollect()
 
@@ -115,19 +117,14 @@ function App() {
         {isConnected ? (
           isPreviewing ? (
             <>
+              <FavoriteSelector
+                disabled={isCollecting}
+                onSelect={setSelectedFavoriteId}
+                selectedFavoriteId={selectedFavoriteId}
+              />
               <Button className="w-full" disabled={isCollecting} onClick={confirmCollect}>
                 {isCollecting && <Loader2 className="mr-2 size-4 animate-spin" />}
                 {isCollecting ? '保存中...' : '确认收集'}
-              </Button>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  cancelPreview()
-                  window.close()
-                }}
-                variant="ghost"
-              >
-                取消
               </Button>
             </>
           ) : (

@@ -16,6 +16,8 @@ export interface CollectRequest {
   url: string
   title: string
   content: string
+  favoriteId?: number
+  tags?: number[]
 }
 
 /** Collect success response */

@@ -155,7 +155,7 @@ export const ArticleReader = ({
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="absolute left-1/2 -translate-x-1/2">
           <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
             <Button
               aria-label="原文视图"

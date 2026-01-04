@@ -106,6 +106,7 @@ export function useCollect(): UseCollectResult {
       setTimeout(() => {
         setStatus('idle')
         setPreview(null)
+        setSelectedFavoriteId(undefined)
       }, 2000)
     },
     onError: (err: unknown) => {
@@ -167,12 +168,14 @@ export function useCollect(): UseCollectResult {
   const cancelPreview = () => {
     setStatus('idle')
     setPreview(null)
+    setSelectedFavoriteId(undefined)
   }
 
   const reset = () => {
     setStatus('idle')
     setError(null)
     setPreview(null)
+    setSelectedFavoriteId(undefined)
     collectMutation.reset()
   }
 

@@ -553,8 +553,6 @@ export const extractPageContent = (): PageContent => {
     if (githubContent) {
       return githubContent
     }
-    // If extraction failed, fall through to default Readability
-    console.log('🚀 : extractPageContent : GitHub repo homepage detected but extraction failed, using Readability')
   }
 
   // Clone the document to avoid modifying the original
@@ -571,7 +569,6 @@ export const extractPageContent = (): PageContent => {
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = article.content
     const images = tempDiv.querySelectorAll('img')
-    console.log('🚀 : extractPageContent : Found images in article.content:', images.length)
     images.forEach((img, index) => {
       const imgEl = img as HTMLImageElement
       console.log(`🚀 : extractPageContent : Image ${index}:`, {
@@ -585,7 +582,6 @@ export const extractPageContent = (): PageContent => {
     // Convert HTML to Markdown
     const markdown = turndownService.turndown(article.content)
     console.log('🚀 : extractPageContent : markdown:', markdown)
-    console.log('🚀 : extractPageContent : markdown contains image syntax:', /!\[.*?\]\(.*?\)/.test(markdown))
     const cleanedMarkdown = cleanMarkdown(markdown)
 
     // Extract thumbnail URL

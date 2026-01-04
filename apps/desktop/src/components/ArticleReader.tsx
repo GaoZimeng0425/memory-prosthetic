@@ -7,6 +7,7 @@ import {
   Maximize2,
   Minimize2,
   PaintbrushIcon,
+  PenIcon,
   RotateCcw,
   Sparkles,
 } from 'lucide-react'
@@ -21,6 +22,7 @@ import { useTheme } from '@memory-prosthetic/ui/hooks/use-theme'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { AiButton } from '@/components/features/AiButton'
 import { ArticleActionsMenu } from '@/components/features/ArticleActionsMenu'
+import { NoteEditorView } from '@/components/features/NoteEditorView'
 import { TagBadge } from '@/components/features/TagBadge'
 import { Link } from '@/components/Link'
 import { ReaderSettings } from '@/components/ReaderSettings'
@@ -66,13 +68,15 @@ export const ArticleReader = ({
   const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
   const { openTagDialog, openFavoriteDialog } = useDialog()
   const [viewMode, setViewMode] = useState<ViewMode>('markdown')
+  const [isNoteEditing, setIsNoteEditing] = useState(false)
   const { fontSize, fontFamily, layout, getBackgroundColorClassName } = useReaderStore()
   const { resolvedTheme } = useTheme()
 
-  // 当文章切换时，重置为原文视图
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 当文章切换时，重置为原文视图
+  // 当文章切换时，重置为原文视图和编辑模式
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 当文章切换时，重置为原文视图和编辑模式
   useEffect(() => {
     setViewMode('markdown')
+    setIsNoteEditing(false)
   }, [article?.id])
 
   // 根据当前主题获取背景色类名
@@ -88,16 +92,21 @@ export const ArticleReader = ({
   } = useWebviewWindow(viewMode === 'webview')
 
   // 当切换到 webview 模式时，打开原生 webview 窗口
+  // Only for non-note collections (notes don't have URLs)
+  const isNote = article?.type === '笔记' || !article?.url
+
   useEffect(() => {
-    if (viewMode === 'webview' && article?.url) {
+    if (viewMode === 'webview' && article?.url && !isNote) {
       // 等待 DOM 更新后获取容器元素的位置
       const timer = setTimeout(() => {
-        void openWebview(article.url, article.title, webviewContainerRef.current)
+        if (article.url) {
+          void openWebview(article.url, article.title, webviewContainerRef.current)
+        }
       }, 100)
       return () => clearTimeout(timer)
     }
     void closeWebview()
-  }, [viewMode, article?.url, article?.title, openWebview, closeWebview])
+  }, [viewMode, article?.url, article?.title, isNote, openWebview, closeWebview])
 
   // 监听容器大小变化，同步更新 webview 的位置和大小
   useResizeObserver(webviewContainerRef, {
@@ -155,28 +164,31 @@ export const ArticleReader = ({
             {isMaximized ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         </div>
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
-            <Button
-              aria-label="原文视图"
-              className={cn(viewMode === 'markdown' && 'bg-primary/80 text-primary-foreground')}
-              onClick={() => setViewMode('markdown')}
-              size="sm"
-              variant="ghost"
-            >
-              原文
-            </Button>
-            <Button
-              aria-label="网页视图"
-              className={cn(viewMode === 'webview' && 'bg-primary/80 text-primary-foreground')}
-              onClick={() => setViewMode('webview')}
-              size="sm"
-              variant="ghost"
-            >
-              网页
-            </Button>
-          </ButtonGroup>
-        </div>
+        {/* Only show view mode toggle for non-note collections (notes don't have URLs) */}
+        {article && article.type !== '笔记' && article.url && (
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
+              <Button
+                aria-label="原文视图"
+                className={cn(viewMode === 'markdown' && 'bg-primary/80 text-primary-foreground')}
+                onClick={() => setViewMode('markdown')}
+                size="sm"
+                variant="ghost"
+              >
+                原文
+              </Button>
+              <Button
+                aria-label="网页视图"
+                className={cn(viewMode === 'webview' && 'bg-primary/80 text-primary-foreground')}
+                onClick={() => setViewMode('webview')}
+                size="sm"
+                variant="ghost"
+              >
+                网页
+              </Button>
+            </ButtonGroup>
+          </div>
+        )}
 
         <div className="flex items-center gap-2">
           <Activity mode={viewMode === 'webview' ? 'hidden' : 'visible'}>
@@ -211,6 +223,17 @@ export const ArticleReader = ({
                 onSetFavorite={onSetFavorite}
                 onToggleStar={onToggleStar}
               />
+              {/* Only show edit button for notes */}
+              {(article.type === '笔记' || !article.url) && (
+                <Button
+                  aria-label={isNoteEditing ? '取消编辑' : '编辑笔记'}
+                  onClick={() => setIsNoteEditing(!isNoteEditing)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <PenIcon className="size-4" />
+                </Button>
+              )}
             </ButtonGroup>
           </Activity>
         </div>
@@ -239,10 +262,21 @@ export const ArticleReader = ({
                     无法创建网页窗口。您可以在外部浏览器中打开此网页。
                   </p>
                   <div className="flex items-center justify-center gap-2">
-                    <Button onClick={() => onOpenUrl(article.url)} size="sm" variant="default">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      在浏览器中打开
-                    </Button>
+                    {article.url && (
+                      <Button
+                        onClick={() => {
+                          const url = article.url
+                          if (url) {
+                            onOpenUrl(url)
+                          }
+                        }}
+                        size="sm"
+                        variant="default"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        在浏览器中打开
+                      </Button>
+                    )}
                     <Button onClick={() => setViewMode('markdown')} size="sm" variant="outline">
                       返回原文视图
                     </Button>
@@ -286,12 +320,21 @@ export const ArticleReader = ({
 
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-4 text-muted-foreground text-sm">
-                    <div className="flex items-center gap-1.5">
-                      <Globe className="h-4 w-4" />
-                      <Link className="hover:text-foreground" href={article.url}>
-                        {getDomain(article.url)}
-                      </Link>
-                    </div>
+                    {/* Show type for all collections */}
+                    {article.type && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{article.type}</span>
+                      </div>
+                    )}
+                    {/* Only show URL/domain for non-note collections */}
+                    {article.type !== '笔记' && article.url && (
+                      <div className="flex items-center gap-1.5">
+                        <Globe className="h-4 w-4" />
+                        <Link className="hover:text-foreground" href={article.url}>
+                          {getDomain(article.url)}
+                        </Link>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-4 w-4" />
                       <span>{formatDateTime(article.createdAt)}</span>
@@ -329,27 +372,51 @@ export const ArticleReader = ({
 
               {/* Body */}
               <div className="max-w-none select-auto">
-                {article.content ? (
+                {/* Check if this is a note (type='笔记' or url is empty) */}
+                {article.type === '笔记' || !article.url ? (
+                  <NoteEditorView
+                    collection={article}
+                    isEditing={isNoteEditing}
+                    onCancel={() => setIsNoteEditing(false)}
+                    onUpdate={() => setIsNoteEditing(false)}
+                  />
+                ) : article.content ? (
                   <MarkdownUI markdown={article.content} scrollAreaRef={scrollAreaRef} />
                 ) : (
                   <div className="rounded-lg border border-border bg-muted/30 p-6 text-center">
                     <p className="text-muted-foreground">没有可显示的内容</p>
-                    <Button className="mt-4" onClick={() => onOpenUrl(article.url)} size="sm" variant="outline">
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      在浏览器中查看
-                    </Button>
+                    {article.url && (
+                      <Button
+                        className="mt-4"
+                        onClick={() => {
+                          const url = article.url
+                          if (url) {
+                            onOpenUrl(url)
+                          }
+                        }}
+                        size="sm"
+                        variant="outline"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        在浏览器中查看
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Footer */}
               <div className="mt-12 border-border border-t pt-6">
-                <p className="text-muted-foreground text-xs">收集于 {formatDateTime(article.createdAt)}</p>
-                <p className="mt-1 truncate text-muted-foreground text-xs">
-                  <Link className="hover:text-foreground" href={article.url}>
-                    {article.url}
-                  </Link>
+                <p className="text-muted-foreground text-xs">
+                  {article.type === '笔记' ? '创建于' : '收集于'} {formatDateTime(article.createdAt)}
                 </p>
+                {article.type !== '笔记' && article.url && (
+                  <p className="mt-1 truncate text-muted-foreground text-xs">
+                    <Link className="hover:text-foreground" href={article.url}>
+                      {article.url}
+                    </Link>
+                  </p>
+                )}
               </div>
             </article>
           </ScrollArea>

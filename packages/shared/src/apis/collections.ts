@@ -61,8 +61,16 @@ export function createCollectionsApi(adapter: RequestAdapter) {
     /** Collect new content */
     collect: (data: CollectRequest) => adapter.post<CollectSuccessResponse['data']>(ENDPOINTS.collect, data),
 
+    /** Create a new note (user-created content without URL) */
+    createNote: (data: { title: string; content: string; favoriteId?: number | null; type?: string }) =>
+      adapter.post<CollectSuccessResponse['data']>('/api/notes', data),
+
     /** Delete a collection */
     delete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collection}/${id}`),
+
+    /** Update a collection (title, content, type, etc.) */
+    update: (id: number, data: { title?: string; content?: string; type?: string }) =>
+      adapter.put<Collection>(`${ENDPOINTS.collections}/${id}`, data),
 
     /** Set collection favorite */
     setFavorite: (id: number, favoriteId: number | null) =>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link, useLocation } from '@tanstack/react-router'
-import { Clock, Library, MessageCircle, Network, PanelLeftIcon, Search, Settings, Star } from 'lucide-react'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { Clock, Library, MessageCircle, Network, PanelLeftIcon, PlusIcon, Search, Settings, Star } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
@@ -55,6 +55,7 @@ export const AppSidebar = ({
   const [isCreateFavoriteOpen, setIsCreateFavoriteOpen] = useState(false)
   const [isCreateTagOpen, setIsCreateTagOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isCollapsed = state === 'collapsed'
   const width = isCollapsed ? 'w-14' : 'w-56'
@@ -96,6 +97,10 @@ export const AppSidebar = ({
 
   const activeNav = getActiveNav()
 
+  const handleCreateNote = () => {
+    void navigate({ to: '/note/new' })
+  }
+
   return (
     <aside
       className={cn(
@@ -105,7 +110,7 @@ export const AppSidebar = ({
       )}
     >
       {/* Search Button */}
-      <div className={cn('flex gap-1 p-2', isCollapsed && 'px-1')}>
+      <div className={cn('flex items-center gap-1 p-2', isCollapsed && 'px-1')}>
         <Button
           className={cn(
             'grow justify-start gap-2 text-muted-foreground hover:text-foreground',
@@ -120,6 +125,10 @@ export const AppSidebar = ({
           {!isCollapsed && (
             <kbd className="ml-auto rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground text-xs">⌘K</kbd>
           )}
+        </Button>
+        {/* Create Note Button */}
+        <Button className="size-6" onClick={handleCreateNote} size="icon">
+          <PlusIcon className="size-4" />
         </Button>
       </div>
 

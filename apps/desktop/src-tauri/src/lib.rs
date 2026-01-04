@@ -12,7 +12,7 @@ mod tray;
 
 use db::{
     Collection, CollectionListItem, CollectionRepository, CollectionStats, CollectionStatus,
-    CreateCollection, Database, DbError, EmbeddingsRepository,
+    CreateCollection, CreateNote, Database, DbError, EmbeddingsRepository,
     Favorite, FavoriteRepository, CreateFavorite, UpdateFavorite,
     Tag, TagRepository, CreateTag, UpdateTag, TagSortOrder,
     CollectionTagRepository,
@@ -72,6 +72,16 @@ pub struct CollectRequest {
     pub content: String,
 }
 
+/// Request to create a new note (user-created content without URL)
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateNoteRequest {
+    pub title: String,
+    pub content: String,
+    pub favorite_id: Option<i64>,
+    pub r#type: Option<String>, // Optional, defaults to '笔记' if None
+}
+
 /// Collect response
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -92,10 +102,11 @@ pub struct SearchRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultItem {
     pub id: i64,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub similarity: f32,
     pub created_at: String,
+    pub r#type: Option<String>, // Optional: collection type
 }
 
 /// Search response
@@ -722,13 +733,37 @@ fn collect(
     request: CollectRequest,
 ) -> Result<CommandResult<CollectResponse>, CommandError> {
     let input = CreateCollection {
-        url: request.url,
+        url: Some(request.url), // Collect requests always have a URL
         title: request.title,
         content: request.content,
+        r#type: None, // Defaults to '网页' in the database
     };
 
     let repo = CollectionRepository::new(&state.db);
     let id = repo.upsert(&input)?;
+
+    // Embedding service runs in background and will pick up new collections automatically
+
+    Ok(CommandResult {
+        data: CollectResponse { id },
+    })
+}
+
+/// Create a new note (user-created content without URL)
+#[tauri::command]
+fn create_note(
+    state: State<'_, Arc<AppState>>,
+    request: CreateNoteRequest,
+) -> Result<CommandResult<CollectResponse>, CommandError> {
+    let input = CreateNote {
+        title: request.title,
+        content: request.content,
+        favorite_id: request.favorite_id,
+        r#type: request.r#type,
+    };
+
+    let repo = CollectionRepository::new(&state.db);
+    let id = repo.create_note(&input)?;
 
     // Embedding service runs in background and will pick up new collections automatically
 
@@ -745,6 +780,124 @@ fn get_collection(
 ) -> Result<CommandResult<Option<Collection>>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
     let collection = repo.get_by_id(request.id)?;
+
+    Ok(CommandResult { data: collection })
+}
+
+/// Update a collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCollectionCommandRequest {
+    pub id: i64,
+    pub title: Option<String>,
+    pub content: Option<String>, // For notes: Slate JSON format
+    pub favorite_id: Option<i64>,
+    pub tags: Option<Vec<i64>>,
+    pub status: Option<String>,
+    pub r#type: Option<String>, // Collection type
+}
+
+#[tauri::command]
+fn update_collection(
+    state: State<'_, Arc<AppState>>,
+    request: UpdateCollectionCommandRequest,
+) -> Result<CommandResult<Collection>, CommandError> {
+    let repo = CollectionRepository::new(&state.db);
+    let id = request.id;
+
+    // Check if collection exists
+    if repo.get_by_id(id)?.is_none() {
+        return Err(CommandError {
+            code: "NOT_FOUND".to_string(),
+            message: format!("Collection with id {} not found", id),
+        });
+    }
+
+    // Update title if provided
+    if let Some(title) = &request.title {
+        state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET title = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![title, id],
+            )?;
+            Ok(())
+        })?;
+    }
+
+    // Update content if provided (for notes)
+    if let Some(content) = &request.content {
+        state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET content = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![content, id],
+            )?;
+            Ok(())
+        })?;
+    }
+
+    // Update favorite_id if provided
+    if let Some(favorite_id) = request.favorite_id {
+        repo.set_favorite(id, Some(favorite_id))?;
+    }
+
+    // Update tags if provided
+    if let Some(tag_ids) = &request.tags {
+        let tag_repo = CollectionTagRepository::new(&state.db);
+        // Get existing tags
+        let existing_tags = tag_repo.get_tags_by_collection(id)?;
+        let existing_tag_ids: Vec<i64> = existing_tags.iter().map(|t| t.id).collect();
+
+        // Remove tags not in new list
+        for existing_id in &existing_tag_ids {
+            if !tag_ids.contains(existing_id) {
+                let _ = tag_repo.remove_tag(id, *existing_id);
+            }
+        }
+
+        // Add new tags
+        for tag_id in tag_ids {
+            if !existing_tag_ids.contains(tag_id) {
+                let _ = tag_repo.add_tags(id, &[*tag_id]);
+            }
+        }
+    }
+
+    // Update type if provided
+    if let Some(type_str) = &request.r#type {
+        state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET type = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![type_str, id],
+            )?;
+            Ok(())
+        })?;
+    }
+
+    // Update status if provided
+    if let Some(status_str) = &request.status {
+        let status = CollectionStatus::from(status_str.clone());
+        match status {
+            CollectionStatus::Archived => {
+                repo.archive(id)?;
+            }
+            CollectionStatus::Active => {
+                repo.restore(id)?;
+            }
+            CollectionStatus::Deleted => {
+                repo.delete(id)?;
+            }
+        }
+    }
+
+    // Get updated collection
+    let collection = repo.get_by_id(id)?
+        .ok_or_else(|| CommandError {
+            code: "NOT_FOUND".to_string(),
+            message: "Collection updated but not found".to_string(),
+        })?;
 
     Ok(CommandResult { data: collection })
 }
@@ -950,6 +1103,7 @@ fn search(
                 title: collection.title,
                 similarity: sr.similarity,
                 created_at: collection.created_at,
+                r#type: Some(collection.r#type),
             });
         }
     }
@@ -1566,8 +1720,8 @@ fn get_association_stats(
                 collection_repo.get_by_id(all_collections[j].id)
             ) {
                 if let (Some(d1), Some(d2)) = (
-                    extract_domain(&c1.url),
-                    extract_domain(&c2.url)
+                    c1.url.as_deref().and_then(|url| extract_domain(url)),
+                    c2.url.as_deref().and_then(|url| extract_domain(url))
                 ) {
                     if d1 == d2 {
                         domain_overlaps.push(format!("Collection {} <-> {}: same domain ({})",
@@ -1870,8 +2024,10 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             collect,
+            create_note,
             get_collection,
             get_collections,
+            update_collection,
             delete_collection,
             toggle_collection_star,
             get_collection_stats,

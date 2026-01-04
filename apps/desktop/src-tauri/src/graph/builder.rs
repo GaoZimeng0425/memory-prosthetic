@@ -14,7 +14,7 @@ use tracing::warn;
 pub struct GraphNode {
     pub id: i64,
     pub title: String,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub summary: Option<String>,
     pub tags: Vec<String>,
     pub folder: Option<String>,

@@ -45,7 +45,8 @@ export function SearchResults({ results, query }: SearchResultsProps) {
     return 'bg-orange-500'
   }
 
-  const extractDomain = (url: string) => {
+  const extractDomain = (url?: string) => {
+    if (!url) return '笔记'
     try {
       const hostname = new URL(url).hostname
       return hostname.replace(/^www\./, '')
@@ -68,6 +69,12 @@ export function SearchResults({ results, query }: SearchResultsProps) {
                 <div className="min-w-0 flex-1">
                   <CardTitle className="truncate font-medium text-base">{result.title}</CardTitle>
                   <CardDescription className="mt-1 flex items-center gap-2">
+                    {result.type && (
+                      <>
+                        <span className="truncate text-xs">{result.type}</span>
+                        <span className="text-xs">•</span>
+                      </>
+                    )}
                     <span className="truncate">{extractDomain(result.url)}</span>
                     {result.createdAt && (
                       <>
@@ -78,29 +85,33 @@ export function SearchResults({ results, query }: SearchResultsProps) {
                   </CardDescription>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {(result.similarity ?? result.score) != null && (
+                  {(result.similarity ?? result.similarity) != null && (
                     <Badge
-                      className={`${getSimilarityColor(result.similarity ?? result.score ?? 0)} text-white`}
+                      className={`${getSimilarityColor(result.similarity ?? result.similarity ?? 0)} text-white`}
                       variant="secondary"
                     >
-                      {formatSimilarity(result.similarity ?? result.score ?? 0)}
+                      {formatSimilarity(result.similarity ?? result.similarity ?? 0)}
                     </Badge>
                   )}
-                  <a
-                    className="text-muted-foreground hover:text-foreground"
-                    href={result.url}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                    title="Open in browser"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                  {result.url && (
+                    <a
+                      className="text-muted-foreground hover:text-foreground"
+                      href={result.url}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      title="Open in browser"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              <p className="truncate text-muted-foreground text-sm">{result.url}</p>
-            </CardContent>
+            {result.url && (
+              <CardContent className="pt-0">
+                <p className="truncate text-muted-foreground text-sm">{result.url}</p>
+              </CardContent>
+            )}
           </Card>
         ))}
       </div>

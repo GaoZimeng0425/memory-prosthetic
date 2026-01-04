@@ -1,3 +1,4 @@
+import { Activity } from 'react'
 import { Globe, Hash, Link2, MoreVertical, Move, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -34,7 +35,7 @@ export const ArticleActionsMenu = ({
   const handleCopyUrl = async () => {
     if (!article) return
     try {
-      await navigator.clipboard.writeText(article.url)
+      await navigator.clipboard.writeText(article.url ?? '')
       toast.success('链接已复制到剪贴板')
     } catch {
       toast.error('复制失败')
@@ -59,20 +60,22 @@ export const ArticleActionsMenu = ({
         </div>
         <div className="grid grid-cols-4 gap-0 p-2">
           {/* 第一行 */}
-          <DropdownMenuItem
-            className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-            onClick={() => onOpenUrl(article.url)}
-          >
-            <Globe className="size-5 text-foreground" />
-            <span className="text-foreground text-xs">使用浏览器访问</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-            onClick={handleCopyUrl}
-          >
-            <Link2 className="size-5 text-foreground" />
-            <span className="text-foreground text-xs">复制网页链接</span>
-          </DropdownMenuItem>
+          <Activity mode={article.url ? 'visible' : 'hidden'}>
+            <DropdownMenuItem
+              className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
+              onClick={() => onOpenUrl(article.url ?? '')}
+            >
+              <Globe className="size-5 text-foreground" />
+              <span className="text-foreground text-xs">使用浏览器访问</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
+              onClick={handleCopyUrl}
+            >
+              <Link2 className="size-5 text-foreground" />
+              <span className="text-foreground text-xs">复制网页链接</span>
+            </DropdownMenuItem>
+          </Activity>
 
           {/* 第二行 */}
           <DropdownMenuItem

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { debounce } from 'es-toolkit'
-import { ArrowRight, Clock, FileText, Search, X } from 'lucide-react'
+import { ArrowRight, Clock, FilePlus, FileText, Search, X } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
@@ -22,7 +23,7 @@ interface SearchOverlayProps {
 interface RecentItem {
   id: number
   title: string
-  url: string
+  url?: string // Optional: undefined for user-created notes
   domain: string
 }
 
@@ -33,7 +34,8 @@ const RECENT_LIMIT = 5
 
 const SPECIAL_KEYS = ['Escape', 'ArrowDown', 'ArrowUp', 'Enter'] as const
 
-const getDomain = (url: string): string => {
+const getDomain = (url?: string): string => {
+  if (!url) return '笔记'
   try {
     return new URL(url).hostname.replace('www.', '')
   } catch {
@@ -161,7 +163,9 @@ const useKeyboardNavigation = (
           if (displayItems[selectedIndex]) {
             const item = displayItems[selectedIndex]
             if (e.metaKey || e.ctrlKey) {
-              onOpenUrl(item.url)
+              if (item.url) {
+                onOpenUrl(item.url)
+              }
             } else {
               if ('score' in item) {
                 onSelectResult(item)
@@ -310,6 +314,12 @@ const SearchResults = ({ showResults, displayItems, selectedIndex, onSelect, onS
             <div className="min-w-0 flex-1">
               <h4 className="mb-1 truncate font-medium text-sm">{item.title}</h4>
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                {isSearchResult && (item as SearchResult).type && (
+                  <>
+                    <span className="truncate text-xs">{(item as SearchResult).type}</span>
+                    <span>·</span>
+                  </>
+                )}
                 <span className="truncate">{getDomain(item.url)}</span>
                 {isSearchResult && (item as SearchResult).similarity != null && (
                   <>
@@ -338,7 +348,7 @@ const SearchResults = ({ showResults, displayItems, selectedIndex, onSelect, onS
 }
 
 // Footer Component
-const SearchFooter = ({ onClose }: { onClose: () => void }) => (
+const SearchFooter = ({ onClose, onCreateNote }: { onClose: () => void; onCreateNote: () => void }) => (
   <div className="flex items-center justify-between border-border border-t px-4 py-2">
     <div className="flex items-center gap-4 text-muted-foreground text-xs">
       <span className="flex items-center gap-1">
@@ -354,14 +364,22 @@ const SearchFooter = ({ onClose }: { onClose: () => void }) => (
         原文
       </span>
     </div>
-    <Button className="h-7 gap-1.5 text-muted-foreground text-xs" onClick={onClose} size="sm" variant="ghost">
-      <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">esc</kbd>
-      关闭
-    </Button>
+    <div className="flex items-center gap-2">
+      <Button className="h-7 gap-1.5 text-muted-foreground text-xs" onClick={onCreateNote} size="sm" variant="ghost">
+        <FilePlus className="h-3.5 w-3.5" />
+        新建笔记
+        <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">⌘N</kbd>
+      </Button>
+      <Button className="h-7 gap-1.5 text-muted-foreground text-xs" onClick={onClose} size="sm" variant="ghost">
+        <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">esc</kbd>
+        关闭
+      </Button>
+    </div>
   </div>
 )
 
 export function SearchOverlay({ isOpen, onClose, onOpen, onSelectResult, onOpenUrl }: SearchOverlayProps) {
+  const navigate = useNavigate()
   const containerRef = useRef<HTMLDivElement>(null)
   const { query, setQuery, displayItems, showResults, isLoading, selectedIndex, setSelectedIndex, inputRef } =
     useSearchOverlay(isOpen)
@@ -382,6 +400,11 @@ export function SearchOverlay({ isOpen, onClose, onOpen, onSelectResult, onOpenU
       onSelectResult({ id: item.id, title: item.title, url: item.url } as SearchResult)
     }
     onClose()
+  }
+
+  const handleCreateNote = () => {
+    onClose()
+    void navigate({ to: '/note/new' })
   }
 
   useGlobalShortcut(isOpen, onOpen)
@@ -417,7 +440,7 @@ export function SearchOverlay({ isOpen, onClose, onOpen, onSelectResult, onOpenU
             showResults={showResults}
           />
         </div>
-        <SearchFooter onClose={onClose} />
+        <SearchFooter onCreateNote={handleCreateNote} onClose={onClose} />
       </div>
     </div>
   )

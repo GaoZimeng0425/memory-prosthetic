@@ -191,8 +191,8 @@ impl AssociationCalculator {
         collection1: &Collection,
         collection2: &Collection,
     ) -> Option<(f64, String)> {
-        let domain1 = extract_domain(&collection1.url)?;
-        let domain2 = extract_domain(&collection2.url)?;
+        let domain1 = collection1.url.as_deref().and_then(|url| extract_domain(url))?;
+        let domain2 = collection2.url.as_deref().and_then(|url| extract_domain(url))?;
 
         if domain1 == domain2 {
             Some((0.4, domain1))

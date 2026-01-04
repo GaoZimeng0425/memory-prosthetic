@@ -75,7 +75,7 @@ impl From<String> for CollectionStatus {
 #[serde(rename_all = "camelCase")]
 pub struct Collection {
     pub id: i64,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub content: String,
     pub summary: Option<String>,
@@ -83,17 +83,44 @@ pub struct Collection {
     pub embedding_status: EmbeddingStatus,
     pub favorite_id: Option<i64>,
     pub status: CollectionStatus,
+    #[serde(default = "default_collection_type")]
+    pub r#type: String,
     pub created_at: String,
     pub updated_at: String,
+}
+
+fn default_collection_type() -> String {
+    "网页".to_string()
+}
+
+fn default_collection_type_option() -> Option<String> {
+    Some("网页".to_string())
 }
 
 /// Input for creating a new collection
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateCollection {
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub content: String,
+    #[serde(default = "default_collection_type_option")]
+    pub r#type: Option<String>, // Optional, defaults to '网页' if None
+}
+
+/// Input for creating a new note (user-created content without URL)
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateNote {
+    pub title: String,
+    pub content: String,
+    pub favorite_id: Option<i64>,
+    #[serde(default = "default_note_type")]
+    pub r#type: Option<String>, // Optional, defaults to '笔记' if None
+}
+
+fn default_note_type() -> Option<String> {
+    Some("笔记".to_string())
 }
 
 /// Collection statistics
@@ -112,11 +139,13 @@ pub struct CollectionStats {
 #[serde(rename_all = "camelCase")]
 pub struct CollectionListItem {
     pub id: i64,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub domain: String,
     pub starred: bool,
     pub favorite_id: Option<i64>,
+    #[serde(default = "default_collection_type")]
+    pub r#type: String, // Collection type, defaults to '网页'
     pub created_at: String,
 }
 
@@ -133,29 +162,62 @@ impl<'a> CollectionRepository<'a> {
 
     /// Insert a new collection, replacing existing if URL exists
     /// This deletes the old record (and its embeddings via CASCADE) and inserts a new one
+    /// Note: For notes (url=None), this will not delete existing records (no URL to match)
     pub fn upsert(&self, input: &CreateCollection) -> Result<i64, DbError> {
         self.db.with_connection(|conn| {
-            // Delete existing record with same URL (embeddings deleted via CASCADE)
-            let deleted = conn.execute(
-                "DELETE FROM collections WHERE url = ?1",
-                params![&input.url],
-            )?;
+            // Delete existing record with same URL (only if URL is provided)
+            // For notes (url=None), skip deletion step
+            if let Some(ref url) = input.url {
+                let deleted = conn.execute(
+                    "DELETE FROM collections WHERE url = ?1",
+                    params![url],
+                )?;
 
-            if deleted > 0 {
-                info!("Deleted existing collection with url={}", &input.url);
+                if deleted > 0 {
+                    info!("Deleted existing collection with url={}", url);
+                }
             }
+
+            // Determine type value (use provided type or default to '网页')
+            let type_value = input.r#type.as_ref().map(|s| s.as_str()).unwrap_or("网页");
 
             // Insert new record
             conn.execute(
                 r#"
-                INSERT INTO collections (url, title, content)
-                VALUES (?1, ?2, ?3)
+                INSERT INTO collections (url, title, content, type)
+                VALUES (?1, ?2, ?3, ?4)
                 "#,
-                params![&input.url, &input.title, &input.content],
+                params![&input.url, &input.title, &input.content, type_value],
             )?;
 
             let id = conn.last_insert_rowid();
-            info!("Inserted new collection id={} url={}", id, &input.url);
+            if let Some(ref url) = input.url {
+                info!("Inserted new collection id={} url={} type={}", id, url, type_value);
+            } else {
+                info!("Inserted new collection id={} url=NULL type={}", id, type_value);
+            }
+            Ok(id)
+        })
+    }
+
+    /// Create a new note (user-created content without URL)
+    /// Notes have url=NULL and type defaults to '笔记' if not specified
+    pub fn create_note(&self, input: &CreateNote) -> Result<i64, DbError> {
+        self.db.with_connection(|conn| {
+            // Use provided type or default to '笔记'
+            let type_value = input.r#type.as_deref().unwrap_or("笔记");
+
+            // Insert new note with url=NULL
+            conn.execute(
+                r#"
+                INSERT INTO collections (url, title, content, type, favorite_id)
+                VALUES (NULL, ?1, ?2, ?3, ?4)
+                "#,
+                params![&input.title, &input.content, type_value, &input.favorite_id],
+            )?;
+
+            let id = conn.last_insert_rowid();
+            info!("Created new note id={} title={} type={} favorite_id={:?}", id, &input.title, type_value, &input.favorite_id);
             Ok(id)
         })
     }
@@ -165,7 +227,7 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let result = conn.query_row(
                 r#"
-                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, type, created_at, updated_at
                 FROM collections
                 WHERE id = ?1
                 "#,
@@ -186,7 +248,7 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let result = conn.query_row(
                 r#"
-                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, type, created_at, updated_at
                 FROM collections
                 WHERE url = ?1
                 "#,
@@ -207,7 +269,7 @@ impl<'a> CollectionRepository<'a> {
         self.db.with_connection(|conn| {
             let mut stmt = conn.prepare(
                 r#"
-                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, created_at, updated_at
+                SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, type, created_at, updated_at
                 FROM collections
                 WHERE embedding_status = 'pending' AND status = 'active'
                 ORDER BY created_at ASC
@@ -266,10 +328,11 @@ impl<'a> CollectionRepository<'a> {
 
                     // Helper closure to map rows
                     let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
-                        let url: String = row.get(1)?;
-                        let domain = extract_domain(&url);
+                        let url: Option<String> = row.get(1)?;
+                        let domain = url.as_ref().map(|u| extract_domain(u)).unwrap_or_else(|| "笔记".to_string());
                         let starred: i64 = row.get(3)?;
                         let favorite_id: Option<i64> = row.get(4)?;
+                        let type_str: String = row.get(6).unwrap_or_else(|_| "网页".to_string());
 
                         Ok(CollectionListItem {
                             id: row.get(0)?,
@@ -278,6 +341,7 @@ impl<'a> CollectionRepository<'a> {
                             domain,
                             starred: starred != 0,
                             favorite_id,
+                            r#type: type_str,
                             created_at: row.get(5)?,
                         })
                     };
@@ -285,7 +349,7 @@ impl<'a> CollectionRepository<'a> {
                     // This will match collections that have ANY of the specified tags
                     let sql = if uncategorized {
                         r#"
-                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at, c.type
                         FROM collections c
                         WHERE c.status = ?1
                           AND c.favorite_id IS NULL
@@ -299,7 +363,7 @@ impl<'a> CollectionRepository<'a> {
                         "#
                     } else if favorite_id.is_some() {
                         r#"
-                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at, c.type
                         FROM collections c
                         WHERE c.status = ?1
                           AND c.favorite_id = ?2
@@ -313,7 +377,7 @@ impl<'a> CollectionRepository<'a> {
                         "#
                     } else {
                         r#"
-                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at
+                        SELECT DISTINCT c.id, c.url, c.title, c.starred, c.favorite_id, c.created_at, c.type
                         FROM collections c
                         WHERE c.status = ?1
                           AND EXISTS (
@@ -355,10 +419,11 @@ impl<'a> CollectionRepository<'a> {
             // Simple query without tag filtering
             // Helper function to map rows
             let map_row = |row: &Row<'_>| -> rusqlite::Result<CollectionListItem> {
-                let url: String = row.get(1)?;
-                let domain = extract_domain(&url);
+                let url: Option<String> = row.get(1)?;
+                let domain = url.as_ref().map(|u| extract_domain(u)).unwrap_or_else(|| "笔记".to_string());
                 let starred: i64 = row.get(3)?;
                 let favorite_id: Option<i64> = row.get(4)?;
+                let type_str: String = row.get(6).unwrap_or_else(|_| "网页".to_string());
 
                 Ok(CollectionListItem {
                     id: row.get(0)?,
@@ -367,6 +432,7 @@ impl<'a> CollectionRepository<'a> {
                     domain,
                     starred: starred != 0,
                     favorite_id,
+                    r#type: type_str,
                     created_at: row.get(5)?,
                 })
             };
@@ -376,7 +442,7 @@ impl<'a> CollectionRepository<'a> {
             if uncategorized {
                 // Query for collections with favorite_id IS NULL
                 let sql = r#"
-                    SELECT id, url, title, starred, favorite_id, created_at
+                    SELECT id, url, title, starred, favorite_id, created_at, type
                     FROM collections
                     WHERE status = ?1 AND favorite_id IS NULL
                     ORDER BY created_at DESC
@@ -391,7 +457,7 @@ impl<'a> CollectionRepository<'a> {
                 match favorite_id {
                     Some(fav_id) => {
                         let sql = r#"
-                            SELECT id, url, title, starred, favorite_id, created_at
+                            SELECT id, url, title, starred, favorite_id, created_at, type
                             FROM collections
                             WHERE status = ?1 AND favorite_id = ?2
                             ORDER BY created_at DESC
@@ -406,7 +472,7 @@ impl<'a> CollectionRepository<'a> {
                     None => {
                         // No favorite filter - return all collections
                         let sql = r#"
-                            SELECT id, url, title, starred, favorite_id, created_at
+                            SELECT id, url, title, starred, favorite_id, created_at, type
                             FROM collections
                             WHERE status = ?1
                             ORDER BY created_at DESC
@@ -619,9 +685,10 @@ impl<'a> CollectionRepository<'a> {
         let embedding_status_str: String = row.get(6)?;
         let favorite_id: Option<i64> = row.get(7)?;
         let status_str: String = row.get(8)?;
+        let type_str: String = row.get(9)?;
         Ok(Collection {
             id: row.get(0)?,
-            url: row.get(1)?,
+            url: row.get(1)?, // Option<String> - can be NULL for notes
             title: row.get(2)?,
             content: row.get(3)?,
             summary: row.get(4)?,
@@ -629,8 +696,9 @@ impl<'a> CollectionRepository<'a> {
             embedding_status: EmbeddingStatus::from(embedding_status_str),
             favorite_id,
             status: CollectionStatus::from(status_str),
-            created_at: row.get(9)?,
-            updated_at: row.get(10)?,
+            r#type: type_str,
+            created_at: row.get(10)?,
+            updated_at: row.get(11)?,
         })
     }
 }

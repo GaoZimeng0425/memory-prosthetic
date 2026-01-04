@@ -70,8 +70,18 @@ export function ArticleListItem({
 
             {/* Meta Info: URL, Category, Time */}
             <div className="absolute right-0 bottom-0 left-0 flex items-center gap-2 whitespace-nowrap bg-muted-foreground/10 px-3 py-1 text-[10px] text-muted-foreground">
-              <span className="truncate">{getDomain(item.url)}</span>
-              <span>·</span>
+              {item.url && (
+                <>
+                  <span className="truncate">{getDomain(item.url)}</span>
+                  <span>·</span>
+                </>
+              )}
+              {item.type && (
+                <>
+                  <span className="truncate">{item.type}</span>
+                  <span>·</span>
+                </>
+              )}
               <span className="truncate">{favorite ? favorite.name : '未分类'}</span>
               <span>·</span>
               <span className="shrink-0">{formatTime(item.createdAt)}</span>
@@ -132,10 +142,12 @@ export function ArticleListItem({
             归档
           </ContextMenuItem>
         )}
-        <ContextMenuItem onClick={() => onOpenUrl(item.url)}>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          打开原文
-        </ContextMenuItem>
+        {item.url && (
+          <ContextMenuItem onClick={() => onOpenUrl(item.url!)}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            打开原文
+          </ContextMenuItem>
+        )}
         <ContextMenuItem className="text-destructive" onClick={() => onDelete(item.id)}>
           <Trash2 className="mr-2 h-4 w-4" />
           删除

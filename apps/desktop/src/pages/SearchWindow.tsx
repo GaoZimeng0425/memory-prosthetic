@@ -211,7 +211,10 @@ export function SearchWindow() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-sm">{result.title}</p>
-                  <p className="mt-1 truncate text-muted-foreground text-xs">{result.url}</p>
+                  {result.url && <p className="mt-1 truncate text-muted-foreground text-xs">{result.url}</p>}
+                  {!result.url && result.type && (
+                    <p className="mt-1 truncate text-muted-foreground text-xs">{result.type}</p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {result.similarity != null && (
@@ -219,18 +222,20 @@ export function SearchWindow() {
                       {Math.round((result.similarity ?? 0) * 100)}%
                     </Badge>
                   )}
-                  <Link
-                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                    href={result.url}
-                    onClick={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => {
-                      e.stopPropagation()
-                      handleButtonMouseDown(e)
-                    }}
-                    title="在浏览器中打开"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </Link>
+                  {result.url && (
+                    <Link
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                      href={result.url}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => {
+                        e.stopPropagation()
+                        handleButtonMouseDown(e)
+                      }}
+                      title="在浏览器中打开"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
+                  )}
                 </div>
               </button>
             ))}

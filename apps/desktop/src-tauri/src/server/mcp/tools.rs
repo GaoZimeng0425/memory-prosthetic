@@ -266,6 +266,7 @@ impl SearchTool {
                     title: collection.title,
                     similarity: sr.similarity,
                     created_at: collection.created_at,
+                    r#type: Some(collection.r#type),
                 });
 
                 // Stop if we have enough results
@@ -291,11 +292,12 @@ impl SearchTool {
                 .enumerate()
                 .map(|(idx, item)| {
                     let similarity_percent = (item.similarity * 100.0).round() as u32;
+                    let url_display = item.url.as_deref().unwrap_or("笔记");
                     format!(
                         "{}. [{}]({}) (相似度: {}%)",
                         idx + 1,
                         item.title,
-                        item.url,
+                        url_display,
                         similarity_percent
                     )
                 })
@@ -323,10 +325,11 @@ impl SearchTool {
 #[derive(Serialize, JsonSchema)]
 pub struct SearchResultItem {
     pub id: i64,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub similarity: f32,
     pub created_at: String,
+    pub r#type: Option<String>, // Optional: collection type
 }
 
 /// Search tool result
@@ -494,7 +497,7 @@ impl ListCollectionsTool {
                         "{}. [{}]({})\n   收藏夹: {}\n   标签: {}\n   创建时间: {}",
                         idx + 1,
                         item.title,
-                        item.url,
+                        item.url.as_deref().unwrap_or(""),
                         favorite_name,
                         tags_str,
                         item.created_at

@@ -28,6 +28,8 @@ const ENDPOINT_COMMANDS: Record<string, string> = {
   'GET /api/collections/stats': 'get_collection_stats',
   'GET /api/collection': 'get_collection',
   'POST /api/collect': 'collect',
+  'POST /api/notes': 'create_note',
+  'PUT /api/collection': 'update_collection',
   'DELETE /api/collection': 'delete_collection',
   'PATCH /api/collection': 'set_collection_favorite',
 
@@ -121,6 +123,14 @@ export function createTauriAdapter(): RequestAdapter {
 
     put: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
       const command = getCommand('PUT', endpoint)
+      // Extract ID from endpoint if present (e.g., /api/collections/92 -> id: 92)
+      const idMatch = endpoint.match(/\/(\d+)$/)
+      if (idMatch && data && typeof data === 'object') {
+        // If ID is in endpoint and data is an object, merge id with data and wrap in request
+        const requestData: Record<string, unknown> = { id: Number.parseInt(idMatch[1], 10) }
+        Object.assign(requestData, data)
+        return invokeCommand<T>(command, { request: requestData })
+      }
       return invokeCommand<T>(command, data ? { request: data } : undefined)
     },
 

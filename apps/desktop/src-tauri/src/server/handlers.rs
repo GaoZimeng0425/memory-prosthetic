@@ -87,10 +87,11 @@ fn default_limit() -> usize {
 #[serde(rename_all = "camelCase")]
 pub struct SearchResultItem {
     pub id: i64,
-    pub url: String,
+    pub url: Option<String>, // Optional: NULL for user-created notes
     pub title: String,
     pub similarity: f32,
     pub created_at: String,
+    pub r#type: Option<String>, // Optional: collection type
 }
 
 /// Search response data
@@ -152,9 +153,10 @@ pub async fn collect(
     // Save to database
     let repo = CollectionRepository::new(&state.db);
     let input = crate::db::CreateCollection {
-        url: payload.url,
+        url: Some(payload.url), // Collect requests always have a URL
         title: payload.title,
         content: payload.content,
+        r#type: None, // Defaults to '网页' in the database
     };
 
     match repo.upsert(&input) {
@@ -294,6 +296,7 @@ pub async fn search(
                 title: collection.title,
                 similarity: sr.similarity,
                 created_at: collection.created_at,
+                r#type: Some(collection.r#type),
             });
         }
     }
@@ -460,9 +463,10 @@ pub async fn create_collection(
 
     let repo = CollectionRepository::new(&state.db);
     let input = crate::db::CreateCollection {
-        url: payload.url,
+        url: Some(payload.url),
         title: payload.title,
         content: payload.content,
+        r#type: None, // Will use default from serde
     };
 
     match repo.upsert(&input) {
@@ -530,9 +534,11 @@ pub async fn create_collection(
 #[serde(rename_all = "camelCase")]
 pub struct UpdateCollectionRequest {
     pub title: Option<String>,
+    pub content: Option<String>, // For notes: Slate JSON format
     pub favorite_id: Option<i64>,
     pub tags: Option<Vec<i64>>,
     pub status: Option<String>,
+    pub r#type: Option<String>, // Collection type
 }
 
 pub async fn update_collection(
@@ -576,6 +582,29 @@ pub async fn update_collection(
             conn.execute(
                 "UPDATE collections SET title = ?1, updated_at = datetime('now') WHERE id = ?2",
                 params![&title, id],
+            )?;
+            Ok(())
+        }) {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            ));
+        }
+    }
+
+    // Update content if provided (for notes)
+    if let Some(content) = payload.content {
+        if let Err(e) = state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET content = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![&content, id],
             )?;
             Ok(())
         }) {
@@ -642,6 +671,29 @@ pub async fn update_collection(
                     info!("Failed to add tag: {}", e);
                 }
             }
+        }
+    }
+
+    // Update type if provided
+    if let Some(type_str) = &payload.r#type {
+        if let Err(e) = state.db.with_connection(|conn| {
+            use rusqlite::params;
+            conn.execute(
+                "UPDATE collections SET type = ?1, updated_at = datetime('now') WHERE id = ?2",
+                params![type_str, id],
+            )?;
+            Ok(())
+        }) {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    success: false,
+                    error: ApiErrorDetail {
+                        code: "DB_ERROR".to_string(),
+                        message: e.to_string(),
+                    },
+                }),
+            ));
         }
     }
 

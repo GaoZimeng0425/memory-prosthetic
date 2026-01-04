@@ -4,6 +4,11 @@
 
 export type { GroupByTimeOptions, TimeGroup } from './date'
 export { formatDateTime, formatRelativeTime, getDomain, groupByTime } from './date'
+export {
+  deserializeSlateValue,
+  isValidSlateValue,
+  serializeSlateValue,
+} from './slate-storage'
 export type { AnyFunction } from './typed'
 export {
   has,

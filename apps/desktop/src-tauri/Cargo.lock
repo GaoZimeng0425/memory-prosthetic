@@ -940,6 +940,7 @@ dependencies = [
  "once_cell",
  "ort",
  "petgraph",
+ "regex",
  "rusqlite",
  "schemars 0.8.22",
  "serde",

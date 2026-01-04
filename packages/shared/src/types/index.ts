@@ -39,6 +39,7 @@ export type {
   CollectionListItem,
   CollectionStats,
   CollectionStatus,
+  CollectionType,
   CollectionWithStatus,
   CreateCollectionInput,
   EmbeddingStatus,

@@ -11,7 +11,37 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 
+use super::markdown_to_plaintext;
 use super::model::get_embedding_model;
+use super::slate_to_plaintext;
+
+/// Check if content is likely Markdown format
+/// (Simple heuristic: if it starts with Markdown syntax or doesn't look like JSON)
+fn is_markdown_format(content: &str) -> bool {
+    if content.is_empty() {
+        return true; // Empty content is treated as Markdown
+    }
+
+    let trimmed = content.trim();
+
+    // Check if it's JSON (Slate format)
+    if trimmed.starts_with('[') || trimmed.starts_with('{') {
+        // Try to parse as JSON
+        if serde_json::from_str::<serde_json::Value>(content).is_ok() {
+            return false; // Valid JSON, likely Slate format
+        }
+    }
+
+    // Check for common Markdown patterns
+    trimmed.starts_with('#')
+        || trimmed.starts_with('*')
+        || trimmed.starts_with('-')
+        || trimmed.starts_with('>')
+        || trimmed.contains("```")
+        || trimmed.contains("![")
+        || trimmed.contains("](")
+        || trimmed.matches('\n').count() > 0 // Has newlines (more likely Markdown)
+}
 
 /// Message for embedding service
 pub enum EmbeddingMessage {
@@ -120,7 +150,16 @@ async fn process_collection(db: &Database, collection_id: i64) {
     }
 
     // Generate embedding text (title + content)
-    let text = format!("{}\n\n{}", collection.title, collection.content);
+    // All content is now stored as Markdown, but we support both formats for backward compatibility
+    let content_text = if is_markdown_format(&collection.content) {
+        // Content is Markdown, convert to plain text
+        markdown_to_plaintext::markdown_to_plaintext(&collection.content)
+    } else {
+        // Content is Slate JSON (legacy format), convert to plain text
+        slate_to_plaintext::slate_to_plaintext(&collection.content)
+    };
+
+    let text = format!("{}\n\n{}", collection.title, content_text);
 
     // Generate embedding
     let embedding = {

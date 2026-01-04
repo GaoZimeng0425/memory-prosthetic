@@ -1,13 +1,22 @@
 import { useMemo, useState } from 'react'
 import leven from 'leven'
-import { Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Clock, Search, X } from 'lucide-react'
 
+import type { CollectionType } from '@memory-prosthetic/shared/types/collection'
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
+import { ButtonGroup } from '@memory-prosthetic/ui/components/ui/button-group'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
+import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { TypeFilter } from '@/components/features/TypeFilter'
 import type { CollectionListItem } from '@/types/api'
-import { cn } from '../../../../../packages/ui/src/utils/tw'
 import { ArticleGroupSection } from './ArticleGroupSection'
 import { EmptyState } from './EmptyState'
 import { groupByTime } from './utils'
@@ -68,24 +77,47 @@ export function ArticleList({
   filterHint,
 }: ArticleListProps) {
   const [filter, setFilter] = useState('')
+  const [sortByTime, setSortByTime] = useState(false)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc') // 'desc' = 最新的在前, 'asc' = 旧的在前
+  const [selectedTypes, setSelectedTypes] = useState<CollectionType[]>([])
 
   const filteredCollections = useMemo(() => {
-    const query = filter.trim()
-    if (!query) return collections
+    let result = collections
 
-    // 计算每个 item 的匹配得分
-    const scored = collections
+    if (selectedTypes.length > 0) {
+      // Filter by selected types if any
+      result = result.filter((item) => item.type && selectedTypes.includes(item.type as CollectionType))
+    }
+
+    // Filter by search query
+    const query = filter.trim()
+
+    // 有搜索查询时，先进行搜索过滤
+    const scored = result
       .map((item) => {
         const titleScore = getFuzzyScore(item.title, query)
-        const urlScore = getFuzzyScore(item.url, query)
+        const urlScore = item.url ? getFuzzyScore(item.url, query) : Number.POSITIVE_INFINITY
         const score = Math.min(titleScore, urlScore)
         return { item, score }
       })
-      .filter(({ score }) => score < Number.POSITIVE_INFINITY) // 过滤掉完全不匹配的
-      .sort((a, b) => a.score - b.score) // 按相关度排序
+      .filter(({ score }) => score < Number.POSITIVE_INFINITY)
 
-    return scored.map(({ item }) => item)
-  }, [collections, filter])
+    if (sortByTime) {
+      // 按时间排序
+      return scored
+        .map(({ item }) => item)
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime()
+          const dateB = new Date(b.createdAt).getTime()
+          return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+        })
+    }
+
+    // 按相关度排序（匹配度高的在前）
+    return scored
+      .sort((a, b) => a.score - b.score) // 按相关度排序
+      .map(({ item }) => item)
+  }, [collections, filter, sortByTime, sortOrder, selectedTypes])
 
   const groups = useMemo(() => groupByTime(filteredCollections), [filteredCollections])
 
@@ -120,16 +152,72 @@ export function ArticleList({
       )}
 
       {/* Filter Input */}
-      <div className="border-border border-b p-3">
-        <div className="relative">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-8 bg-background pl-9 text-sm"
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="过滤..."
-            value={filter}
-          />
-        </div>
+      <div className="space-y-2 border-border border-b p-3">
+        <ButtonGroup>
+          <div className="relative">
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="h-8 rounded-r-none bg-background pl-9 text-sm"
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="过滤..."
+              value={filter}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className={cn(sortByTime && 'bg-accent text-accent-foreground')} size="sm" variant="outline">
+                <Clock className="mr-2 h-4 w-4" />
+                {sortByTime ? (
+                  <>
+                    按时间
+                    {sortOrder === 'desc' ? (
+                      <ArrowDown className="ml-1 h-3 w-3" />
+                    ) : (
+                      <ArrowUp className="ml-1 h-3 w-3" />
+                    )}
+                  </>
+                ) : (
+                  '按相关度'
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem
+                className={!sortByTime ? 'bg-accent' : ''}
+                onClick={() => {
+                  setSortByTime(false)
+                }}
+              >
+                按相关度排序
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={sortByTime && sortOrder === 'desc' ? 'bg-accent' : ''}
+                onClick={() => {
+                  setSortByTime(true)
+                  setSortOrder('desc')
+                }}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span>按时间排序（倒序）</span>
+                  <ArrowDown className="h-3 w-3" />
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className={sortByTime && sortOrder === 'asc' ? 'bg-accent' : ''}
+                onClick={() => {
+                  setSortByTime(true)
+                  setSortOrder('asc')
+                }}
+              >
+                <div className="flex w-full items-center justify-between">
+                  <span>按时间排序（正序）</span>
+                  <ArrowUp className="h-3 w-3" />
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <TypeFilter onSelectionChange={setSelectedTypes} selectedTypes={selectedTypes} />
+        </ButtonGroup>
       </div>
 
       {/* List */}

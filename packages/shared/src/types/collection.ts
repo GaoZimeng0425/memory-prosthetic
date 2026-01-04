@@ -11,22 +11,29 @@
 export type CollectionStatus = 'active' | 'archived' | 'deleted'
 
 /**
+ * Collection type
+ * Represents the type/category of a collection
+ */
+export type CollectionType = '网页' | '代码' | '音频' | '视频' | '笔记' | '文件'
+
+/**
  * Collection entity as stored in the database
  *
  * SQLite table: collections
  * - id: INTEGER PRIMARY KEY AUTOINCREMENT
- * - url: TEXT NOT NULL UNIQUE
+ * - url: TEXT (nullable, NULL for user-created notes)
  * - title: TEXT NOT NULL
  * - content: TEXT NOT NULL
  * - summary: TEXT (nullable, for AI-generated summary)
  * - favorite_id: INTEGER (nullable, foreign key to favorites)
  * - status: TEXT NOT NULL DEFAULT 'active'
+ * - type: TEXT NOT NULL DEFAULT '网页'
  * - created_at: TEXT NOT NULL (ISO 8601)
  * - updated_at: TEXT NOT NULL (ISO 8601)
  */
 export type Collection = {
   id: number
-  url: string
+  url?: string // Optional: NULL for user-created notes
   title: string
   content: string
   summary?: string
@@ -34,6 +41,7 @@ export type Collection = {
   embeddingStatus?: EmbeddingStatus
   favoriteId?: number
   status: CollectionStatus
+  type: CollectionType // Collection type, defaults to '网页'
   createdAt: string
   updatedAt: string
 }
@@ -67,11 +75,12 @@ export interface CollectionStats {
  */
 export type CollectionListItem = {
   id: number
-  url: string
+  url?: string // Optional: NULL for user-created notes
   title: string
   domain: string
   starred: boolean
   favoriteId?: number | null
+  type?: CollectionType // Collection type
   createdAt: string
 }
 
@@ -82,6 +91,7 @@ export type CreateCollectionInput = {
   url: string
   title: string
   content: string
+  type?: CollectionType // Optional, defaults to '网页'
 }
 
 /**

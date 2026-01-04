@@ -149,12 +149,22 @@ function RootLayout() {
   }, [isSearchWindow])
 
   // Global keyboard shortcuts (only in main window)
-  // Cmd+\: Toggle sidebar
+  // Cmd+B: Toggle sidebar
   useHotkey({
     key: 'b',
     metaKey: true,
     enabled: !isSearchWindow,
     onPress: () => setSidebarState((s) => (s === 'expanded' ? 'collapsed' : 'expanded')),
+  })
+
+  // Cmd+N: Create new note
+  useHotkey({
+    key: 'n',
+    metaKey: true,
+    enabled: !isSearchWindow,
+    onPress: () => {
+      void navigate({ to: '/note/new' })
+    },
   })
 
   // Handle search result selection

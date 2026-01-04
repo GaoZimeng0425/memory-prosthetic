@@ -10,6 +10,7 @@ mod tags;
 mod collection_tags;
 mod associations;
 mod ai_metadata;
+mod migrations;
 
 pub use connection::{Database, DbError, init_database};
 pub use collections::{
@@ -19,6 +20,7 @@ pub use collections::{
     CollectionStats,
     CollectionStatus,
     CreateCollection,
+    CreateNote,
     EmbeddingStatus,
 };
 pub use embeddings::{

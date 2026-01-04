@@ -81,15 +81,14 @@ export interface SearchQuery {
  */
 export interface SearchResultItem {
   id: number
-  url: string
+  url?: string // Optional: undefined for user-created notes
   title: string
   snippet?: string
-  /** @deprecated Use similarity instead. Backend returns similarity field. */
-  score?: number
   /** Similarity score from semantic search (0-1 range) */
   similarity?: number
   domain?: string
   createdAt?: string
+  type?: string // Optional: collection type
 }
 
 /**

@@ -237,6 +237,17 @@ impl AssociationCalculator {
         // Weight calculation: min(共享关键词数 / 5, 1.0)
         let weight = (shared_keywords.len() as f64 / 5.0).min(1.0);
 
+        tracing::info!(
+            "✅ 关键词关联: collection {} ({} 个关键词) <-> collection {} ({} 个关键词): {} 个共享关键词 {:?}, 权重: {:.2}",
+            collection1_id,
+            keywords1.len(),
+            collection2_id,
+            keywords2.len(),
+            shared_keywords.len(),
+            shared_keywords,
+            weight
+        );
+
         Ok(Some(weight))
     }
 
@@ -275,6 +286,17 @@ impl AssociationCalculator {
 
         // Weight calculation: min(共享主题数 / 2, 1.0)
         let weight = (shared_topics.len() as f64 / 2.0).min(1.0);
+
+        tracing::info!(
+            "✅ 主题关联: collection {} ({} 个主题) <-> collection {} ({} 个主题): {} 个共享主题 {:?}, 权重: {:.2}",
+            collection1_id,
+            topics1.len(),
+            collection2_id,
+            topics2.len(),
+            shared_topics.len(),
+            shared_topics,
+            weight
+        );
 
         Ok(Some(weight))
     }

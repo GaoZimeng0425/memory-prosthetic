@@ -1,6 +1,6 @@
 'use client'
 
-import { type Value, TrailingBlockPlugin } from 'platejs'
+import { TrailingBlockPlugin, type Value } from 'platejs'
 import { type TPlateEditor, useEditorRef } from 'platejs/react'
 
 import { AIKit } from '@memory-prosthetic/editor/components/editor/plugins/ai-kit'
@@ -39,9 +39,6 @@ import { TocKit } from '@memory-prosthetic/editor/components/editor/plugins/toc-
 import { ToggleKit } from '@memory-prosthetic/editor/components/editor/plugins/toggle-kit'
 
 export const EditorKit = [
-  ...CopilotKit,
-  ...AIKit,
-
   // Elements
   ...BasicBlocksKit,
   ...CodeBlockKit,
@@ -86,7 +83,7 @@ export const EditorKit = [
 
   // UI
   ...BlockPlaceholderKit,
-  ...FixedToolbarKit,
+  // ...FixedToolbarKit,
   ...FloatingToolbarKit,
 ]
 

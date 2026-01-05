@@ -72,13 +72,13 @@ export const useAiMetadata = (collectionId: number | null, options?: UseAiMetada
           language: data.language as AiMetadata['language'],
           qualityScore: data.qualityScore ?? null,
           processedAt: data.processedAt ?? null,
-          keywords: data.keywords.map((k) => ({
+          keywords: (data.keywords || []).map((k) => ({
             id: k.id,
             keyword: k.keyword,
             weight: k.weight,
             extractionMethod: (k.extractionMethod || 'ai') as 'ai' | 'tfidf' | 'textrank',
           })),
-          topics: data.topics.map((t) => ({
+          topics: (data.topics || []).map((t) => ({
             id: t.id,
             topic: t.topic,
             confidence: t.confidence,

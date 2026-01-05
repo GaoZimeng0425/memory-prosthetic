@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { normalizeNodeId } from 'platejs'
 import { MarkdownPlugin } from '@platejs/markdown'
+import { normalizeNodeId } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 
 import { EditorKit } from '@memory-prosthetic/editor/components/editor/editor-kit'
@@ -33,6 +33,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
   const markdownLoadedRef = useRef(false)
 
   // Load Markdown content when provided (only once on mount)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only run once on mount
   useEffect(() => {
     if (markdown !== undefined && markdown !== '' && !markdownLoadedRef.current) {
       try {
@@ -48,7 +49,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
         console.error('Failed to deserialize Markdown:', error)
       }
     }
-  }, []) // Only run once on mount
+  }, [editor.getApi])
 
   return (
     <Plate
@@ -72,7 +73,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
       }}
     >
       <EditorContainer>
-        <Editor variant="default" placeholder={placeholder} />
+        <Editor placeholder={placeholder} variant="default" />
       </EditorContainer>
     </Plate>
   )

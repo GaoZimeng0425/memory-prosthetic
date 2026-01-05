@@ -1,4 +1,5 @@
 import type { ComponentProps, FC, ReactNode, RefObject } from 'react'
+import { isString } from 'es-toolkit'
 import { Streamdown } from 'streamdown'
 
 import { cn } from '@memory-prosthetic/ui/utils/tw'
@@ -189,7 +190,8 @@ const CustomLink = ({
     // Use button instead of <a> tag, styled to look like a link
     return (
       <Button
-        className="flex! h-auto! w-full cursor-pointer items-center border-0 bg-transparent p-0 font-inherit text-primary underline hover:text-primary/80"
+        asChild={!isString(children)}
+        className="cursor-pointer items-center border-0 bg-transparent p-0 font-inherit text-primary underline hover:text-primary/80"
         onClick={handleAnchorClick}
         variant="link"
         {...props}
@@ -210,6 +212,7 @@ const CustomLink = ({
 }
 
 export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAreaRef }) => {
+  console.log('🚀 : MarkdownUI : markdown:', markdown)
   // Guard against empty or whitespace-only content
   if (!markdown?.trim()) {
     return null
@@ -235,7 +238,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
           },
         },
       }}
-      shikiTheme={['github-light', 'github-dark']}
+      shikiTheme={['github-dark', 'github-light']}
     >
       {markdown}
     </Streamdown>

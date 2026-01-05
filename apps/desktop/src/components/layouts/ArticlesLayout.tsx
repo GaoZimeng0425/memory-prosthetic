@@ -1,6 +1,6 @@
 import type { CollectionListItem } from '@memory-prosthetic/shared'
-import { ArticleReader } from '@/components/ArticleReader'
 import { ArticleList } from '@/components/article-list'
+import { ArticleReader } from '@/components/article-reader'
 import { DeleteConfirmDialog } from '@/components/features/DeleteConfirmDialog'
 import type { Collection } from '@/types/api'
 

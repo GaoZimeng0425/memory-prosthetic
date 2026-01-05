@@ -1463,8 +1463,20 @@ fn get_collection_ai_metadata(
         })?;
 
     let ai_repo = AiMetadataRepository::new(state.db.clone());
-    let keywords = ai_repo.get_keywords(collection_id).unwrap_or_default();
-    let topics = ai_repo.get_topics(collection_id).unwrap_or_default();
+    let keywords = match ai_repo.get_keywords(collection_id) {
+        Ok(kws) => kws,
+        Err(e) => {
+            tracing::warn!("Failed to get keywords for collection {}: {}", collection_id, e);
+            Vec::new()
+        }
+    };
+    let topics = match ai_repo.get_topics(collection_id) {
+        Ok(ts) => ts,
+        Err(e) => {
+            tracing::warn!("Failed to get topics for collection {}: {}", collection_id, e);
+            Vec::new()
+        }
+    };
 
     // Get classification fields from collections table
     use rusqlite::params;
@@ -1505,59 +1517,74 @@ fn get_collection_ai_metadata(
 async fn discover_all_associations(
     state: State<'_, Arc<AppState>>,
 ) -> Result<CommandResult<usize>, CommandError> {
-    let collection_repo = CollectionRepository::new(&state.db);
+    tracing::info!("🚀 discover_all_associations: 开始批量关联发现");
     let discovery = IncrementalDiscovery::new(state.db.clone());
     let assoc_repo = AssociationRepository::new(state.db.clone());
 
-    // Get all collections
-    let all_collections = collection_repo
-        .list(1000, 0, None, false, None, None)
-        .map_err(|e| CommandError {
-            code: "DB_ERROR".to_string(),
+    // Use discover_all_pairs to find associations between all collections
+    tracing::info!("🔍 discover_all_associations: 调用 discover_all_pairs");
+    let associations = discovery.discover_all_pairs().await.map_err(|e| {
+        tracing::error!("❌ discover_all_associations: discover_all_pairs 失败: {}", e);
+        CommandError {
+            code: "DISCOVERY_ERROR".to_string(),
             message: e.to_string(),
-        })?;
+        }
+    })?;
+
+    tracing::info!("📋 discover_all_associations: discover_all_pairs 返回 {} 个关联", associations.len());
 
     let mut total_associations = 0;
-    let mut processed_count = 0;
 
-    // Discover associations for each collection
-    for item in all_collections {
-        processed_count += 1;
-        if let Ok(Some(collection)) = collection_repo.get_by_id(item.id) {
-            if let Ok(associations) = discovery.discover_for_new_content(&collection).await {
-            for assoc in associations {
-                // 将 graph::builder::CreateAssociation 转换为 db::associations::CreateAssociation
-                let db_assoc = DbCreateAssociation {
-                    source_id: assoc.source_id,
-                    target_id: assoc.target_id,
-                    r#type: assoc.r#type,
-                    types: assoc.types,
-                    weight: assoc.weight,
-                    confidence: assoc.confidence,
-                    quality_score: assoc.quality_score,
-                    reason: assoc.reason,
-                    user_feedback: assoc.user_feedback,
-                    is_expired: assoc.is_expired,
-                    is_directional: assoc.is_directional,
-                    direction: assoc.direction,
-                    semantic_similarity: assoc.semantic_similarity,
-                    shared_tags: assoc.shared_tags,
-                    shared_folders: assoc.shared_folders,
-                    time_interval: assoc.time_interval,
-                    domain: assoc.domain,
-                    keyword_overlap: assoc.keyword_overlap,
-                    topic_match: assoc.topic_match,
-                };
-                // Try to create association, ignore if already exists
-                if assoc_repo.create(&db_assoc).is_ok() {
+        // Create associations in database
+        for assoc in associations {
+            // 将 graph::builder::CreateAssociation 转换为 db::associations::CreateAssociation
+            let db_assoc = DbCreateAssociation {
+                source_id: assoc.source_id,
+                target_id: assoc.target_id,
+                r#type: assoc.r#type.clone(),
+                types: assoc.types,
+                weight: assoc.weight,
+                confidence: assoc.confidence,
+                quality_score: assoc.quality_score,
+                reason: assoc.reason,
+                user_feedback: assoc.user_feedback,
+                is_expired: assoc.is_expired,
+                is_directional: assoc.is_directional,
+                direction: assoc.direction,
+                semantic_similarity: assoc.semantic_similarity,
+                shared_tags: assoc.shared_tags,
+                shared_folders: assoc.shared_folders,
+                time_interval: assoc.time_interval,
+                domain: assoc.domain,
+                keyword_overlap: assoc.keyword_overlap,
+                topic_match: assoc.topic_match,
+            };
+            // Try to create association, log error if failed
+            match assoc_repo.create(&db_assoc) {
+                Ok(_) => {
                     total_associations += 1;
+                    tracing::info!(
+                        "✅ 成功创建关联: {} -> {} (type: {}, weight: {:.2})",
+                        assoc.source_id,
+                        assoc.target_id,
+                        assoc.r#type,
+                        assoc.weight
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "❌ 创建关联失败: {} -> {} (type: {}, weight: {:.2}): {}",
+                        assoc.source_id,
+                        assoc.target_id,
+                        assoc.r#type,
+                        assoc.weight,
+                        e
+                    );
                 }
             }
-            }
         }
-    }
 
-    tracing::info!("Batch discovery completed: created {} associations from {} collections", total_associations, processed_count);
+    tracing::info!("Batch discovery completed: created {} associations", total_associations);
     Ok(CommandResult {
         data: total_associations,
     })

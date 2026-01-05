@@ -72,23 +72,25 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
 
   return (
     <div className="man-w-full overflow-hidden">
-      <TypeSelector onSelect={setSelectedType} selectedType={selectedType} />
-      <div className="mt-4">
-        <Input
-          aria-invalid={!!titleError}
-          autoFocus
-          className={cn('border-0', titleError ? 'border-destructive text-lg' : 'text-lg')}
-          id="note-title-edit"
-          onChange={(e) => {
-            setTitle(e.target.value)
-            if (titleError) {
-              setTitleError(null)
-            }
-          }}
-          placeholder="输入笔记标题..."
-          value={title}
-        />
-        {titleError && <FieldError>{titleError}</FieldError>}
+      <div className="w-full px-16 pt-4 text-base sm:px-[max(64px,calc(50%-350px))]">
+        <TypeSelector onSelect={setSelectedType} selectedType={selectedType} />
+        <div className="mt-4">
+          <Input
+            aria-invalid={!!titleError}
+            autoFocus
+            className={cn('h-auto border-0 text-2xl md:text-2xl', titleError && 'border-destructive')}
+            id="note-title-edit"
+            onChange={(e) => {
+              setTitle(e.target.value)
+              if (titleError) {
+                setTitleError(null)
+              }
+            }}
+            placeholder="输入笔记标题..."
+            value={title}
+          />
+          {titleError && <FieldError>{titleError}</FieldError>}
+        </div>
       </div>
 
       <div className="min-h-[400px] rounded-md">

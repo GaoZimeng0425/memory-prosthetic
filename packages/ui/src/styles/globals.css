@@ -11,121 +11,137 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light theme (default) */
+/* ============================================
+   GRAPHITE x TEENAGE ENGINEERING THEME
+   Dark industrial aesthetic with bright TE accents
+   ============================================ */
+
+/* Light theme - Minimalist graphite with TE accents */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.65 0.2 350);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.65 0.2 350);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.65 0.2 350);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.65 0.2 350);
-  --brand: oklch(0.623 0.214 259.815);
-  --highlight: oklch(0.852 0.199 91.936);
+  /* Graphite foundation - Matte paper/metal feel */
+  --background: oklch(0.98 0.002 240); /* Very clean off-white */
+  --foreground: oklch(0.15 0.01 240); /* Deep graphite black */
+  --card: oklch(0.96 0.005 240); /* Subtle grey card */
+  --card-foreground: oklch(0.15 0.01 240);
+  --popover: oklch(0.99 0.002 240);
+  --popover-foreground: oklch(0.15 0.01 240);
+
+  /* TE Accent Colors - Punchy & Functional */
+  --primary: oklch(0.65 0.25 45); /* TE Signature Orange #FF4E00 */
+  --primary-foreground: oklch(99.107% 0.00011 271.152);
+  --secondary: oklch(0.9 0.01 240); /* Cool graphite light grey */
+  --secondary-foreground: oklch(0.2 0.01 240);
+  --muted: oklch(0.92 0.01 240); /* Muted technical grey */
+  --muted-foreground: oklch(0.4 0.02 240);
+  --accent: oklch(0.88 0.01 240); /* Functional highlight grey */
+  --accent-foreground: oklch(0.15 0.01 240);
+
+  /* TE Status Colors - Precision Lab Aesthetic */
+  --destructive: oklch(0.6 0.22 25); /* Precision Red */
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.2 160); /* Field Green */
+  --warning: oklch(0.85 0.2 85); /* Attention Yellow */
+  --info: oklch(0.75 0.15 210); /* Logic Blue */
+
+  /* Industrial borders and inputs */
+  --border: oklch(0.8 0.01 240); /* Pronounced technical border */
+  --input: oklch(0.9 0.01 240);
+  --ring: oklch(0.65 0.25 45); /* Orange focus */
+
+  /* TE Graph/Chart Palette */
+  --chart-1: oklch(0.65 0.25 45); /* Orange */
+  --chart-2: oklch(0.75 0.15 210); /* Blue */
+  --chart-3: oklch(0.85 0.2 85); /* Yellow */
+  --chart-4: oklch(0.7 0.25 330); /* Pink */
+  --chart-5: oklch(0.7 0.2 160); /* Green */
+
+  /* Geometry - Sharp industrial edges */
+  --radius: 0.125rem; /* 2px - very sharp */
+
+  /* Sidebar */
+  --sidebar: oklch(0.97 0.003 240);
+  --sidebar-foreground: oklch(0.2 0.01 240);
+  --sidebar-primary: oklch(0.65 0.25 45);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.92 0.01 240);
+  --sidebar-accent-foreground: oklch(0.15 0.01 240);
+  --sidebar-border: oklch(0.85 0.01 240);
+  --sidebar-ring: oklch(0.65 0.25 45);
+
+  /* Brand */
+  --brand: oklch(0.65 0.25 45);
+  --highlight: oklch(0.85 0.2 85);
 }
 
-/*
- * Warm Dark Theme (Cubox-inspired)
- *
- * Color Palette from UX Spec:
- * - Background: #141211 → oklch(0.12 0.01 60)
- * - Card: #1c1a18 → oklch(0.16 0.01 60)
- * - Muted: #252320 → oklch(0.20 0.01 60)
- * - Border: #3a3735 → oklch(0.30 0.01 60)
- * - Text Primary: #f5f5f4 → oklch(0.97 0 0)
- * - Text Secondary: #a8a29e → oklch(0.70 0.01 60)
- * - Text Muted: #78716c → oklch(0.52 0.02 60)
- * - Primary (pink): #e879a2 → oklch(0.70 0.15 350)
- * - Secondary (yellow): #f59e0b → oklch(0.78 0.18 75)
- * - Destructive (red): #ef4444 → oklch(0.63 0.24 27)
- * - Success (green): #22c55e → oklch(0.72 0.19 150)
- * - Info (blue): #3b82f6 → oklch(0.62 0.21 260)
- */
+/* Dark theme - Anodized graphite with glowing technical readouts */
 .dark {
-  /* Base colors - Warm dark background */
-  --background: oklch(0.12 0.008 55);
-  --foreground: oklch(0.97 0.005 60);
+  /* Graphite foundation - Deep matte black/grey */
+  --background: oklch(0.12 0.01 240); /* Near black graphite */
+  --foreground: oklch(0.92 0.01 240); /* Crisp technical grey text */
 
-  /* Card - Slightly lighter warm dark */
-  --card: oklch(0.155 0.008 55);
-  --card-foreground: oklch(0.97 0.005 60);
+  /* Card - Darker recessed surface */
+  --card: oklch(0.15 0.015 240);
+  --card-foreground: oklch(0.92 0.01 240);
 
   /* Popover */
-  --popover: oklch(0.16 0.008 55);
-  --popover-foreground: oklch(0.97 0.005 60);
+  --popover: oklch(0.18 0.02 240);
+  --popover-foreground: oklch(0.92 0.01 240);
 
-  /* Primary - Pink accent (Cubox style) */
-  --primary: oklch(0.7 0.15 350);
-  --primary-foreground: oklch(0.98 0 0);
+  /* TE Neon Accents - Glowing tech highlights */
+  --primary: oklch(0.75 0.28 50); /* Glowing Neon Orange */
+  --primary-foreground: oklch(0.1 0.01 240);
 
-  /* Secondary - Yellow accent */
-  --secondary: oklch(0.2 0.008 55);
-  --secondary-foreground: oklch(0.97 0.005 60);
+  /* Secondary - Deep graphite */
+  --secondary: oklch(0.2 0.02 240);
+  --secondary-foreground: oklch(0.9 0.01 240);
 
   /* Muted */
-  --muted: oklch(0.2 0.008 55);
-  --muted-foreground: oklch(0.52 0.015 55);
+  --muted: oklch(0.22 0.02 240);
+  --muted-foreground: oklch(0.6 0.02 240);
 
   /* Accent */
-  --accent: oklch(0.22 0.008 55);
-  --accent-foreground: oklch(0.97 0.005 60);
+  --accent: oklch(0.25 0.025 240);
+  --accent-foreground: oklch(0.95 0.01 240);
 
-  /* Destructive - Red */
-  --destructive: oklch(0.55 0.22 27);
-  --destructive-foreground: oklch(0.97 0 0);
+  /* TE Status Colors - Dark mode neon */
+  --destructive: oklch(0.65 0.25 30); /* Glowing Red */
+  --destructive-foreground: oklch(0.95 0.01 240);
+  --success: oklch(0.8 0.25 150); /* Glowing Green */
+  --warning: oklch(0.9 0.25 90); /* Glowing Yellow */
+  --info: oklch(0.8 0.2 210); /* Glowing Cyan */
 
-  /* Border - Warm gray */
-  --border: oklch(0.28 0.008 55);
-  --input: oklch(0.22 0.008 55);
-  --ring: oklch(0.7 0.15 350);
+  /* Tech borders */
+  --border: oklch(0.28 0.02 240); /* Subtle but crisp border */
+  --input: oklch(0.2 0.02 240);
+  --ring: oklch(0.75 0.28 50);
 
-  /* Charts */
-  --chart-1: oklch(0.7 0.15 350);
-  --chart-2: oklch(0.78 0.18 75);
-  --chart-3: oklch(0.72 0.19 150);
-  --chart-4: oklch(0.62 0.21 260);
-  --chart-5: oklch(0.65 0.2 300);
+  /* Chart colors - Neon precision */
+  --chart-1: oklch(0.75 0.28 50);
+  --chart-2: oklch(0.8 0.2 210);
+  --chart-3: oklch(0.9 0.25 90);
+  --chart-4: oklch(0.75 0.25 330);
+  --chart-5: oklch(0.8 0.25 150);
 
-  /* Sidebar - Slightly different from main bg */
-  --sidebar: oklch(0.14 0.008 55);
-  --sidebar-foreground: oklch(0.97 0.005 60);
-  --sidebar-primary: oklch(0.7 0.15 350);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.2 0.008 55);
-  --sidebar-accent-foreground: oklch(0.97 0.005 60);
-  --sidebar-border: oklch(0.26 0.008 55);
-  --sidebar-ring: oklch(0.7 0.15 350);
-  --brand: oklch(0.707 0.165 254.624);
-  --highlight: oklch(0.852 0.199 91.936);
+  /* Sidebar */
+  --sidebar: oklch(0.14 0.015 240);
+  --sidebar-foreground: oklch(0.9 0.01 240);
+  --sidebar-primary: oklch(0.75 0.28 50);
+  --sidebar-primary-foreground: oklch(0.1 0.01 240);
+  --sidebar-accent: oklch(0.22 0.02 240);
+  --sidebar-accent-foreground: oklch(0.92 0.01 240);
+  --sidebar-border: oklch(0.25 0.02 240);
+  --sidebar-ring: oklch(0.75 0.28 50);
+
+  /* Brand */
+  --brand: oklch(0.75 0.28 50);
+  --highlight: oklch(0.9 0.25 90);
 }
 
+/* ============================================
+   THEME VARIABLE MAPPING
+   ============================================ */
 @theme inline {
+  /* Core colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -145,15 +161,21 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  /* Chart colors */
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  /* Border radius */
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 6px);
+
+  /* Sidebar */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -163,36 +185,44 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Additional accent colors */
-  --color-success: oklch(0.72 0.19 150);
-  --color-warning: oklch(0.78 0.18 75);
-  --color-info: oklch(0.62 0.21 260);
+  /* Additional TE colors */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-brand: var(--brand);
   --color-highlight: var(--highlight);
 }
 
+/* ============================================
+   BASE STYLES
+   ============================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings:
       "rlig" 1,
-      "calt" 1;
+      "calt" 1,
+      "tnum" 1; /* Tabular numbers for technical feel */
+    letter-spacing: -0.01em; /* Tighter tracking for engineering look */
   }
 }
 
-/* Custom scrollbar for warm dark theme */
+/* ============================================
+   CUSTOM SCROLLBAR - TE Style
+   ============================================ */
 @layer base {
   .dark {
-    scrollbar-color: oklch(0.3 0.008 55) transparent;
+    scrollbar-color: var(--color-border) transparent;
     scrollbar-width: thin;
   }
 
   .dark ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   .dark ::-webkit-scrollbar-track {
@@ -200,31 +230,65 @@
   }
 
   .dark ::-webkit-scrollbar-thumb {
-    background: oklch(0.3 0.008 55);
-    border-radius: 4px;
+    background: var(--color-border);
+    border-radius: 5px;
+    border: 2px solid var(--color-background);
   }
 
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.35 0.008 55);
+    background: var(--color-primary);
+  }
+
+  /* Light theme scrollbar */
+  :root {
+    scrollbar-color: var(--color-border) transparent;
+    scrollbar-width: thin;
+  }
+
+  :root ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  :root ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  :root ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 4px;
+  }
+
+  :root ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
   }
 }
 
-/* Focus visible styles */
+/* ============================================
+   FOCUS VISIBLE - TE Orange Glow
+   ============================================ */
 @layer base {
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-primary;
+    @apply outline-2 outline-offset-2;
+    outline-color: var(--color-primary);
+    outline-style: solid;
+    box-shadow: 0 0 0 4px var(--color-primary / 0.1);
   }
 }
 
-/* Markdown UI Styles (streamdown) */
+/* ============================================
+   MARKDOWN UI STYLES (streamdown) - Updated for TE theme
+   ============================================ */
 @layer components {
   .markdown-content {
     @apply text-foreground leading-relaxed;
   }
 
-  /* Headings */
+  /* Headings with TE style */
   .markdown-content [data-streamdown="heading-1"] {
     @apply mt-8 mb-4 text-2xl font-bold tracking-tight text-foreground;
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 0.5rem;
   }
 
   .markdown-content [data-streamdown="heading-2"] {
@@ -246,14 +310,23 @@
     @apply my-4 text-foreground/90;
   }
 
-  /* Links */
+  /* Links - TE Orange */
   .markdown-content [data-streamdown="link"] {
-    @apply text-primary underline underline-offset-2 transition-colors hover:text-primary/80;
+    @apply text-primary font-medium underline underline-offset-2 transition-all;
+    text-decoration-color: var(--color-primary / 0.4);
+  }
+
+  .markdown-content [data-streamdown="link"]:hover {
+    text-decoration-color: var(--color-primary);
+    text-decoration-thickness: 2px;
   }
 
   /* Strong and emphasis */
   .markdown-content [data-streamdown="strong"] {
-    @apply font-semibold text-foreground;
+    @apply font-bold text-primary;
+    letter-spacing: 0.02em;
+    text-transform: uppercase; /* Industrial headers/emphasized text */
+    font-size: 0.9em;
   }
 
   .markdown-content em {
@@ -273,28 +346,37 @@
     @apply text-foreground/90;
   }
 
-  /* Blockquotes */
+  /* Blockquotes - TE style */
   .markdown-content [data-streamdown="blockquote"] {
-    @apply my-4 border-l-4 border-primary/50 bg-muted/30 py-2 pl-4 pr-2 italic text-muted-foreground;
+    @apply my-4 rounded-md border py-3 pl-4 pr-3 border-l-4;
+    border-left-color: var(--color-primary);
+    background: var(--color-card);
+    border-color: var(--color-border);
   }
 
-  /* Horizontal rule */
+  /* Horizontal rule - TE style */
   .markdown-content [data-streamdown="horizontal-rule"] {
-    @apply my-8 border-t border-border;
+    @apply my-8 border-t;
+    border-color: var(--color-border);
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--color-primary / 0.5), transparent);
   }
 
-  /* Inline code */
+  /* Inline code - TE style */
   .markdown-content [data-streamdown="inline-code"] {
-    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground;
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
+    border: 1px solid var(--color-border);
+    color: var(--color-primary);
   }
 
-  /* Code blocks */
+  /* Code blocks - TE style */
   .markdown-content [data-streamdown="code-block"] {
-    @apply my-4 overflow-hidden rounded-lg border border-border bg-muted/50;
+    @apply my-4 overflow-hidden rounded-lg border bg-card;
+    border: 1px solid var(--color-border);
   }
 
   .markdown-content [data-streamdown="code-block"] pre {
-    @apply overflow-x-auto p-4 text-sm;
+    @apply overflow-x-auto p-4 text-sm font-mono;
   }
 
   .markdown-content [data-streamdown="code-block"] code {
@@ -308,18 +390,22 @@
 
   .markdown-content [data-streamdown="table"] {
     @apply w-full border-collapse text-sm;
+    border: 1px solid var(--color-border);
   }
 
   .markdown-content [data-streamdown="table-header"] {
-    @apply border-b border-border bg-muted/50;
+    @apply border-b bg-muted/50;
+    background: var(--color-card);
   }
 
   .markdown-content [data-streamdown="table-header-cell"] {
     @apply px-4 py-2 text-left font-semibold text-foreground;
+    border-bottom: 2px solid var(--color-primary);
   }
 
   .markdown-content [data-streamdown="table-row"] {
-    @apply border-b border-border/50;
+    @apply border-b;
+    border-color: var(--color-border);
   }
 
   .markdown-content [data-streamdown="table-cell"] {
@@ -329,13 +415,33 @@
   /* Images */
   .markdown-content img {
     @apply my-4 max-w-full rounded-lg;
+    border: 1px solid var(--color-border);
   }
 }
 
+/* ============================================
+   SELECTION STYLES - TE Orange
+   ============================================ */
+@layer base {
+  ::selection {
+    background-color: var(--color-primary / 0.3);
+    color: var(--color-foreground);
+  }
+
+  ::-moz-selection {
+    background-color: var(--color-primary / 0.3);
+    color: var(--color-foreground);
+  }
+}
+
+/* ============================================
+   BASE BODY STYLES (duplicate from earlier but updated)
+   ============================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     @apply select-none;

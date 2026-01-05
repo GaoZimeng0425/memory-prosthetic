@@ -1,8 +1,11 @@
+'use client'
+
 import type { ComponentProps, FC, ReactNode, RefObject } from 'react'
 import { isString } from 'es-toolkit'
 import { Streamdown } from 'streamdown'
 
 import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { useTheme } from '../../hooks/use-theme'
 import { Button } from '../ui/button'
 
 export type MarkdownUIProps = {
@@ -132,7 +135,6 @@ const CustomLink = ({
     // Handle anchor links (hash fragments) - use button instead of <a> tag
     const handleAnchorClick = () => {
       const targetId = href.slice(1) // Remove the # to get the id
-      console.log('🚀 : handleAnchorClick : targetId:', targetId)
 
       // Try multiple ways to find the target element
       let targetElement: Element | null = null
@@ -187,10 +189,15 @@ const CustomLink = ({
       }
     }
 
-    // Use button instead of <a> tag, styled to look like a link
+    if (!isString(children)) {
+      return (
+        <a href={href} onClick={handleAnchorClick}>
+          {children}
+        </a>
+      )
+    }
     return (
       <Button
-        asChild={!isString(children)}
         className="cursor-pointer items-center border-0 bg-transparent p-0 font-inherit text-primary underline hover:text-primary/80"
         onClick={handleAnchorClick}
         variant="link"
@@ -212,7 +219,8 @@ const CustomLink = ({
 }
 
 export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAreaRef }) => {
-  console.log('🚀 : MarkdownUI : markdown:', markdown)
+  const { resolvedTheme } = useTheme()
+
   // Guard against empty or whitespace-only content
   if (!markdown?.trim()) {
     return null
@@ -227,7 +235,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
       }}
       mermaid={{
         config: {
-          theme: 'dark',
+          theme: resolvedTheme === 'dark' ? 'dark' : 'default',
           themeVariables: {
             primaryColor: '#ff6b6b',
             primaryTextColor: '#fff',
@@ -238,7 +246,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
           },
         },
       }}
-      shikiTheme={['github-dark', 'github-light']}
+      shikiTheme={resolvedTheme === 'dark' ? ['github-dark', 'github-dark'] : ['github-light', 'github-light']}
     >
       {markdown}
     </Streamdown>

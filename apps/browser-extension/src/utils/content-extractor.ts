@@ -253,6 +253,62 @@ turndownService.addRule('mermaidDiagrams', {
   },
 })
 
+// Handle code blocks - improved language detection for GitHub, npm, etc.
+turndownService.addRule('improvedCodeBlocks', {
+  filter: (node: HTMLElement) => {
+    return node.nodeName === 'PRE'
+  },
+  replacement: (_content: string, node: HTMLElement) => {
+    const pre = node as HTMLPreElement
+
+    // Extract raw text from pre tag to ignore syntax highlighting spans
+    const text = pre.textContent
+    if (!text) return ''
+
+    // Try to detect language from classes
+    let language = ''
+    const classList = Array.from(pre.classList)
+
+    // Check parent for highlight classes (common in GitHub/npm: .highlight > pre)
+    const parent = pre.parentElement
+    if (parent?.classList.contains('highlight')) {
+      classList.push(...Array.from(parent.classList))
+    }
+    // Look for language patterns
+    for (const className of classList) {
+      // GitHub/npm pattern: highlight-source-js, highlight-text-html-basic, etc.
+      const ghMatch = className.match(/highlight-source-([a-z0-9#-]+)/i)
+      if (ghMatch) {
+        language = ghMatch[1]
+        break
+      }
+
+      // Standard patterns: language-js, lang-js
+      const langMatch = className.match(/(?:language|lang)-([a-z0-9#-]+)/i)
+      if (langMatch) {
+        language = langMatch[1]
+        break
+      }
+    }
+
+    // Map common verbose names to short names
+    const langMap: Record<string, string> = {
+      'text-html-basic': 'html',
+      'text-html-php': 'php',
+      'source-python': 'python',
+      'source-ruby': 'ruby',
+      'highlight-text-shell-session': 'shell',
+    }
+
+    if (langMap[language]) {
+      language = langMap[language]
+    }
+
+    // Ensure we don't return an empty code block if detection failed but content exists
+    return `\n\n\`\`\`${language}\n${text.trim()}\n\`\`\`\n\n`
+  },
+})
+
 // Handle native video elements
 turndownService.addRule('videos', {
   filter: 'video',
@@ -527,7 +583,7 @@ const extractGitHubRepoContent = (url: string): PageContent | null => {
   const title = document.querySelector('h1.public')?.textContent?.trim() || document.title || url
 
   // Convert HTML to Markdown
-  const markdown = turndownService.turndown(clonedBody.innerHTML)
+  const markdown = turndownService.turndown(clonedBody)
   const cleanedMarkdown = cleanMarkdown(markdown)
 
   // Extract thumbnail URL
@@ -561,6 +617,7 @@ export const extractPageContent = (): PageContent => {
   // Use Readability to extract main content
   const reader = new Readability(documentClone, {
     charThreshold: 50,
+    keepClasses: true,
   })
   const article = reader.parse()
 
@@ -638,7 +695,7 @@ const extractFallbackContent = (): string => {
   }
 
   // Convert fallback HTML to markdown
-  const markdown = turndownService.turndown(body.innerHTML)
+  const markdown = turndownService.turndown(body)
   return cleanMarkdown(markdown)
 }
 

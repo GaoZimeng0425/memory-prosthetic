@@ -57,8 +57,8 @@ export function TypeFilter({ selectedTypes, onSelectionChange }: TypeFilterProps
   return (
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
-        <Button className="" size="sm" variant="outline">
-          <span className="mr-2">分类筛选</span>
+        <Button className="flex-1" size="sm" variant="outline">
+          <span className="text-xs">分类筛选</span>
           {selectedTypes.length > 0 && (
             <Badge className="ml-auto" variant="secondary">
               {selectedTypes.length}

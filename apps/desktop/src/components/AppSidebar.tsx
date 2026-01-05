@@ -104,7 +104,7 @@ export const AppSidebar = ({
   return (
     <aside
       className={cn(
-        'm-2 flex flex-col rounded-2xl border border-sidebar-border bg-sidebar shadow-lg transition-all duration-200',
+        'm-2 flex flex-col rounded-md border border-sidebar-border bg-sidebar shadow-lg transition-all duration-200',
         className,
         width
       )}

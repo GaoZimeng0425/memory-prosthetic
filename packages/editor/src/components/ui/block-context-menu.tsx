@@ -22,7 +22,7 @@ type Value = 'askAI' | null
 
 export function BlockContextMenu({ children }: { children: React.ReactNode }) {
   const { api, editor } = useEditorPlugin(BlockMenuPlugin)
-  const [value, setValue] = React.useState<Value>(null)
+  // const [value, setValue] = React.useState<Value>(null)
   const isTouch = useIsTouchDevice()
   const [readOnly] = usePlateState('readOnly')
   const openId = usePluginOption(BlockMenuPlugin, 'openId')
@@ -91,21 +91,21 @@ export function BlockContextMenu({ children }: { children: React.ReactNode }) {
             e.preventDefault()
             editor.getApi(BlockSelectionPlugin).blockSelection.focus()
 
-            if (value === 'askAI') {
-              editor.getApi(AIChatPlugin).aiChat.show()
-            }
+            // if (value === 'askAI') {
+            //   editor.getApi(AIChatPlugin).aiChat.show()
+            // }
 
-            setValue(null)
+            // setValue(null)
           }}
         >
           <ContextMenuGroup>
-            <ContextMenuItem
+            {/* <ContextMenuItem
               onClick={() => {
                 setValue('askAI')
               }}
             >
               Ask AI
-            </ContextMenuItem>
+            </ContextMenuItem> */}
             <ContextMenuItem
               onClick={() => {
                 editor.getTransforms(BlockSelectionPlugin).blockSelection.removeNodes()

@@ -63,16 +63,16 @@ export const EditorKit = [
   ...LineHeightKit,
 
   // Collaboration
-  ...DiscussionKit,
-  ...CommentKit,
-  ...SuggestionKit,
+  // ...DiscussionKit,
+  // ...CommentKit,
+  // ...SuggestionKit,
 
   // Editing
   ...SlashKit,
   ...AutoformatKit,
   ...CursorOverlayKit,
   ...BlockMenuKit,
-  ...DndKit,
+  // ...DndKit,
   ...EmojiKit,
   ...ExitBreakKit,
   TrailingBlockPlugin,

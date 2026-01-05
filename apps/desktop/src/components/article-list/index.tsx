@@ -153,11 +153,11 @@ export function ArticleList({
 
       {/* Filter Input */}
       <div className="space-y-2 border-border border-b p-3">
-        <ButtonGroup>
-          <div className="relative">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <ButtonGroup className="flex">
+          <div className="relative flex-1">
+            <Search className="absolute top-1/2 left-3 size-3 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="h-8 rounded-r-none bg-background pl-9 text-sm"
+              className="h-8 rounded-r-none bg-background pl-9 text-xs placeholder:text-xs"
               onChange={(e) => setFilter(e.target.value)}
               placeholder="过滤..."
               value={filter}
@@ -165,8 +165,12 @@ export function ArticleList({
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className={cn(sortByTime && 'bg-accent text-accent-foreground')} size="sm" variant="outline">
-                <Clock className="mr-2 h-4 w-4" />
+              <Button
+                className={cn(sortByTime && 'bg-accent text-accent-foreground', 'text-xs', 'flex-1')}
+                size="sm"
+                variant="outline"
+              >
+                <Clock className="size-3" />
                 {sortByTime ? (
                   <>
                     按时间

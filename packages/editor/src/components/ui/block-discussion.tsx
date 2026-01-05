@@ -107,13 +107,13 @@ const BlockCommentContent = ({
   const anchorElement = React.useMemo(() => {
     let activeNode: NodeEntry | undefined
 
-    if (activeSuggestion) {
-      activeNode = suggestionNodes.find(
-        ([node]) =>
-          TextApi.isText(node) &&
-          editor.getApi(SuggestionPlugin).suggestion.nodeId(node) === activeSuggestion.suggestionId
-      )
-    }
+    // if (activeSuggestion) {
+    //   activeNode = suggestionNodes.find(
+    //     ([node]) =>
+    //       TextApi.isText(node) &&
+    //       editor.getApi(SuggestionPlugin).suggestion.nodeId(node) === activeSuggestion.suggestionId
+    //   )
+    // }
 
     if (activeCommentId) {
       if (activeCommentId === getDraftCommentKey()) {

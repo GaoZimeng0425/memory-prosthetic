@@ -130,7 +130,7 @@ export const ArticleReader = ({
   return (
     <div
       className={cn(
-        'm-2 flex flex-1 flex-col overflow-hidden rounded-2xl bg-background shadow-lg',
+        'm-2 flex flex-1 flex-col overflow-hidden rounded-md bg-background shadow-lg',
         isMaximized && 'fixed inset-0 z-10',
         backgroundColorClassName,
         className

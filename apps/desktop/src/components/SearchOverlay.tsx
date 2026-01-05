@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { invoke } from '@tauri-apps/api/core'
 import { debounce } from 'es-toolkit'
 import { ArrowRight, Clock, FilePlus, FileText, Search, X } from 'lucide-react'
@@ -417,7 +417,7 @@ export function SearchOverlay({ isOpen, onClose, onOpen, onSelectResult, onOpenU
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
         className={cn(
-          'relative w-full max-w-xl overflow-hidden rounded-2xl',
+          'relative w-full max-w-xl overflow-hidden rounded-md',
           'border border-white/10 bg-card/98 shadow-2xl',
           'backdrop-blur-xl'
         )}
@@ -440,7 +440,7 @@ export function SearchOverlay({ isOpen, onClose, onOpen, onSelectResult, onOpenU
             showResults={showResults}
           />
         </div>
-        <SearchFooter onCreateNote={handleCreateNote} onClose={onClose} />
+        <SearchFooter onClose={onClose} onCreateNote={handleCreateNote} />
       </div>
     </div>
   )

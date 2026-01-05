@@ -4,7 +4,7 @@
  * Allows selecting a collection type (网页, 代码, 音频, 视频, 笔记, 文件).
  */
 
-import { useState } from 'react'
+import { type ComponentProps, useState } from 'react'
 import { FileCode, FileText, FileVideo, Globe, Music, StickyNote } from 'lucide-react'
 
 import type { CollectionType } from '@memory-prosthetic/shared/types/collection'
@@ -30,13 +30,13 @@ const COLLECTION_TYPES: { value: CollectionType; label: string; icon: React.Comp
     { value: '文件', label: '文件', icon: FileText },
   ]
 
-interface TypeSelectorProps {
+type TypeSelectorProps = {
   selectedType: CollectionType
   onSelect: (type: CollectionType) => void
   disabled?: boolean
-}
+} & Omit<ComponentProps<typeof Button>, 'onSelect'>
 
-export function TypeSelector({ selectedType, onSelect, disabled }: TypeSelectorProps) {
+export function TypeSelector({ selectedType, onSelect, disabled, ...props }: TypeSelectorProps) {
   const [open, setOpen] = useState(false)
   const selectedTypeInfo = COLLECTION_TYPES.find((t) => t.value === selectedType)
   const Icon = selectedTypeInfo?.icon ?? Globe
@@ -44,7 +44,7 @@ export function TypeSelector({ selectedType, onSelect, disabled }: TypeSelectorP
   return (
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger asChild>
-        <Button className="w-full justify-start" disabled={disabled} size="sm" variant="outline">
+        <Button disabled={disabled} size="sm" variant="outline" {...props}>
           <Icon className="mr-2 h-4 w-4" />
           {selectedTypeInfo?.label ?? selectedType}
         </Button>

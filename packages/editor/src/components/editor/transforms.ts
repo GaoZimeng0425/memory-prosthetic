@@ -90,9 +90,9 @@ export const insertBlock = (editor: PlateEditor, type: string, options: InsertBl
     }
 
     if (!isSameBlockType) {
-      editor.getApi(SuggestionPlugin).suggestion.withoutSuggestions(() => {
-        editor.tf.removeNodes({ previousEmptyBlock: true })
-      })
+      // editor.getApi(SuggestionPlugin).suggestion.withoutSuggestions(() => {
+      //   editor.tf.removeNodes({ previousEmptyBlock: true })
+      // })
     }
   })
 }

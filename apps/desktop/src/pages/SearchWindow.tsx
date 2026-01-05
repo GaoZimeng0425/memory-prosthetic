@@ -165,7 +165,7 @@ export function SearchWindow() {
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden rounded-2xl backdrop-blur-xl">
+    <div className="flex h-screen w-full flex-col overflow-hidden rounded-md backdrop-blur-xl">
       {/* Search input */}
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <Search className="h-5 w-5 text-muted-foreground" />

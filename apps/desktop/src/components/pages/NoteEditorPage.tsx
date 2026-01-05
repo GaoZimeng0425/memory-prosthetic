@@ -135,7 +135,7 @@ export function NoteEditorPage() {
         onSelect={setSelectedFavoriteId}
         open={showFavoriteDialog}
       />
-      <div className="m-2 flex grow flex-col rounded-2xl border border-border bg-background shadow">
+      <div className="m-2 flex grow flex-col rounded-md border border-border bg-background shadow">
         {/* Header */}
         <div className="flex items-center gap-4 border-border border-b px-6 py-4">
           <Button onClick={handleBack} size="icon" variant="ghost">

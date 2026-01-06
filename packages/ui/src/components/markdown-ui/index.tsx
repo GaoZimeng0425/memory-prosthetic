@@ -233,6 +233,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
         p: (props) => <div {...props} />,
         a: (props) => <CustomLink {...props} scrollAreaRef={scrollAreaRef} />,
       }}
+      controls={false}
       mermaid={{
         config: {
           theme: resolvedTheme === 'dark' ? 'dark' : 'default',
@@ -246,7 +247,9 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
           },
         },
       }}
-      shikiTheme={resolvedTheme === 'dark' ? ['github-dark', 'github-dark'] : ['github-light', 'github-light']}
+      // isAnimating
+      mode="static"
+      shikiTheme={resolvedTheme === 'dark' ? ['vitesse-dark', 'vitesse-light'] : ['github-light', 'vitesse-dark']}
     >
       {markdown}
     </Streamdown>

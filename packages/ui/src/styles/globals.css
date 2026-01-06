@@ -90,6 +90,7 @@
   /* TE Neon Accents - Glowing tech highlights */
   --primary: oklch(0.75 0.28 50); /* Glowing Neon Orange */
   --primary-foreground: oklch(0.1 0.01 240);
+  /* --primary-foreground: oklch(99.107% 0.00011 271.152); */
 
   /* Secondary - Deep graphite */
   --secondary: oklch(0.2 0.02 240);
@@ -272,7 +273,7 @@
     @apply outline-2 outline-offset-2;
     outline-color: var(--color-primary);
     outline-style: solid;
-    box-shadow: 0 0 0 4px var(--color-primary / 0.1);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent);
   }
 }
 
@@ -313,7 +314,7 @@
   /* Links - TE Orange */
   .markdown-content [data-streamdown="link"] {
     @apply text-primary font-medium underline underline-offset-2 transition-all;
-    text-decoration-color: var(--color-primary / 0.4);
+    text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
 
   .markdown-content [data-streamdown="link"]:hover {
@@ -359,7 +360,12 @@
     @apply my-8 border-t;
     border-color: var(--color-border);
     height: 1px;
-    background: linear-gradient(to right, transparent, var(--color-primary / 0.5), transparent);
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in srgb, var(--color-primary) 50%, transparent),
+      transparent
+    );
   }
 
   /* Inline code - TE style */
@@ -424,12 +430,12 @@
    ============================================ */
 @layer base {
   ::selection {
-    background-color: var(--color-primary / 0.3);
+    background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
     color: var(--color-foreground);
   }
 
   ::-moz-selection {
-    background-color: var(--color-primary / 0.3);
+    background-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
     color: var(--color-foreground);
   }
 }

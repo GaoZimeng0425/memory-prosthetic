@@ -57,19 +57,19 @@ type Group = {
 };
 
 const groups: Group[] = [
-  {
-    group: 'AI',
-    items: [
-      {
-        focusEditor: false,
-        icon: <SparklesIcon />,
-        value: 'AI',
-        onSelect: (editor) => {
-          editor.getApi(AIChatPlugin).aiChat.show();
-        },
-      },
-    ],
-  },
+  // {
+  //   group: 'AI',
+  //   items: [
+  //     {
+  //       focusEditor: false,
+  //       icon: <SparklesIcon />,
+  //       value: 'AI',
+  //       onSelect: (editor) => {
+  //         editor.getApi(AIChatPlugin).aiChat.show();
+  //       },
+  //     },
+  //   ],
+  // },
   {
     group: 'Basic blocks',
     items: [

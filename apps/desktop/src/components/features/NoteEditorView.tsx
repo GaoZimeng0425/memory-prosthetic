@@ -5,23 +5,19 @@
  * Used in ArticleReader when displaying notes (type='笔记').
  */
 
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { useDebounce } from 'react-use'
 import { toast } from 'sonner'
 
+import { NoteEditor } from '@memory-prosthetic/editor/components/note-editor'
 import type { Collection, CollectionType } from '@memory-prosthetic/shared/types/collection'
 import { FieldError } from '@memory-prosthetic/ui/components/ui/field'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { collections } from '@/apis'
 import { TypeSelector } from '@/components/features/TypeSelector'
-
-// Lazy load the editor to avoid blocking main interface
-const NoteEditor = lazy(() =>
-  import('@memory-prosthetic/editor/components/note-editor').then((module) => ({ default: module.NoteEditor }))
-)
 
 type NoteEditorViewProps = {
   collection: Collection
@@ -40,9 +36,14 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
     () => {
       updateMutation.mutate({ title: title.trim(), content: markdownContent, type: selectedType })
     },
-    1000,
+    500,
     [title, markdownContent, selectedType]
   )
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only run when isEditing changes
+  useEffect(() => {
+    if (isEditing) return
+    updateMutation.mutateAsync({ title: title.trim(), content: markdownContent, type: selectedType })
+  }, [isEditing])
 
   // Sync local state with prop changes when entering edit mode
   useEffect(() => {
@@ -72,9 +73,8 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
 
   return (
     <div className="man-w-full overflow-hidden">
-      <div className="w-full px-16 pt-4 text-base sm:px-[max(64px,calc(50%-350px))]">
-        <TypeSelector onSelect={setSelectedType} selectedType={selectedType} />
-        <div className="mt-4">
+      <div className="flex w-full items-center justify-between gap-2 px-16 pt-4 text-base sm:px-[max(64px,calc(50%-350px))]">
+        <div className="flex-1">
           <Input
             aria-invalid={!!titleError}
             autoFocus
@@ -91,6 +91,7 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
           />
           {titleError && <FieldError>{titleError}</FieldError>}
         </div>
+        <TypeSelector onSelect={setSelectedType} selectedType={selectedType} />
       </div>
 
       <div className="min-h-[400px] rounded-md">

@@ -281,7 +281,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
         </ScrollArea>
 
         {/* 分析按钮 */}
-        <Button className="w-full" disabled={isProcessing} onClick={handleProcess} size="sm" variant="outline">
+        <Button className="w-full" disabled={isProcessing} onClick={handleProcess} size="sm" variant="default">
           <Sparkles className="mr-2 h-4 w-4 text-primary" />
           {isAnalyzed ? '重新分析' : '开始分析'}
         </Button>

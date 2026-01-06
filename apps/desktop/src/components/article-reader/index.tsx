@@ -1,5 +1,5 @@
 import { Activity, useEffect, useRef, useState } from 'react'
-import { Archive, Globe, Maximize2, Minimize2, PaintbrushIcon, PenIcon, RotateCcw } from 'lucide-react'
+import { Archive, Globe, Maximize2, Minimize2, PaintbrushIcon, PenIcon, RotateCcw, Save } from 'lucide-react'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ButtonGroup } from '@memory-prosthetic/ui/components/ui/button-group'
@@ -156,7 +156,7 @@ export const ArticleReader = ({
             <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
               <Button
                 aria-label="原文视图"
-                className={cn(viewMode === 'markdown' && 'bg-primary/80 text-primary-foreground')}
+                className={cn(viewMode === 'markdown' && 'bg-primary text-primary-foreground')}
                 onClick={() => setViewMode('markdown')}
                 size="sm"
                 variant="ghost"
@@ -165,7 +165,7 @@ export const ArticleReader = ({
               </Button>
               <Button
                 aria-label="网页视图"
-                className={cn(viewMode === 'webview' && 'bg-primary/80 text-primary-foreground')}
+                className={cn(viewMode === 'webview' && 'bg-primary text-primary-foreground')}
                 onClick={() => setViewMode('webview')}
                 size="sm"
                 variant="ghost"
@@ -212,11 +212,11 @@ export const ArticleReader = ({
               {/* Only show edit button for notes */}
               <Button
                 aria-label={isNoteEditing ? '取消编辑' : '编辑笔记'}
-                onClick={() => setIsNoteEditing(!isNoteEditing)}
+                onMouseDown={() => setIsNoteEditing(!isNoteEditing)}
                 size="icon"
                 variant="ghost"
               >
-                <PenIcon className="size-4" />
+                {isNoteEditing ? <Save className="size-4" /> : <PenIcon className="size-4" />}
               </Button>
             </ButtonGroup>
           </Activity>

@@ -1,4 +1,8 @@
 {
   "root": false,
-  "extends": "//"
+  "extends": "//",
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["**", "!**/packages/editor/src/components"]
+  }
 }

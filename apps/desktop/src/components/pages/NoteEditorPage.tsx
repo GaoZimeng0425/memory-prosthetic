@@ -1,9 +1,10 @@
-import { lazy, Suspense, useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Folder, Hash, HelpCircle, Loader2, Save, X } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { NoteEditor } from '@memory-prosthetic/editor/components/note-editor'
 import type { CollectionType } from '@memory-prosthetic/shared/types/collection'
 import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -19,11 +20,6 @@ import { TypeSelector } from '@/components/features/TypeSelector'
 import { useFavorites } from '@/hooks/use-favorites'
 import { useHotkey } from '@/hooks/use-hotkey'
 import { useTags } from '@/hooks/use-tags'
-
-// Lazy load the editor to avoid blocking main interface
-const NoteEditor = lazy(() =>
-  import('@memory-prosthetic/editor/components/note-editor').then((module) => ({ default: module.NoteEditor }))
-)
 
 export function NoteEditorPage() {
   const navigate = useNavigate()
@@ -166,7 +162,7 @@ export function NoteEditorPage() {
         </div>
 
         {/* Content */}
-        <div className="mx-auto flex max-w-4xl flex-1 grow flex-col gap-6 overflow-y-auto p-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-1 grow flex-col gap-6 overflow-y-auto p-6">
           {/* Title Input */}
           <div>
             <Input
@@ -251,7 +247,11 @@ export function NoteEditorPage() {
                 </div>
               }
             >
-              <NoteEditor onMarkdownChange={setMarkdownContent} placeholder="输入笔记内容..." />
+              <NoteEditor
+                markdown={markdownContent}
+                onMarkdownChange={setMarkdownContent}
+                placeholder="输入笔记内容..."
+              />
             </Suspense>
           </div>
         </div>

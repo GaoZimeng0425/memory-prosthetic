@@ -9,9 +9,9 @@ import { PlateElement } from 'platejs/react'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 export function LinkElement(props: PlateElementProps<TLinkElement>) {
-  const suggestionData = props.editor.getApi(SuggestionPlugin).suggestion.suggestionData(props.element) as
-    | TInlineSuggestionData
-    | undefined
+  // const suggestionData = props.editor.getApi(SuggestionPlugin).suggestion.suggestionData(props.element) as
+  //   | TInlineSuggestionData
+  //   | undefined
 
   return (
     <PlateElement
@@ -26,8 +26,8 @@ export function LinkElement(props: PlateElementProps<TLinkElement>) {
       }}
       className={cn(
         'font-medium text-primary underline decoration-primary underline-offset-4',
-        suggestionData?.type === 'remove' && 'bg-red-100 text-red-700',
-        suggestionData?.type === 'insert' && 'bg-emerald-100 text-emerald-700'
+        // suggestionData?.type === 'remove' && 'bg-red-100 text-red-700',
+        // suggestionData?.type === 'insert' && 'bg-emerald-100 text-emerald-700'
       )}
     >
       {props.children}

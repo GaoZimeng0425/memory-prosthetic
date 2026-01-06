@@ -49,7 +49,7 @@ export function TypeSelector({ selectedType, onSelect, disabled, ...props }: Typ
           {selectedTypeInfo?.label ?? selectedType}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[200px] p-0">
+      <PopoverContent align="end" className="w-[200px] p-0">
         <Command>
           <CommandInput placeholder="搜索分类..." />
           <CommandList>

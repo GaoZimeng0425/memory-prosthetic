@@ -238,7 +238,7 @@ export function NoteEditorPage() {
           </div>
 
           {/* Content Editor */}
-          <div className="min-h-[400px] grow rounded-md border border-input">
+          <div className="grow rounded-md border border-input">
             <Suspense
               fallback={
                 <div className="flex h-[400px] items-center justify-center">

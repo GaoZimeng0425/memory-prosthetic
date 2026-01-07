@@ -94,7 +94,7 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
         <TypeSelector onSelect={setSelectedType} selectedType={selectedType} />
       </div>
 
-      <div className="min-h-[400px] rounded-md">
+      <div className="min-h-full rounded-md">
         <Suspense
           fallback={
             <div className="flex h-[400px] items-center justify-center">

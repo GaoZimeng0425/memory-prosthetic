@@ -1,5 +1,4 @@
 import { ChatInput } from '@memory-prosthetic/ai/components/message/input'
-import { MessageList } from '@memory-prosthetic/ai/components/message/list'
 import { useChat } from '@memory-prosthetic/ai/hooks/useChat'
 import { MarkdownUI } from '@memory-prosthetic/ui/components/markdown-ui'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'

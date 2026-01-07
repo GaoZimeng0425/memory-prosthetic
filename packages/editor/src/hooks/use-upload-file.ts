@@ -1,11 +1,11 @@
 import * as React from 'react'
-
-import type { OurFileRouter } from '@memory-prosthetic/editor/utils/uploadthing'
-import type { ClientUploadedFileData, UploadFilesOptions } from 'uploadthing/types'
-
+import { invoke } from '@tauri-apps/api/core'
 import { generateReactHelpers } from '@uploadthing/react'
 import { toast } from 'sonner'
+import type { ClientUploadedFileData, UploadFilesOptions } from 'uploadthing/types'
 import { z } from 'zod'
+
+import type { OurFileRouter } from '@memory-prosthetic/editor/utils/uploadthing'
 
 export type UploadedFile<T = unknown> = ClientUploadedFileData<T>
 
@@ -29,19 +29,65 @@ export function useUploadFile({ onUploadComplete, onUploadError, ...props }: Use
     setUploadingFile(file)
 
     try {
-      const res = await uploadFiles('editorUploader', {
-        ...props,
-        files: [file],
-        onUploadProgress: ({ progress }) => {
-          setProgress(Math.min(progress, 100))
-        },
-      })
+      let mock: UploadedFile
 
-      setUploadedFile(res[0])
+      // Check if running in Tauri
+      // @ts-expect-error
+      const isTauri = !!window.__TAURI_INTERNALS__
 
-      onUploadComplete?.(res[0])
+      if (isTauri) {
+        const arrayBuffer = await file.arrayBuffer()
+        const uint8Array = new Uint8Array(arrayBuffer)
 
-      return uploadedFile
+        // Invoke Tauri command
+        const response = await invoke<{
+          data: {
+            name: string
+            type: string
+            size: number
+            url: string
+          }
+        }>('upload_file', {
+          name: file.name,
+          type: file.type,
+          content: Array.from(uint8Array), // Serialize to array of numbers for Vec<u8>
+        })
+
+        const data = response.data
+
+        mock = {
+          name: data.name,
+          size: data.size,
+          type: data.type,
+          serverData: undefined,
+          customId: null,
+          key: data.name,
+          url: data.url,
+          appUrl: '',
+          ufsUrl: '',
+          fileHash: '',
+        }
+      } else {
+        // Fallback for browser / non-Tauri env
+        mock = {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          serverData: undefined,
+          customId: null,
+          key: '',
+          url: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8bGFuZHNjYXBlfGVufDB8fDB8fHww',
+          appUrl: '',
+          ufsUrl: '',
+          fileHash: '',
+        }
+      }
+
+      setUploadedFile(mock)
+
+      onUploadComplete?.(mock)
+
+      return mock
     } catch (error) {
       const errorMessage = getErrorMessage(error)
 

@@ -787,7 +787,7 @@ const NodeAssociationTooltipComponent = ({ edge, x, y }: NodeAssociationTooltipP
 
   return (
     <div
-      className="pointer-events-none absolute z-50 max-w-[200px] rounded-md border border-slate-200/80 bg-white/95 px-2 py-1.5 shadow-md backdrop-blur-sm"
+      className="pointer-events-none absolute z-50 max-w-50 rounded-md border border-slate-200/80 bg-white/95 px-2 py-1.5 shadow-md backdrop-blur-sm"
       style={{
         left: x + 20,
         top: y - 10,

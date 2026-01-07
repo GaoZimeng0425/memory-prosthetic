@@ -71,7 +71,7 @@ export const EditorKit = [
   ...SlashKit,
   ...AutoformatKit,
   ...CursorOverlayKit,
-  ...BlockMenuKit,
+  // ...BlockMenuKit,
   // ...DndKit,
   ...EmojiKit,
   ...ExitBreakKit,
@@ -83,7 +83,7 @@ export const EditorKit = [
 
   // UI
   ...BlockPlaceholderKit,
-  // ...FixedToolbarKit,
+  ...FixedToolbarKit,
   ...FloatingToolbarKit,
 ]
 

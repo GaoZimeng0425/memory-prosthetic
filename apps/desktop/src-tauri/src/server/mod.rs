@@ -26,6 +26,7 @@ pub const DEFAULT_PORT: u16 = 21890;
 pub struct ServerConfig {
     pub port: u16,
     pub host: String,
+    pub uploads_dir: std::path::PathBuf,
 }
 
 impl Default for ServerConfig {
@@ -33,6 +34,7 @@ impl Default for ServerConfig {
         Self {
             port: DEFAULT_PORT,
             host: "127.0.0.1".to_string(),
+            uploads_dir: std::env::temp_dir(),
         }
     }
 }
@@ -74,7 +76,7 @@ pub async fn start_server(
         .allow_headers(Any);
 
     // Create router with state
-    let app: Router = create_router(state)
+    let app: Router = create_router(state, config.uploads_dir)
         .layer(cors);
 
     // Create shutdown channel

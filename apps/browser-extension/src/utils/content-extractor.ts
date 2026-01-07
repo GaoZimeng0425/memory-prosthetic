@@ -378,6 +378,7 @@ const extractVideoUrl = (embedUrl: string): string | null => {
     if (url.hostname.includes('bilibili.com')) {
       const bvid = url.pathname.match(/\/(BV[a-zA-Z0-9]+)/)?.[1]
       const aid = url.searchParams.get('aid') || url.pathname.match(/\/av(\d+)/)?.[1]
+
       if (bvid) return `https://www.bilibili.com/video/${bvid}`
       if (aid) return `https://www.bilibili.com/video/av${aid}`
     }
@@ -603,6 +604,23 @@ const extractGitHubRepoContent = (url: string): PageContent | null => {
 export const extractPageContent = (): PageContent => {
   const url = window.location.href
 
+  if (url?.includes('bilibili.com')) {
+    return {
+      url,
+      title: document.title || url,
+      content: `\n\n[🎬 视频](${url})\n\n`,
+      thumbnailUrl: '',
+    }
+  }
+  if (url?.includes('youtube.com')) {
+    return {
+      url,
+      title: document.title || url,
+      content: `\n\n[🎬 视频](${url})\n\n`,
+      thumbnailUrl: '',
+    }
+  }
+
   // Special handling for GitHub repository homepages
   if (isGitHubRepoHomepage(url)) {
     const githubContent = extractGitHubRepoContent(url)
@@ -638,7 +656,6 @@ export const extractPageContent = (): PageContent => {
 
     // Convert HTML to Markdown
     const markdown = turndownService.turndown(article.content)
-    console.log('🚀 : extractPageContent : markdown:', markdown)
     const cleanedMarkdown = cleanMarkdown(markdown)
 
     // Extract thumbnail URL

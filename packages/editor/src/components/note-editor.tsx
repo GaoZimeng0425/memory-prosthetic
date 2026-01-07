@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { MarkdownPlugin } from '@platejs/markdown'
+import { isString } from 'es-toolkit'
 import { normalizeNodeId } from 'platejs'
 import { Plate, usePlateEditor } from 'platejs/react'
 
@@ -26,15 +27,16 @@ const defaultValue: Value = normalizeNodeId([
 
 export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeholder }: NoteEditorProps) => {
   const editor = usePlateEditor({
-    plugins: EditorKit,
+    plugins: [...EditorKit],
     value: value ?? defaultValue,
   })
 
   const markdownLoadedRef = useRef(false)
 
   // Load Markdown content when provided (only once on mount)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: only run once on mount
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mounted
   useEffect(() => {
+    if (!isString(markdown)) return
     if (markdown !== undefined && markdown !== '' && !markdownLoadedRef.current) {
       try {
         const markdownApi = editor.getApi(MarkdownPlugin)
@@ -54,7 +56,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
   return (
     <Plate
       editor={editor}
-      onChange={({ value: newValue }: { value: Value }) => {
+      onChange={({ value: newValue }) => {
         if (onChange) {
           onChange(newValue)
         }
@@ -63,8 +65,13 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
           try {
             const markdownApi = editor.getApi(MarkdownPlugin)
             if (markdownApi) {
-              const markdownString = markdownApi.markdown.serialize()
-              onMarkdownChange(markdownString)
+              try {
+                const markdownString = markdownApi.markdown.serialize()
+                console.log('🚀 : NoteEditor : markdownString:', markdownString)
+                onMarkdownChange(markdownString)
+              } catch (error) {
+                console.error('Failed to serialize to Markdown:', error)
+              }
             }
           } catch (error) {
             console.error('Failed to serialize to Markdown:', error)

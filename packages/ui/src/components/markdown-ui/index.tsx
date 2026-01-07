@@ -95,6 +95,7 @@ const CustomLink = ({
     return <span {...props}>{children}</span>
   }
 
+  console.log(children)
   if (isVideoLink(children)) {
     // If link text contains 🎬, it's a video
     // Check if it's YouTube/Bilibili/Vimeo for iframe embed
@@ -104,11 +105,11 @@ const CustomLink = ({
       // Iframe embed for YouTube, Bilibili, Vimeo
       return (
         <div className="my-4">
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-lg" style={{ paddingTop: '56.25%' }}>
+          <div className="relative w-full overflow-hidden rounded-lg" style={{ paddingTop: '56.25%' }}>
             <iframe
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              className="absolute inset-0 h-full w-full border-0"
+              className="absolute inset-0 aspect-video h-full w-full border-0"
               src={iframeEmbed.embedUrl}
               title="Video"
             />
@@ -232,6 +233,16 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
       components={{
         p: (props) => <div {...props} />,
         a: (props) => <CustomLink {...props} scrollAreaRef={scrollAreaRef} />,
+        img: (props) => (
+          <div className="group relative my-4 inline-block">
+            <img alt={props.alt} {...props} className="max-w-full rounded-lg" />
+          </div>
+        ),
+        iframe: (props) => (
+          <div className="my-4">
+            <iframe {...props} className="aspect-video h-auto w-full rounded-lg" />
+          </div>
+        ),
       }}
       controls={false}
       mermaid={{

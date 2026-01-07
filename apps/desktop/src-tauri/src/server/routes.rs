@@ -7,15 +7,19 @@ use axum::{
     Router,
 };
 use std::sync::Arc;
+use std::path::PathBuf;
+use tower_http::services::ServeDir;
 
 use super::handlers;
 use super::mcp;
 use crate::AppState;
 
 /// Create the API router with all routes
-pub fn create_router(state: Arc<AppState>) -> Router {
+pub fn create_router(state: Arc<AppState>, uploads_dir: PathBuf) -> Router {
     // Create main router with state
     let main_router = Router::new()
+        // Static files (uploads)
+        .nest_service("/uploads", ServeDir::new(uploads_dir))
         // Health check
         .route("/api/health", get(handlers::health))
         // Content collection (legacy endpoint, kept for backward compatibility)

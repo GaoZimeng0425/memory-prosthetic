@@ -91,8 +91,8 @@ export function GraphPage({ filters, onFiltersChange, onNodeSelect }: GraphPageP
   }, [])
 
   return (
-    <div className="relative flex h-full grow flex-col overflow-hidden" data-graph-container>
-      <div className="flex h-full gap-4 overflow-hidden p-4">
+    <div className="relative m-2 flex grow flex-col overflow-hidden" data-graph-container>
+      <div className="flex h-full gap-4 overflow-hidden">
         {/* Graph Controls */}
         <Popover>
           <PopoverTrigger asChild>

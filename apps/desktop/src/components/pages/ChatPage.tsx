@@ -1,55 +1,49 @@
-import { useRef, useState } from 'react'
-import { createDeepSeek } from '@ai-sdk/deepseek'
-import { streamText } from 'ai'
-
-import { Button } from '@memory-prosthetic/ui/components/ui/button'
-import { Input } from '@memory-prosthetic/ui/components/ui/input'
+import { ChatInput } from '@memory-prosthetic/ai/components/message/input'
+import { MessageList } from '@memory-prosthetic/ai/components/message/list'
+import { useChat } from '@memory-prosthetic/ai/hooks/useChat'
+import { MarkdownUI } from '@memory-prosthetic/ui/components/markdown-ui'
+import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
+import { useCollections } from '@/hooks/use-collections'
 
 const ChatPage = () => {
-  const [input, setInput] = useState('')
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([])
-  const [currentMessage, setCurrentMessage] = useState('')
-  const messageRef = useRef<string>(null)
-  const onChat = async (input: string) => {
-    setMessages((prev) => [...prev, { role: 'user', content: input }])
-    const deepseek = createDeepSeek({
-      baseURL: 'https://www.sophnet.com/api/open-apis/v1/',
-      apiKey: 'g8wb1pJyqXUaxKoD1AR8tkEY_kWw4f-na9UMHedUSMY0YaxUVGMyI9Bq3MuBIYaxBk1qGFO2h-AUWejUC8bo4A',
-    })
-    const { textStream } = streamText({
-      model: deepseek('deepseek-v3.2'),
-      prompt: input,
-    })
-    for await (const chunk of textStream) {
-      setCurrentMessage((prev) => prev + chunk)
-      messageRef.current += chunk
-    }
-    setMessages((prev) => [...prev, { role: 'assistant', content: messageRef.current ?? '' }])
-    setCurrentMessage('')
-  }
+  const { messages, isLoading, sendMessage, stopGenerating } = useChat()
+  const { collections } = useCollections({ status: 'active' })
+  console.log('🚀 : ChatPage : collections:', collections)
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex grow flex-col gap-4">
+    <div className="m-2 flex w-full flex-col gap-4 rounded-md border-l bg-sidebar shadow">
+      <ScrollArea className="flex-1 overflow-y-auto p-4">
         {messages.map((message) => (
-          <div key={message.content}>
-            {message.role === 'user' ? 'User: ' : 'AI: '}
-            {message.content}
-          </div>
+          <MarkdownUI key={message.id} markdown={message.content} />
         ))}
-        <div>{currentMessage}</div>
-      </div>
+        {isLoading && (
+          <div className="flex w-full border-gray-100 border-b bg-gray-50 p-4">
+            <div className="flex-1">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="font-semibold text-gray-500 text-xs uppercase">assistant</span>
+              </div>
+              <div className="text-gray-800">Thinking...</div>
+            </div>
+          </div>
+        )}
+      </ScrollArea>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          setInput('')
-          void onChat(input)
-        }}
-      >
-        <Input onChange={(e) => setInput(e.target.value)} placeholder="Say something..." value={input} />
-        <Button type="submit">Submit</Button>
-      </form>
+      <div className="border-t p-4">
+        <ChatInput
+          disabled={isLoading}
+          onChange={() => {}}
+          onStop={stopGenerating}
+          onSubmit={sendMessage}
+          placeholder="Type your message..."
+          showStopButton={isLoading}
+          stopButtonText="Stop"
+          submitButtonText="Send"
+          value=""
+        />
+        {isLoading && (
+          <div className="mt-2 text-center text-gray-500 text-xs">Generating... Click "Stop" to cancel</div>
+        )}
+      </div>
     </div>
   )
 }

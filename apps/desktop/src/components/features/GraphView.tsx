@@ -279,6 +279,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(({ filters, on
       width: containerWidth,
       height: containerHeight,
       autoFit: 'view',
+      animation: false,
       padding: [60, 60, 60, 60],
       data: { nodes, edges },
 

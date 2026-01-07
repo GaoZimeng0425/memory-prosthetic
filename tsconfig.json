@@ -21,7 +21,9 @@
       "@memory-prosthetic/shared": ["./packages/shared/src/index.ts"],
       "@memory-prosthetic/shared/*": ["./packages/shared/src/*"],
       "@memory-prosthetic/ui": ["./packages/ui/src/index.ts"],
-      "@memory-prosthetic/ui/*": ["./packages/ui/src/*"]
+      "@memory-prosthetic/ui/*": ["./packages/ui/src/*"],
+      "@memory-prosthetic/editor": ["./packages/editor/src/index.ts"],
+      "@memory-prosthetic/editor/*": ["./packages/editor/src/*"]
     }
   },
   "references": [

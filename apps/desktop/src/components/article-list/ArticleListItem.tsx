@@ -106,7 +106,7 @@ export function ArticleListItem({
           {/* Star Toggle - Top right */}
           <Button
             className={cn(
-              'absolute top-2 right-2 size-3 rounded-full bg-background transition-colors',
+              'absolute top-2 right-2 size-3 rounded-full transition-colors',
               item.starred ? 'text-yellow-500 hover:text-yellow-600' : 'text-muted-foreground/40 hover:text-yellow-500'
             )}
             onClick={(e) => {

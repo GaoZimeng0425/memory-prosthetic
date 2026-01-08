@@ -67,32 +67,48 @@ export const useChat = () => {
         const assistantMessageId = `assistant-${Date.now()}`
         currentMessageRef.current = ''
 
-        options?.onMessageStart?.({
+        const initialAssistantMessage: Message = {
           id: assistantMessageId,
           role: 'assistant',
           content: '',
           timestamp: new Date(),
-        })
+        }
+
+        // 初始添加空助手消息
+        setMessages((prev) => [...prev, initialAssistantMessage])
+
+        options?.onMessageStart?.(initialAssistantMessage)
 
         // 处理流式响应
         for await (const chunk of textStream) {
-          console.log('🚀 : useChat : chunk:', chunk)
           if (chunk) {
             currentMessageRef.current += chunk
+            // 实时更新最后一条消息
+            setMessages((prev) => {
+              const newMessages = [...prev]
+              const lastMsg = newMessages[newMessages.length - 1]
+              if (lastMsg && lastMsg.id === assistantMessageId) {
+                return [...newMessages.slice(0, -1), { ...lastMsg, content: currentMessageRef.current }]
+              }
+              return prev
+            })
             options?.onChunk?.(chunk)
           }
         }
 
-        // 添加助手消息
-        const assistantMessage: Message = {
+        // 流结束后的最终状态确认
+        const finalAssistantMessage: Message = {
           id: assistantMessageId,
           role: 'assistant',
           content: currentMessageRef.current,
           timestamp: new Date(),
         }
 
-        setMessages((prev) => [...prev, assistantMessage])
-        options?.onMessageEnd?.(assistantMessage)
+        // 确保最终一致性 (其实上面的循环已经更新了，但为了保险起见或者如果有后续处理)
+        // 这里不需要再 append 了，只需要 update 或者什么都不做，因为上面已经 update 了
+        // 简单起见，这里可以再次 update 确保完整，或者直接触发 onMessageEnd
+
+        options?.onMessageEnd?.(finalAssistantMessage)
       } catch (error) {
         console.error('Error sending message:', error)
         options?.onError?.(error instanceof Error ? error : new Error(String(error)))

@@ -1,6 +1,7 @@
 import { type ComponentProps, useEffect, useRef, useState } from 'react'
-import { FileText, Folder } from 'lucide-react'
+import { FileText } from 'lucide-react'
 
+import type { Collection, CollectionListItem } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
   Command,
@@ -11,22 +12,13 @@ import {
   CommandList,
 } from '@memory-prosthetic/ui/components/ui/command'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
-import { Popover, PopoverContent } from '@memory-prosthetic/ui/components/ui/popover'
+import { Popover, PopoverAnchor, PopoverContent } from '@memory-prosthetic/ui/components/ui/popover'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
-
-export interface MentionableItem {
-  id: number
-  title: string
-  content: string
-  type?: string
-  url?: string
-  favoriteId?: number
-}
 
 export interface MentionGroup {
   id: number
   name: string
-  items: MentionableItem[]
+  items: CollectionListItem[]
 }
 
 interface ChatInputProps extends Omit<ComponentProps<'div'>, 'onChange' | 'value' | 'onSubmit'> {
@@ -39,10 +31,11 @@ interface ChatInputProps extends Omit<ComponentProps<'div'>, 'onChange' | 'value
   submitButtonText?: string
   stopButtonText?: string
   showStopButton?: boolean
+  selectedContext?: Collection
   // Mention feature props
-  mentionItems?: MentionableItem[]
+  mentionItems?: CollectionListItem[]
   mentionGroups?: MentionGroup[]
-  onMentionSearch?: (query: string) => void
+  onMentionSearch?: (query: CollectionListItem) => void
   enableMention?: boolean
 }
 
@@ -56,6 +49,7 @@ export const ChatInput = ({
   submitButtonText = 'Send',
   stopButtonText = 'Stop',
   showStopButton = false,
+  selectedContext,
   mentionItems = [],
   mentionGroups = [],
   onMentionSearch,
@@ -63,6 +57,7 @@ export const ChatInput = ({
   className,
   ...props
 }: ChatInputProps) => {
+  console.log('🚀 : ChatInput : selectedContext:', selectedContext)
   const [inputValue, setInputValue] = useState(value)
   const [showMentionPopover, setShowMentionPopover] = useState(false)
   const [mentionQuery, setMentionQuery] = useState('')
@@ -73,7 +68,18 @@ export const ChatInput = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (inputValue.trim() && !disabled) {
-      onSubmit(inputValue)
+      let context = `你是非常优秀的AI助手, 一下是用户的问题:
+${inputValue}
+`
+      if (selectedContext) {
+        context += `
+请用中文回答用户的问题, 并且在回答中引用用户提及的文章。
+
+文章内容: \`\`\`
+${selectedContext?.content}
+\`\`\``
+      }
+      onSubmit(context)
       setInputValue('')
     }
   }
@@ -110,13 +116,11 @@ export const ChatInput = ({
 
       if (isValidTrigger) {
         const query = textBeforeCursor.slice(lastAtIndex + 1)
-        console.log('🚀 : handleInputChange : query:', query)
         // 检查 query 中是否有空格(如果有说明已经完成了提及)
         if (!query.includes(' ')) {
           setMentionQuery(query)
           setMentionStartPos(lastAtIndex)
           setShowMentionPopover(true)
-          onMentionSearch?.(query)
           return
         }
       }
@@ -127,27 +131,21 @@ export const ChatInput = ({
   }
 
   // 选择文章
-  const handleSelectMention = (item: MentionableItem) => {
+  const handleSelectMention = (item: CollectionListItem) => {
     if (mentionStartPos === null) return
 
     const beforeMention = inputValue.slice(0, mentionStartPos)
     const afterMention = inputValue.slice(cursorPosition)
 
     // 构建提及文本，包含文章标题和内容摘要
-    const mentionText = `@${item.title}`
-    const contextText = `
-
---- 引用文章: ${item.title} ---
-${item.content.slice(0, 500)}${item.content.length > 500 ? '...' : ''}
---- 引用结束 ---
-
-`
+    const mentionText = `@${item?.title}`
 
     const newValue = `${beforeMention + mentionText} ${afterMention}`
-    const newValueWithContext = beforeMention + contextText + afterMention
+    const newValueWithContext = beforeMention + afterMention
 
     setInputValue(newValue)
     onChange(newValueWithContext) // 发送给父组件的值包含完整内容
+    onMentionSearch?.(item)
     setShowMentionPopover(false)
     setMentionStartPos(null)
 
@@ -161,28 +159,23 @@ ${item.content.slice(0, 500)}${item.content.length > 500 ? '...' : ''}
     }, 0)
   }
 
+  // 合并 props.data 和 mentionItems
+  const allMentionItems = [...mentionItems]
+
   // 过滤文章列表
   const filteredItems = mentionQuery
-    ? mentionItems.filter(
-        (item) =>
-          item.title.toLowerCase().includes(mentionQuery.toLowerCase()) ||
-          item.content?.toLowerCase().includes(mentionQuery.toLowerCase())
-      )
-    : mentionItems
+    ? allMentionItems.filter((item) => item.title.toLowerCase().includes(mentionQuery.toLowerCase()))
+    : allMentionItems
 
   // 按分组过滤
-  const filteredGroups = mentionQuery
-    ? mentionGroups
-        .map((group) => ({
-          ...group,
-          items: group.items.filter(
-            (item) =>
-              item.title.toLowerCase().includes(mentionQuery.toLowerCase()) ||
-              item.content?.toLowerCase().includes(mentionQuery.toLowerCase())
-          ),
-        }))
-        .filter((group) => group.items.length > 0)
-    : mentionGroups
+  // const filteredGroups = mentionQuery
+  //   ? mentionGroups
+  //       .map((group) => ({
+  //         ...group,
+  //         items: group.items.filter((item) => item.title.toLowerCase().includes(mentionQuery.toLowerCase())),
+  //       }))
+  //       .filter((group) => group.items.length > 0)
+  //   : mentionGroups
 
   // 处理键盘事件
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -197,18 +190,19 @@ ${item.content.slice(0, 500)}${item.content.length > 500 ? '...' : ''}
     <div className={className} {...props}>
       <form className="flex gap-2" onSubmit={handleSubmit}>
         <div className="relative flex-1">
-          <Input
-            className="flex-1"
-            disabled={disabled}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            placeholder={placeholder}
-            ref={inputRef}
-            value={inputValue}
-          />
-
-          {enableMention && showMentionPopover && (
+          {enableMention && (
             <Popover onOpenChange={setShowMentionPopover} open={showMentionPopover}>
+              <PopoverAnchor asChild>
+                <Input
+                  className="flex-1"
+                  disabled={disabled}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={placeholder}
+                  ref={inputRef}
+                  value={inputValue}
+                />
+              </PopoverAnchor>
               <PopoverContent
                 align="start"
                 className="w-100 p-0"
@@ -217,40 +211,21 @@ ${item.content.slice(0, 500)}${item.content.length > 500 ? '...' : ''}
               >
                 <Command>
                   <CommandInput placeholder="搜索文章..." value={mentionQuery} />
-                  <CommandList>
+                  <CommandList className="max-h-[300px]">
                     <CommandEmpty>未找到文章</CommandEmpty>
-
-                    {/* 显示分组 */}
-                    {filteredGroups.length > 0 ? (
-                      filteredGroups.map((group) => (
-                        <CommandGroup heading={group.name} key={group.id}>
-                          {group.items.slice(0, 5).map((item) => (
-                            <CommandItem key={item.id} onSelect={() => handleSelectMention(item)} value={item.title}>
-                              <Folder className="mr-2 h-4 w-4 text-muted-foreground" />
-                              <div className="flex flex-1 flex-col gap-1">
-                                <span className="font-medium text-sm">{item.title}</span>
-                                {item.type && <span className="text-muted-foreground text-xs">{item.type}</span>}
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      ))
-                    ) : (
-                      /* 显示未分组的文章 */
-                      <CommandGroup heading="文章">
-                        <ScrollArea className="max-h-[300px]">
-                          {filteredItems.slice(0, 10).map((item) => (
-                            <CommandItem key={item.id} onSelect={() => handleSelectMention(item)} value={item.title}>
-                              <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
-                              <div className="flex flex-1 flex-col gap-1">
-                                <span className="font-medium text-sm">{item.title}</span>
-                                {item.type && <span className="text-muted-foreground text-xs">{item.type}</span>}
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </ScrollArea>
-                      </CommandGroup>
-                    )}
+                    <CommandGroup heading="文章">
+                      <ScrollArea>
+                        {filteredItems.map((item) => (
+                          <CommandItem key={item.id} onSelect={() => handleSelectMention(item)} value={item.title}>
+                            <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <div className="flex flex-1 flex-col gap-1">
+                              <span className="font-medium text-sm">{item.title}</span>
+                              {item.type && <span className="text-muted-foreground text-xs">{item.type}</span>}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </ScrollArea>
+                    </CommandGroup>
                   </CommandList>
                 </Command>
               </PopoverContent>

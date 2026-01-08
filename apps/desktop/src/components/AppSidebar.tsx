@@ -87,6 +87,7 @@ export const AppSidebar = ({
     if (pathname.startsWith('/graph')) return 'graph'
     if (pathname.startsWith('/favorite')) return 'favorite'
     if (pathname.startsWith('/tag')) return 'tag'
+    if (pathname === '/chat') return 'chat'
     if (pathname === '/starred' || pathname.startsWith('/starred/article')) return 'starred'
     if (pathname === '/recent' || pathname.startsWith('/recent/article')) return 'recent'
     if (pathname === '/archived' || pathname.startsWith('/archived/article')) return 'archived'

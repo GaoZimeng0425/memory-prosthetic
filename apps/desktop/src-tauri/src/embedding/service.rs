@@ -5,6 +5,7 @@
 
 use crate::db::{
     CollectionRepository, CreateEmbedding, EmbeddingsRepository, EmbeddingStatus, Database,
+    AiMetadataRepository, CollectionTagRepository,
 };
 use std::sync::Arc;
 use std::time::Duration;
@@ -149,17 +150,64 @@ async fn process_collection(db: &Database, collection_id: i64) {
         }
     }
 
-    // Generate embedding text (title + content)
-    // All content is now stored as Markdown, but we support both formats for backward compatibility
-    let content_text = if is_markdown_format(&collection.content) {
-        // Content is Markdown, convert to plain text
-        markdown_to_plaintext::markdown_to_plaintext(&collection.content)
-    } else {
-        // Content is Slate JSON (legacy format), convert to plain text
-        slate_to_plaintext::slate_to_plaintext(&collection.content)
+    // Fetch Keywords
+    let keywords_str = {
+        // AiMetadataRepository requires Arc<Database>
+        let ai_repo = AiMetadataRepository::new(std::sync::Arc::new(db.clone()));
+        match ai_repo.get_keywords(collection_id) {
+            Ok(keywords) => {
+                if keywords.is_empty() {
+                    String::new()
+                } else {
+                    let kws: Vec<String> = keywords.into_iter().map(|k| k.keyword).collect();
+                    format!("Keywords: {}\n", kws.join(", "))
+                }
+            }
+            Err(e) => {
+                // Ignore error (tables might not exist yet during migration or just no keywords)
+                if !e.to_string().contains("no such table") {
+                   warn!("Failed to fetch keywords for collection {}: {}", collection_id, e);
+                }
+                String::new()
+            }
+        }
     };
 
-    let text = format!("{}\n\n{}", collection.title, content_text);
+    // Fetch Tags
+    let tags_str = {
+        let tag_repo = CollectionTagRepository::new(db);
+        match tag_repo.get_tags_by_collection(collection_id) {
+            Ok(tags) => {
+                if tags.is_empty() {
+                    String::new()
+                } else {
+                    let ts: Vec<String> = tags.into_iter().map(|t| t.name).collect();
+                    format!("Tags: {}\n", ts.join(", "))
+                }
+            }
+            Err(e) => {
+                // Ignore error (tables might not exist yet)
+                if !e.to_string().contains("no such table") {
+                    warn!("Failed to fetch tags for collection {}: {}", collection_id, e);
+                }
+                String::new()
+            }
+        }
+    };
+
+    // Generate embedding text (title + keywords + tags + content)
+    // All content is now stored as Markdown, but we support both formats for backward compatibility
+    // let content_text = if is_markdown_format(&collection.content) {
+    //     // Content is Markdown, convert to plain text
+    //     markdown_to_plaintext::markdown_to_plaintext(&collection.content)
+    // } else {
+    //     // Content is Slate JSON (legacy format), convert to plain text
+    //     slate_to_plaintext::slate_to_plaintext(&collection.content)
+    // };
+
+    // Construct enriched text for embedding
+    // Putting keywords and tags early to ensure they are captured even if content is truncated
+    let text = format!("{}\n\n{}{}", collection.title, keywords_str, tags_str);
 
     // Generate embedding
     let embedding = {

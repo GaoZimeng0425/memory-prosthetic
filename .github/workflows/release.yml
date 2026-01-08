@@ -1,0 +1,110 @@
+name: "Release"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/desktop/package.json"
+      - "apps/browser-extension/package.json"
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check version change
+        id: check
+        run: |
+          NEW_VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          # Get the version from the previous commit
+          OLD_VERSION=$(git show HEAD~1:apps/desktop/package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+
+          echo "Version: $OLD_VERSION -> $NEW_VERSION"
+          if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  publish-tauri:
+    needs: check-version
+    if: needs: check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: install frontend dependencies
+        run: bun install
+
+      - uses: tauri-apps/tauri-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: "Memory Prosthetic v__VERSION__"
+          releaseBody: "See the assets below to download the latest version."
+          releaseDraft: true
+          prerelease: false
+          args: "--target aarch64-apple-darwin,x86_64-apple-darwin"
+          projectPath: "apps/desktop"
+
+  publish-extension:
+    needs: [check-version, publish-tauri]
+    if: needs: check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: install bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: install dependencies
+        run: bun install
+
+      - name: build extension
+        run: bun run build:browser-extension
+
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload extension artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apps/browser-extension/.output/*.zip
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

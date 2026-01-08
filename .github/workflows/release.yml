@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_changed: ${{ steps.check.outputs.changed }}
-      version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,21 +22,11 @@ jobs:
       - name: Check version change
         id: check
         run: |
-          # 兼容仓库只有1个提交的情况（HEAD~1不存在时设为空）
-          if [ $(git rev-list --count HEAD) -eq 1 ]; then
-            OLD_VERSION=""
-          else
-            OLD_VERSION=$(git show HEAD~1:apps/desktop/package.json 2>/dev/null | node -p "try { JSON.parse(require('fs').readFileSync(0, 'utf8')).version } catch (e) { '' }")
-          fi
+          NEW_VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          OLD_VERSION=$(git show HEAD~1:apps/desktop/package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
 
-          # 读取新版本（兼容解析失败）
-          NEW_VERSION=$(node -p "try { require('./apps/desktop/package.json').version } catch (e) { '' }")
-
-          echo "Version: $OLD_VERSION -> $NEW_VERSION"
-          # 版本为空或不一致时标记为变更
-          if [ -z "$OLD_VERSION" ] || [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
+          if [ "$NEW_VERSION" != "$OLD_VERSION" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           else
             echo "changed=false" >> $GITHUB_OUTPUT
           fi
@@ -47,7 +36,16 @@ jobs:
     if: needs.check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin"
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
@@ -62,7 +60,7 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install frontend dependencies
         run: bun install
@@ -71,18 +69,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # 修复：复用check-version输出的版本号
-          tagName: v${{ needs.check-version.outputs.version }}
-          releaseName: "Memory Prosthetic v${{ needs.check-version.outputs.version }}"
+          tagName: app-v__VERSION__
+          releaseName: "Memory Prosthetic v__VERSION__"
           releaseBody: "See the assets below to download the latest version."
           releaseDraft: true
           prerelease: false
-          args: "--target aarch64-apple-darwin,x86_64-apple-darwin"
+          args: ${{ matrix.args }}
           projectPath: "apps/desktop"
 
   publish-extension:
-    # 优化：移除对publish-tauri的强依赖（两者可并行，仅依赖版本检查）
-    needs: check-version
+    needs: [check-version, publish-tauri]
     if: needs.check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
@@ -104,13 +100,16 @@ jobs:
       - name: build extension
         run: bun run build:browser-extension
 
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(node -p "require('./apps/desktop/package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Upload extension artifact to release
         uses: softprops/action-gh-release@v2
         with:
           files: apps/browser-extension/.output/*.zip
-          # 修复：复用check-version的版本号，避免重复读取文件
-          tag_name: v${{ needs.check-version.outputs.version }}
-          # 确保关联到已创建的Release（如果不存在则创建）
-          fail_on_unmatched_files: true
+          tag_name: app-v${{ steps.get_version.outputs.VERSION }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

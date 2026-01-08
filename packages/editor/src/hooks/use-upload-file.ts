@@ -18,7 +18,7 @@ interface UseUploadFileProps
   onUploadError?: (error: unknown) => void
 }
 
-export function useUploadFile({ onUploadComplete, onUploadError, ...props }: UseUploadFileProps = {}) {
+export function useUploadFile({ onUploadComplete, onUploadError }: UseUploadFileProps = {}) {
   const [uploadedFile, setUploadedFile] = React.useState<UploadedFile>()
   const [uploadingFile, setUploadingFile] = React.useState<File>()
   const [progress, setProgress] = React.useState<number>(0)

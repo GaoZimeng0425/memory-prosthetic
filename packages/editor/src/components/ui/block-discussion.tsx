@@ -13,7 +13,7 @@ import {
   PathApi,
   type TCommentText,
   type TElement,
-  TextApi,
+  // TextApi,
   type TSuggestionText,
 } from 'platejs'
 import type { PlateElementProps, RenderNodeWrapper } from 'platejs/react'

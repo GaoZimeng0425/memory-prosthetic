@@ -176,8 +176,14 @@ const buildBrowserExtension = async (): Promise<BuildResult> => {
     if (existsSync(extensionOutputDir)) {
       const zipFiles = readdirSync(extensionOutputDir).filter((file) => file.endsWith('.zip'))
       for (const zipFile of zipFiles) {
-        cpSync(join(extensionOutputDir, zipFile), join(outputDir, zipFile))
+        const zipPath = join(outputDir, zipFile)
+        cpSync(join(extensionOutputDir, zipFile), zipPath)
         artifacts.push(zipFile)
+
+        // 解压产物并保留原 zip
+        const unzipDir = join(outputDir, zipFile.replace('.zip', ''))
+        await execa('unzip', ['-o', zipPath, '-d', unzipDir])
+        artifacts.push(zipFile.replace('.zip', ''))
       }
     }
 
@@ -375,12 +381,10 @@ const main = async () => {
     s.stop(`版本号已升级: ${version}`)
   }
 
-  if (existsSync(outputDir)) {
-    // 清理并创建输出目录
-    console.log(chalk.gray('清理现有的 .output 目录...'))
-    await execa('rm', ['-rf', outputDir])
+  // 确保输出目录存在 (不删除现有内容)
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true })
   }
-  mkdirSync(outputDir, { recursive: true })
 
   // 构建项目
   const results: BuildResult[] = []

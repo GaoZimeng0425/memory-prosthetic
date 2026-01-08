@@ -73,7 +73,7 @@ export const processContentUnified = async (
 ${existingTagsContext}
 
 内容：
-${content.substring(0, 4000)}
+${content}
 
 请分析以上内容并生成元数据。${existingTagsContext ? '\n注意：如果用户已有标签，生成的标签应尽量保持风格一致。' : ''}`
 
@@ -84,7 +84,7 @@ ${content.substring(0, 4000)}
         schema: UnifiedAnalysisSchema,
       }),
       prompt,
-      temperature: 0.3,
+      temperature: 0,
     })
 
     // 转换结果格式，添加 id 字段

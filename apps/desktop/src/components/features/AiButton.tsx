@@ -129,7 +129,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
         aria-label="Go Back"
         className="text-muted-foreground hover:text-foreground"
         onClick={handleOpenSettings}
-        size="icon"
+        size="sm"
         title="配置 AI 功能"
         variant="outline"
       >

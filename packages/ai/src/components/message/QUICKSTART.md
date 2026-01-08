@@ -65,14 +65,14 @@ import { useCollections } from '@/hooks/use-collections'
 
 function ChatPage() {
   const { collections } = useCollections({ status: 'active' })
-  
+
   const mentionItems = collections.map(c => ({
     id: c.id,
     title: c.title,
     content: '', // 需要获取完整内容
     type: c.type,
   }))
-  
+
   return (
     <ChatInput
       enableMention={true}
@@ -92,7 +92,7 @@ import { useCollections } from '@/hooks/use-collections'
 function ChatWithFavorites() {
   const { favorites } = useFavorites()
   const { collections } = useCollections()
-  
+
   const mentionGroups = favorites.map(fav => ({
     id: fav.id,
     name: fav.name,
@@ -105,7 +105,7 @@ function ChatWithFavorites() {
         type: c.type,
       }))
   }))
-  
+
   return (
     <ChatInput
       enableMention={true}

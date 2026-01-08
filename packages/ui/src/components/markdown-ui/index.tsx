@@ -95,7 +95,6 @@ const CustomLink = ({
     return <span {...props}>{children}</span>
   }
 
-  console.log(children)
   if (isVideoLink(children)) {
     // If link text contains 🎬, it's a video
     // Check if it's YouTube/Bilibili/Vimeo for iframe embed
@@ -107,11 +106,15 @@ const CustomLink = ({
         <div className="my-4">
           <div className="relative w-full overflow-hidden rounded-lg" style={{ paddingTop: '56.25%' }}>
             <iframe
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               className="absolute inset-0 aspect-video h-full w-full border-0"
+              frameBorder="0"
+              height="315"
+              referrerPolicy="strict-origin-when-cross-origin"
               src={iframeEmbed.embedUrl}
-              title="Video"
+              title="YouTube video player"
+              width="560"
             />
           </div>
         </div>
@@ -219,7 +222,7 @@ const CustomLink = ({
   )
 }
 
-export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAreaRef }) => {
+export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAreaRef, ...props }) => {
   const { resolvedTheme } = useTheme()
 
   // Guard against empty or whitespace-only content
@@ -229,6 +232,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
 
   return (
     <Streamdown
+      {...props}
       className={cn('markdown-content', className)}
       components={{
         p: (props) => <div {...props} />,

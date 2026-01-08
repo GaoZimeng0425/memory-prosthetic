@@ -54,10 +54,28 @@ pub struct CommandError {
     pub message: String,
 }
 
+impl CommandError {
+    pub fn invalid_algorithm(algorithm: &str) -> Self {
+        CommandError {
+            code: "INVALID_ALGORITHM".to_string(),
+            message: format!("Unknown clustering algorithm: {}", algorithm),
+        }
+    }
+}
+
 impl From<DbError> for CommandError {
     fn from(e: DbError) -> Self {
         CommandError {
             code: "DB_ERROR".to_string(),
+            message: e.to_string(),
+        }
+    }
+}
+
+impl From<graph::ClusteringError> for CommandError {
+    fn from(e: graph::ClusteringError) -> Self {
+        CommandError {
+            code: "CLUSTERING_ERROR".to_string(),
             message: e.to_string(),
         }
     }
@@ -134,6 +152,16 @@ pub struct GetCollectionsRequest {
     pub uncategorized: Option<bool>,
     pub tag_ids: Option<Vec<i64>>,
     pub status: Option<String>,
+}
+
+/// Upload file response
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UploadFileResponse {
+    pub name: String,
+    pub r#type: String,
+    pub size: u64,
+    pub url: String,
 }
 
 /// Get collection tags request
@@ -1816,6 +1844,188 @@ fn get_graph_data(
 }
 
 // ============================================
+// Graph Clustering Commands
+// ============================================
+
+/// Request for clustering algorithms
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusteringRequest {
+    pub algorithm: String, // "connected_components" or "weighted_clustering"
+    pub min_weight: Option<f64>,
+}
+
+/// Clustering result data structure for frontend
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusteringResultResponse {
+    pub clusters: Vec<ClusterResponse>,
+    pub statistics: ClusterStatisticsResponse,
+    pub algorithm: String,
+    pub threshold: f64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterResponse {
+    pub id: usize,
+    pub node_ids: Vec<i64>,
+    pub internal_edges: usize,
+    pub external_edges: usize,
+    pub total_weight: f64,
+    pub density: f64,
+    pub modularity_contribution: f64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClusterStatisticsResponse {
+    pub total_clusters: usize,
+    pub cluster_sizes: Vec<usize>,
+    pub modularity: f64,
+    pub largest_cluster_size: usize,
+    pub average_cluster_size: f64,
+    pub densest_cluster: usize,
+}
+
+/// Detect clusters using connected components algorithm
+#[tauri::command]
+fn get_graph_clusters(
+    state: State<'_, Arc<AppState>>,
+    request: ClusteringRequest,
+) -> Result<CommandResult<ClusteringResultResponse>, CommandError> {
+    use crate::graph::ClusterAnalyzer;
+
+    let analyzer = ClusterAnalyzer::new(state.db.clone());
+    let analyzer = if let Some(threshold) = request.min_weight {
+        analyzer.with_threshold(threshold)
+    } else {
+        analyzer
+    };
+
+    let clusters = match request.algorithm.as_str() {
+        "connected_components" => analyzer.detect_connected_components()?,
+        "weighted_clustering" => analyzer.weighted_clustering()?,
+        _ => return Err(CommandError::invalid_algorithm(&request.algorithm)),
+    };
+
+    // Calculate modularity
+    let modularity = analyzer.calculate_modularity(&clusters).unwrap_or(0.0);
+    let threshold = request.min_weight.unwrap_or(0.3);
+
+    // Prepare response
+    let cluster_sizes: Vec<usize> = clusters.iter().map(|c| c.node_ids.len()).collect();
+    let largest = cluster_sizes.iter().max().copied().unwrap_or(0);
+    let average = if !cluster_sizes.is_empty() {
+        cluster_sizes.iter().sum::<usize>() as f64 / cluster_sizes.len() as f64
+    } else {
+        0.0
+    };
+    let densest = clusters
+        .iter()
+        .enumerate()
+        .max_by(|a, b| a.1.density.partial_cmp(&b.1.density).unwrap_or(std::cmp::Ordering::Equal))
+        .map(|(idx, _)| idx)
+        .unwrap_or(0);
+
+    let response = ClusteringResultResponse {
+        clusters: clusters
+            .into_iter()
+            .map(|c| ClusterResponse {
+                id: c.id,
+                node_ids: c.node_ids,
+                internal_edges: c.internal_edges,
+                external_edges: c.external_edges,
+                total_weight: c.total_weight,
+                density: c.density,
+                modularity_contribution: c.modularity_contribution,
+            })
+            .collect(),
+        statistics: ClusterStatisticsResponse {
+            total_clusters: cluster_sizes.len(),
+            cluster_sizes,
+            modularity,
+            largest_cluster_size: largest,
+            average_cluster_size: average,
+            densest_cluster: densest,
+        },
+        algorithm: request.algorithm,
+        threshold,
+    };
+
+    Ok(CommandResult { data: response })
+}
+
+/// Upload file
+#[tauri::command]
+async fn upload_file(
+    app: AppHandle,
+    name: String,
+    r#type: String,
+    content: Vec<u8>,
+) -> Result<CommandResult<UploadFileResponse>, CommandError> {
+    use std::fs;
+    use tauri::Manager;
+
+    let app_data_dir = app.path().app_data_dir().map_err(|e| CommandError {
+        code: "PATH_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    let uploads_dir = app_data_dir.join("uploads");
+
+    // Get port from settings for URL generation
+    let port = {
+        let state: State<'_, Arc<AppState>> = app.state();
+        let settings = state.settings.lock().map_err(|e| CommandError {
+            code: "SETTINGS_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+        settings.get().server_port
+    };
+
+    if !uploads_dir.exists() {
+        fs::create_dir_all(&uploads_dir).map_err(|e| CommandError {
+            code: "FS_ERROR".to_string(),
+            message: format!("Failed to create uploads directory: {}", e),
+        })?;
+    }
+
+    // Generate unique filename to avoid collisions
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let safe_name = name.replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '-', "_");
+    let file_name = format!("{}_{}", timestamp, safe_name);
+    let file_path = uploads_dir.join(&file_name);
+
+    fs::write(&file_path, &content).map_err(|e| CommandError {
+        code: "FS_ERROR".to_string(),
+        message: format!("Failed to write file: {}", e),
+    })?;
+
+    // Convert to asset URL
+    // Note: This requires setup in tauri.conf.json or main.rs to serve these files
+    // For now we return the file:// path, but ideally we should use tauri's asset protocol
+    // equivalent or convertFileSrc on frontend
+
+    // Instead of raw path, let's return a custom protocol string or the absolute path
+    // valid for convertFileSrc on the frontend
+    // Return HTTP URL
+    let file_url = format!("http://127.0.0.1:{}/uploads/{}", port, file_name);
+
+    Ok(CommandResult {
+        data: UploadFileResponse {
+            name: name,
+            r#type: r#type,
+            size: content.len() as u64,
+            url: file_url,
+        },
+    })
+}
+
+// ============================================
 // App Initialization
 // ============================================
 
@@ -1995,6 +2205,7 @@ pub fn run() {
                     let config = server::ServerConfig {
                         port,
                         host: "127.0.0.1".to_string(), // Always use 127.0.0.1 to avoid proxy issues
+                        uploads_dir: app_data_dir.join("uploads"),
                     };
 
                     info!("Starting HTTP server on port {} (from settings)", port);
@@ -2069,6 +2280,7 @@ pub fn run() {
             hide_webview,
             show_webview,
             close_webview,
+            upload_file,
             get_settings,
             get_setting,
             set_setting,
@@ -2104,6 +2316,7 @@ pub fn run() {
             get_collection_ai_metadata,
             // Graph
             get_graph_data,
+            get_graph_clusters,
             discover_all_associations,
             get_association_stats,
         ])

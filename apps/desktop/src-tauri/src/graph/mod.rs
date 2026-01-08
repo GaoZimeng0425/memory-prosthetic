@@ -5,6 +5,7 @@
 mod association;
 mod discovery;
 mod builder;
+pub mod clustering;
 
 pub use association::{
     AssociationCalculator,
@@ -21,4 +22,9 @@ pub use builder::{
     GraphNode,
     GraphEdge,
     CreateAssociation,
+};
+pub use clustering::{
+    ClusterAnalyzer,
+    Cluster,
+    ClusteringError,
 };

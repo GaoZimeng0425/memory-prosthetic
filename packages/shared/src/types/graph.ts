@@ -80,3 +80,37 @@ export type GraphStatistics = {
   averageWeight: number
   averageDegree: number
 }
+
+// ===== Clustering Types =====
+
+export type Cluster = {
+  id: number
+  nodeIds: number[]
+  internalEdges: number
+  externalEdges: number
+  totalWeight: number
+  density: number // 0-1, higher means more densely connected
+  modularityContribution: number
+}
+
+export type ClusterNode = {
+  collectionId: number
+  title: string
+  inClusterId: number
+}
+
+export type ClusterStatistics = {
+  totalClusters: number
+  clusterSizes: number[] // Size of each cluster
+  modularity: number // Overall modularity score (0-1)
+  largestClusterSize: number
+  averageClusterSize: number
+  densestCluster: number // ID of the densest cluster
+}
+
+export type ClusteringResult = {
+  clusters: Cluster[]
+  statistics: ClusterStatistics
+  algorithm: 'connected_components' | 'weighted_clustering'
+  threshold: number
+}

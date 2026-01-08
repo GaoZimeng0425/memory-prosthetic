@@ -2123,12 +2123,38 @@ pub fn run() {
             };
             let shortcut_config = settings_manager.get().search_shortcut.clone();
 
-            // Initialize embedding model (optional - may not exist)
-            let model_dir = app_data_dir.join("models").join("all-MiniLM-L6-v2");
-            let has_embedding_model = embedding::init_embedding_model(model_dir).is_ok();
+            // Initialize embedding model
+            // Try to find model in multiple locations:
+            // 1. Bundled resources (Production)
+            // 2. Current directory (Dev)
+            // 3. App Data directory (Legacy/Manual)
+
+            let mut model_dir = app_data_dir.join("models").join("all-MiniLM-L6-v2");
+
+            // Check bundled resources
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                let bundled_path = resource_dir.join("resources").join("all-MiniLM-L6-v2");
+                if bundled_path.exists() {
+                    model_dir = bundled_path;
+                }
+            }
+
+            // Check dev environment path if not found yet
+            if !model_dir.exists() {
+                if let Ok(cwd) = std::env::current_dir() {
+                    let dev_path = cwd.join("resources").join("all-MiniLM-L6-v2");
+                    if dev_path.exists() {
+                        model_dir = dev_path;
+                    }
+                }
+            }
+
+            let has_embedding_model = embedding::init_embedding_model(model_dir.clone()).is_ok();
 
             if !has_embedding_model {
-                tracing::warn!("Embedding model not available. Semantic search disabled.");
+                tracing::warn!("Embedding model not available at {:?}. Semantic search disabled.", model_dir);
+            } else {
+                info!("Embedding model loaded from {:?}", model_dir);
             }
 
             // Create app state

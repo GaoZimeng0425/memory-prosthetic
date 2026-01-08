@@ -155,7 +155,6 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
     const containerRef = useRef<HTMLDivElement>(null)
     const graphRef = useRef<G6Graph | null>(null)
     const [tooltipInfo, setTooltipInfo] = useState<TooltipInfo>(null)
-    console.log('🚀 : tooltipInfo:', tooltipInfo)
 
     const {
       data: graphData,
@@ -188,9 +187,6 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
         }
       },
     })
-
-    // 调试日志
-    console.log('📊 GraphView: graphData:', graphData, 'isLoading:', isLoading, 'error:', error)
 
     useEffect(() => {
       if (!graphData || !containerRef.current) return
@@ -544,6 +540,16 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
 
         // Process grouped edges
         for (const [otherNodeId, edges] of groupedEdges.entries()) {
+          // Deduplicate edges by type to avoid showing same association twice (e.g. A->B and B->A)
+          const uniqueEdgesMap = new Map<string, GraphEdge>()
+          for (const edge of edges) {
+            // Keep the one with higher weight if duplicates exist, or just the first one
+            if (!uniqueEdgesMap.has(edge.type) || (uniqueEdgesMap.get(edge.type)?.weight || 0) < edge.weight) {
+              uniqueEdgesMap.set(edge.type, edge)
+            }
+          }
+          const uniqueEdges = Array.from(uniqueEdgesMap.values())
+
           // 检查节点是否存在于当前图谱中
           try {
             const otherNodeData = graph.getNodeData(otherNodeId)
@@ -562,7 +568,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               nodeId: otherNodeId,
               x: viewportPos[0],
               y: viewportPos[1],
-              edges: edges,
+              edges: uniqueEdges,
             })
           } catch (err) {
             console.log('🚀 处理节点时出错:', err)
@@ -834,7 +840,7 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
     >
       {/* 箭头 */}
       <div
-        className="absolute left-1/2 bottom-0 h-2 w-2 -translate-x-1/2 translate-y-1 rotate-45 transform bg-white dark:bg-slate-800"
+        className="absolute bottom-0 left-1/2 h-2 w-2 -translate-x-1/2 translate-y-1 rotate-45 transform bg-white dark:bg-slate-800"
         style={{ borderRight: '1px solid rgba(0,0,0,0.05)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}
       />
 
@@ -847,15 +853,15 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
 
         return (
           <div
+            className={`flex items-center gap-2 ${index > 0 ? 'border-slate-100 border-t pt-1 dark:border-slate-700' : ''}`}
             key={edge.id}
-            className={`flex items-center gap-2 ${index > 0 ? 'border-t border-slate-100 pt-1 dark:border-slate-700' : ''}`}
           >
-            <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            <div className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
             <div className="flex flex-col">
-              <span className="font-medium text-slate-500 text-[10px] dark:text-slate-400 leading-tight">
+              <span className="font-medium text-[10px] text-slate-500 leading-tight dark:text-slate-400">
                 {typeName}
               </span>
-              <span className="font-medium whitespace-nowrap leading-tight">{detail}</span>
+              <span className="whitespace-nowrap font-medium leading-tight">{detail}</span>
             </div>
           </div>
         )

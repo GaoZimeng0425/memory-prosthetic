@@ -4,6 +4,9 @@
  * Displays clustering results and provides controls for clustering analysis
  */
 
+import { useState } from 'react'
+import { BarChart3, Loader2, RefreshCw } from 'lucide-react'
+
 import type { ClusteringResult } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
@@ -16,8 +19,6 @@ import {
   SelectValue,
 } from '@memory-prosthetic/ui/components/ui/select'
 import { Slider } from '@memory-prosthetic/ui/components/ui/slider'
-import { Loader2, RefreshCw, BarChart3 } from 'lucide-react'
-import { useState } from 'react'
 import { ClusterCard } from './ClusterCard'
 
 interface ClusterPanelProps {
@@ -92,7 +93,7 @@ export function ClusterPanel({
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span className="ml-2 text-sm text-muted-foreground">加载中...</span>
+          <span className="ml-2 text-muted-foreground text-sm">加载中...</span>
         </CardContent>
       </Card>
     )
@@ -118,7 +119,7 @@ export function ClusterPanel({
                 <SelectItem value="weighted_clustering">权重聚类</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               {algorithm === 'connected_components' ? '识别完全断开的子图' : '基于边权重的社区检测'}
             </p>
           </div>
@@ -127,7 +128,7 @@ export function ClusterPanel({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>权重阈值</Label>
-              <span className="text-sm text-muted-foreground">{threshold.toFixed(2)}</span>
+              <span className="text-muted-foreground text-sm">{threshold.toFixed(2)}</span>
             </div>
             <Slider max={1} min={0} onValueChange={handleThresholdChange} step={0.05} value={[threshold]} />
           </div>
@@ -149,7 +150,7 @@ export function ClusterPanel({
             </Button>
           )}
 
-          <p className="text-xs text-muted-foreground text-center pt-2">点击"开始分析"计算图谱聚类</p>
+          <p className="pt-2 text-center text-muted-foreground text-xs">点击"开始分析"计算图谱聚类</p>
         </CardContent>
       </Card>
     )
@@ -174,33 +175,33 @@ export function ClusterPanel({
         {/* 统计信息 */}
         <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-3">
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">聚类数量</p>
-            <p className="text-xl font-bold text-foreground">{stats.totalClusters}</p>
+            <p className="text-muted-foreground text-xs">聚类数量</p>
+            <p className="font-bold text-foreground text-xl">{stats.totalClusters}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">平均大小</p>
-            <p className="text-xl font-bold text-foreground">{stats.averageClusterSize.toFixed(1)}</p>
+            <p className="text-muted-foreground text-xs">平均大小</p>
+            <p className="font-bold text-foreground text-xl">{stats.averageClusterSize.toFixed(1)}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">最大聚类</p>
-            <p className="text-xl font-bold text-foreground">{stats.largestClusterSize}</p>
+            <p className="text-muted-foreground text-xs">最大聚类</p>
+            <p className="font-bold text-foreground text-xl">{stats.largestClusterSize}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-muted-foreground">模块化度</p>
-            <p className="text-xl font-bold text-foreground">{(stats.modularity * 100).toFixed(0)}%</p>
+            <p className="text-muted-foreground text-xs">模块化度</p>
+            <p className="font-bold text-foreground text-xl">{(stats.modularity * 100).toFixed(0)}%</p>
           </div>
         </div>
 
         {/* 聚类列表 */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">聚类列表</h4>
-          <div className="max-h-96 overflow-y-auto space-y-2">
+          <h4 className="font-medium text-sm">聚类列表</h4>
+          <div className="max-h-96 space-y-2 overflow-y-auto">
             {result.clusters.map((cluster) => (
               <ClusterCard
-                key={cluster.id}
                 cluster={cluster}
                 color={getClusterColor(cluster.id)}
                 isSelected={selectedClusterId === cluster.id}
+                key={cluster.id}
                 onSelect={onSelectCluster}
               />
             ))}
@@ -209,7 +210,7 @@ export function ClusterPanel({
 
         {/* 刷新按钮 */}
         {onRefresh && (
-          <Button className="w-full" disabled={isRefreshing} onClick={handleRefresh} variant="outline" size="sm">
+          <Button className="w-full" disabled={isRefreshing} onClick={handleRefresh} size="sm" variant="outline">
             {isRefreshing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

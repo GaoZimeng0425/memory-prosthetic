@@ -52,6 +52,7 @@ export type {
   Association,
   AssociationReason,
   AssociationType,
+  Cluster,
   ClusteringResult,
   GraphData,
   GraphEdge,

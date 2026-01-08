@@ -37,7 +37,7 @@ jobs:
 
   publish-tauri:
     needs: check-version
-    if: needs: check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     runs-on: macos-latest
@@ -74,7 +74,7 @@ jobs:
 
   publish-extension:
     needs: [check-version, publish-tauri]
-    if: needs: check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
+    if: needs.check-version.outputs.version_changed == 'true' || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
     runs-on: ubuntu-latest

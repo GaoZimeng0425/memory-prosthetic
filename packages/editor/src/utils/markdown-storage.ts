@@ -11,6 +11,20 @@ import type { TPlateEditor } from 'platejs/react'
 import type { Value } from '@memory-prosthetic/editor/types'
 
 /**
+ * Normalize Markdown list markers from * to -
+ * Replaces list item markers at line start (e.g., "* item" -> "- item")
+ * but preserves * used for bold/italic formatting
+ *
+ * @param markdown - Raw Markdown string
+ * @returns Markdown string with normalized list markers
+ */
+export const normalizeMarkdownListMarkers = (markdown: string): string => {
+  // Replace list markers from * to - (only at line start, followed by space)
+  // This matches list items like "* item" or "  * nested item" but not "*bold*" or "*italic*"
+  return markdown.replace(/^(\s*)\*\s/gm, '$1- ')
+}
+
+/**
  * Serialize editor content to Markdown string for database storage
  *
  * @param editor - Plate editor instance
@@ -19,7 +33,8 @@ import type { Value } from '@memory-prosthetic/editor/types'
  */
 export const serializeEditorToMarkdown = (editor: TPlateEditor): string => {
   try {
-    return serializeMd(editor)
+    const markdown = serializeMd(editor)
+    return normalizeMarkdownListMarkers(markdown)
   } catch (error) {
     throw new Error(`Failed to serialize editor to Markdown: ${error instanceof Error ? error.message : String(error)}`)
   }

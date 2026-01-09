@@ -9,6 +9,7 @@ import { useEditorRef } from 'platejs/react'
 import { serializeHtml } from 'platejs/static'
 
 import { BaseEditorKit } from '@memory-prosthetic/editor/components/editor/editor-base-kit'
+import { normalizeMarkdownListMarkers } from '@memory-prosthetic/editor/utils/markdown-storage'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,7 +138,7 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
   }
 
   const exportToMarkdown = async () => {
-    const md = editor.getApi(MarkdownPlugin).markdown.serialize()
+    const md = normalizeMarkdownListMarkers(editor.getApi(MarkdownPlugin).markdown.serialize())
     const url = `data:text/markdown;charset=utf-8,${encodeURIComponent(md)}`
     await downloadFile(url, 'plate.md')
   }

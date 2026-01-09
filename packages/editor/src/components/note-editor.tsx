@@ -9,8 +9,10 @@ import { Plate, usePlateEditor } from 'platejs/react'
 import { EditorKit } from '@memory-prosthetic/editor/components/editor/editor-kit'
 import { Editor, EditorContainer } from '@memory-prosthetic/editor/components/ui/editor'
 import type { Value } from '@memory-prosthetic/editor/types'
+import { normalizeMarkdownListMarkers } from '@memory-prosthetic/editor/utils/markdown-storage'
 
 type NoteEditorProps = {
+  disabled?: boolean
   value?: Value
   markdown?: string // Markdown string (preferred over value for loading)
   onChange?: (value: Value) => void
@@ -25,7 +27,7 @@ const defaultValue: Value = normalizeNodeId([
   },
 ])
 
-export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeholder }: NoteEditorProps) => {
+export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeholder, disabled }: NoteEditorProps) => {
   const editor = usePlateEditor({
     plugins: [...EditorKit],
     value: value ?? defaultValue,
@@ -66,7 +68,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
             const markdownApi = editor.getApi(MarkdownPlugin)
             if (markdownApi) {
               try {
-                const markdownString = markdownApi.markdown.serialize()
+                const markdownString = normalizeMarkdownListMarkers(markdownApi.markdown.serialize())
                 console.log('🚀 : NoteEditor : markdownString:', markdownString)
                 onMarkdownChange(markdownString)
               } catch (error) {
@@ -80,7 +82,7 @@ export const NoteEditor = ({ value, markdown, onChange, onMarkdownChange, placeh
       }}
     >
       <EditorContainer>
-        <Editor placeholder={placeholder} variant="default" />
+        <Editor disabled={disabled} placeholder={placeholder} variant="default" />
       </EditorContainer>
     </Plate>
   )

@@ -223,6 +223,7 @@ const CustomLink = ({
 }
 
 export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAreaRef, ...props }) => {
+  console.log('🚀 : MarkdownUI : markdown:', markdown)
   const { resolvedTheme } = useTheme()
 
   // Guard against empty or whitespace-only content
@@ -235,7 +236,7 @@ export const MarkdownUI: FC<MarkdownUIProps> = ({ markdown, className, scrollAre
       {...props}
       className={cn('markdown-content', className)}
       components={{
-        p: (props) => <div {...props} />,
+        // p: (props) => <div {...props} />,
         a: (props) => <CustomLink {...props} scrollAreaRef={scrollAreaRef} />,
         img: (props) => (
           <div className="group relative my-4 inline-block">

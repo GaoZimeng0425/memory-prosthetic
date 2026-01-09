@@ -28,7 +28,7 @@
 
   /* TE Accent Colors - Punchy & Functional */
   --primary: oklch(0.65 0.25 45); /* TE Signature Orange #FF4E00 */
-  --primary-foreground: oklch(99.107% 0.00011 271.152);
+  --primary-foreground: oklch(0.12 0.01 240); /* Deep charcoal for contrast on orange */
   --secondary: oklch(0.9 0.01 240); /* Cool graphite light grey */
   --secondary-foreground: oklch(0.2 0.01 240);
   --muted: oklch(0.92 0.01 240); /* Muted technical grey */
@@ -89,8 +89,7 @@
 
   /* TE Neon Accents - Glowing tech highlights */
   --primary: oklch(0.75 0.28 50); /* Glowing Neon Orange */
-  --primary-foreground: oklch(0.1 0.01 240);
-  /* --primary-foreground: oklch(99.107% 0.00011 271.152); */
+  --primary-foreground: oklch(0.1 0.01 240); /* Deep charcoal for contrast on glowing orange */
 
   /* Secondary - Deep graphite */
   --secondary: oklch(0.2 0.02 240);
@@ -416,6 +415,15 @@
 
   .markdown-content [data-streamdown="table-cell"] {
     @apply px-4 py-2 text-foreground/90;
+  }
+  .markdown-content [data-streamdown="table-cell"] {
+    @apply px-4 py-2 text-foreground/90;
+  }
+
+  .markdown-content ul {
+    li {
+      @apply [&>p]:inline;
+    }
   }
 
   /* Images */

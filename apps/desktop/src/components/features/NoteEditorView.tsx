@@ -21,10 +21,11 @@ import { TypeSelector } from '@/components/features/TypeSelector'
 
 type NoteEditorViewProps = {
   collection: Collection
+  disabled?: boolean
   isEditing: boolean
 }
 
-export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
+export function NoteEditorView({ collection, isEditing, disabled = false }: NoteEditorViewProps) {
   const queryClient = useQueryClient()
   const [title, setTitle] = useState(collection.title)
   const [markdownContent, setMarkdownContent] = useState<string>(collection.content)
@@ -63,6 +64,7 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: collections.keys.all })
+      await queryClient.invalidateQueries({ queryKey: collections.keys.detail(collection.id) })
     },
     onError: (error) => {
       toast.error('保存失败', {
@@ -103,7 +105,12 @@ export function NoteEditorView({ collection, isEditing }: NoteEditorViewProps) {
             </div>
           }
         >
-          <NoteEditor markdown={markdownContent} onMarkdownChange={setMarkdownContent} placeholder="输入笔记内容..." />
+          <NoteEditor
+            disabled={disabled}
+            markdown={markdownContent}
+            onMarkdownChange={setMarkdownContent}
+            placeholder="输入笔记内容..."
+          />
         </Suspense>
       </div>
     </div>

@@ -224,11 +224,13 @@ export const ArticleReader = ({
       </div>
 
       <div className="w-full flex-1 overflow-hidden" ref={webviewContainerRef}>
-        <Activity mode={isNoteEditing ? 'visible' : 'hidden'}>
+        {/* <Activity mode={isNoteEditing ? 'visible' : 'hidden'}> */}
+        {isNoteEditing && (
           <ScrollArea className="h-full min-h-0 max-w-full flex-1">
             <NoteEditorView collection={article} isEditing={isNoteEditing} />
           </ScrollArea>
-        </Activity>
+        )}
+        {/* </Activity> */}
         {/* Content */}
         <Activity mode={!isNoteEditing && viewMode === 'webview' ? 'visible' : 'hidden'}>
           <WebviewView

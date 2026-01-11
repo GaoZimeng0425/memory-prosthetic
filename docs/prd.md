@@ -16,7 +16,7 @@ documentCounts:
   projectDocs: 6
 workflowType: 'prd'
 lastStep: 11
-revision: 3
+revision: 4
 revisionDate: '2025-01-27'
 project_name: 'Memory Prosthetic'
 user_name: 'Gao'
@@ -717,6 +717,48 @@ MCP (Model Context Protocol) 集成允许 AI 助手通过 MCP 协议调用应用
 - **FR325**: MCP 端点使用官方 rmcp SDK 实现协议标准接口
 - **FR326**: MCP 端点与现有 HTTP Server 集成，使用同一端口和路由系统
 - **FR327**: AI 助手可以通过 URL `http://127.0.0.1:21890/mcp` 连接，无需本地文件配置
+
+#### MCP 工具扩展 (MCP Tools Extension)
+
+MCP 工具扩展允许 AI 助手通过自然语言调用应用的更多功能，实现完整的知识库管理能力。
+
+##### 核心功能工具 (P0)
+
+- **FR328**: MCP 端点可以实现 `collect_content` 工具，允许 AI 助手通过 URL 或直接内容收集网页到知识库
+- **FR329**: MCP 端点可以实现 `list_collections` 工具，允许 AI 助手列出已收集的内容，支持按收藏夹、标签、状态筛选
+- **FR330**: MCP 端点可以实现 `get_collection` 工具，允许 AI 助手获取特定内容的详细信息（标题、内容、标签等）
+- **FR331**: MCP 端点可以支持自然语言指令解析，将用户指令转换为工具参数（如"搜索 react 收藏夹" → `{ query: "react", favorite_name: "react" }`）
+- **FR332**: MCP 端点可以在 `collect_content` 工具中支持指定目标收藏夹和标签
+- **FR333**: MCP 端点可以在 `collect_content` 工具中支持 URL 自动提取和直接内容两种方式
+
+##### 管理功能工具 (P1)
+
+- **FR334**: MCP 端点可以实现 `list_tags` 工具，允许 AI 助手列出所有标签
+- **FR335**: MCP 端点可以实现 `create_tag` 工具，允许 AI 助手创建新标签
+- **FR336**: MCP 端点可以实现 `add_tags_to_collection` 工具，允许 AI 助手为内容添加标签
+- **FR337**: MCP 端点可以实现 `remove_tag_from_collection` 工具，允许 AI 助手从内容移除标签
+- **FR338**: MCP 端点可以实现 `list_favorites` 工具，允许 AI 助手列出所有收藏夹
+- **FR339**: MCP 端点可以实现 `create_favorite` 工具，允许 AI 助手创建新收藏夹
+- **FR340**: MCP 端点可以实现 `move_collection_to_favorite` 工具，允许 AI 助手将内容移动到指定收藏夹
+- **FR341**: MCP 端点可以实现 `update_collection` 工具，允许 AI 助手更新已收集的内容（修改标题、添加备注等）
+- **FR342**: MCP 端点可以实现 `archive_collection` 工具，允许 AI 助手归档内容
+- **FR343**: MCP 端点可以实现 `restore_collection` 工具，允许 AI 助手恢复归档内容
+
+##### 高级功能工具 (P2)
+
+- **FR344**: MCP 端点可以实现 `query_knowledge_graph` 工具，允许 AI 助手查询知识图谱，发现内容之间的关联（需要知识图谱功能已实现）
+- **FR345**: MCP 端点可以实现 `get_statistics` 工具，允许 AI 助手获取知识库的统计信息（总文章数、收藏夹数、标签数等）
+- **FR346**: MCP 端点可以实现 `analyze_content` 工具，允许 AI 助手触发 AI 内容分析（生成摘要、标签、分类等，需要 AI 分类功能已实现）
+- **FR347**: MCP 端点可以支持工具的统一错误处理，返回友好的错误信息（应用未运行、无效输入、未找到等）
+- **FR348**: MCP 端点可以在工具执行时记录操作日志，便于调试和审计
+
+#### MCP 工具实现优先级
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | FR328-FR333（核心工具） | 搜索、收集、查询、详情 - 让 AI 助手能够基本使用知识库 |
+| **P1** | FR334-FR343（管理工具） | 标签管理、收藏夹管理、内容更新 - 让 AI 助手能够帮助组织知识库 |
+| **P2** | FR344-FR348（高级工具） | 知识图谱查询、统计分析、AI 分析 - 增强 AI 助手的能力 |
 
 ### 用户设置 (User Settings)
 

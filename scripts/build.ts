@@ -389,19 +389,6 @@ const main = async () => {
   // 构建项目
   const results: BuildResult[] = []
 
-  if (project === 'desktop' || project === 'all') {
-    const s = spinner()
-    s.start('构建 Desktop 应用...')
-    const result = await buildDesktop()
-    result.version = version?.split(' / ')[0] || undefined
-    results.push(result)
-    if (result.success) {
-      s.stop(`✅ Desktop 构建完成 (${result.artifacts.length} 个产物)`)
-    } else {
-      s.stop(`❌ Desktop 构建失败: ${result.error}`)
-    }
-  }
-
   if (project === 'browser-extension' || project === 'all') {
     const s = spinner()
     s.start('构建 Browser Extension...')
@@ -412,6 +399,19 @@ const main = async () => {
       s.stop(`✅ Browser Extension 构建完成 (${result.artifacts.length} 个产物)`)
     } else {
       s.stop(`❌ Browser Extension 构建失败: ${result.error}`)
+    }
+  }
+
+  if (project === 'desktop' || project === 'all') {
+    const s = spinner()
+    s.start('构建 Desktop 应用...')
+    const result = await buildDesktop()
+    result.version = version?.split(' / ')[0] || undefined
+    results.push(result)
+    if (result.success) {
+      s.stop(`✅ Desktop 构建完成 (${result.artifacts.length} 个产物)`)
+    } else {
+      s.stop(`❌ Desktop 构建失败: ${result.error}`)
     }
   }
 

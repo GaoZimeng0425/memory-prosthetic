@@ -12,8 +12,8 @@
   "dependencies": {
     "@antv/g6": "^5.0.51",
     "@tauri-apps/api": "^2.9.1",
-    "@tauri-apps/plugin-opener": "^2.5.2",
-    "zustand": "^5.0.9"
+    "@tauri-apps/plugin-opener": "^2.5.3",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.9.6"

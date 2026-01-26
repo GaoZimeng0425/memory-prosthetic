@@ -32,3 +32,5 @@ dist-ssr
 *routeTree.gen.ts
 
 .claude*
+
+apps/SlideNote

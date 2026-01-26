@@ -372,7 +372,7 @@ export function GeneralSettings({ settings, onSettingsChange }: GeneralSettingsP
             <p className="font-medium text-sm">源代码</p>
             <a
               className="flex items-center gap-1 text-primary text-sm hover:underline"
-              href="https://github.com/memory-prosthetic"
+              href="https://github.com/GaoZimeng0425/memory-prosthetic"
               rel="noopener noreferrer"
               target="_blank"
             >

@@ -1,9 +1,14 @@
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import react from '@vitejs/plugin-react'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { defineConfig } from 'vite'
+import { visualizer } from 'rollup-plugin-visualizer'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const host = process.env.TAURI_DEV_HOST
 
@@ -35,6 +40,12 @@ export default defineConfig({
       },
     }),
     tailwindcss(),
+    visualizer({
+      filename: path.resolve(__dirname, '../../.output/desktop-stats.html'),
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+    }),
   ],
   clearScreen: false,
   server: {

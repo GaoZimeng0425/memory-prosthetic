@@ -13,7 +13,6 @@ import {
   useTableElement,
   useTableMergeState,
 } from '@platejs/table/react'
-import type * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
 import { PopoverAnchor } from '@radix-ui/react-popover'
 import { cva } from 'class-variance-authority'
 import {
@@ -250,7 +249,7 @@ function TableFloatingToolbar({ children, ...props }: React.ComponentProps<typeo
   )
 }
 
-function TableBordersDropdownMenuContent(props: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+function TableBordersDropdownMenuContent(props: React.ComponentProps<typeof DropdownMenuContent>) {
   const editor = useEditorRef()
   const {
     getOnSelectTableBorder,
@@ -498,7 +497,7 @@ export function TableCellElement({
         >
           {!readOnly && (
             <>
-              <ResizeHandle {...rightProps} className="-top-2 -right-1 h-[calc(100%_+_8px)] w-2" data-col={colIndex} />
+              <ResizeHandle {...rightProps} className="-top-2 -right-1 h-[calc(100%+8px)] w-2" data-col={colIndex} />
               <ResizeHandle {...bottomProps} className="-bottom-1 h-2" />
               {!hiddenLeft && (
                 <ResizeHandle

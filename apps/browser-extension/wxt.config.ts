@@ -62,7 +62,7 @@ export default defineConfig({
   srcDir: 'src',
   analysis: {
     enabled: true,
-    outputFile: '.wxt/analysis/index.html',
+    outputFile: '../../.output/browser-extension-analysis.html',
   },
   imports: {
     presets: ['react'],

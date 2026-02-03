@@ -9,6 +9,7 @@ import { ErrorCode, WebClient } from '@slack/web-api'
 import chalk from 'chalk'
 import { Command } from 'commander'
 import { execa } from 'execa'
+import open from 'open'
 
 // Load .env file (Bun supports .env natively)
 // Ensure .env is loaded before accessing process.env
@@ -27,6 +28,7 @@ interface BuildResult {
   artifacts: string[]
   error?: string
   duration: number
+  reportPath?: string
 }
 
 /**
@@ -114,7 +116,7 @@ const upgradeVersion = async (project: ProjectType): Promise<string | undefined>
 /**
  * 构建 Desktop 应用
  */
-const buildDesktop = async (): Promise<BuildResult> => {
+const buildDesktop = async (analyze: boolean): Promise<BuildResult> => {
   const startTime = Date.now()
   const artifacts: string[] = []
 
@@ -138,12 +140,23 @@ const buildDesktop = async (): Promise<BuildResult> => {
     }
 
     const duration = Date.now() - startTime
-    return {
+    const result: BuildResult = {
       project: 'desktop',
       success: true,
       artifacts,
       duration,
     }
+
+    // 如果启用分析，检查并打开报告
+    if (analyze) {
+      const reportPath = join(outputDir, 'desktop-stats.html')
+      if (existsSync(reportPath)) {
+        result.reportPath = reportPath
+        await open(reportPath)
+      }
+    }
+
+    return result
   } catch (error) {
     const duration = Date.now() - startTime
     return {
@@ -159,7 +172,7 @@ const buildDesktop = async (): Promise<BuildResult> => {
 /**
  * 构建 Browser Extension
  */
-const buildBrowserExtension = async (): Promise<BuildResult> => {
+const buildBrowserExtension = async (analyze: boolean): Promise<BuildResult> => {
   const startTime = Date.now()
   const artifacts: string[] = []
 
@@ -188,12 +201,23 @@ const buildBrowserExtension = async (): Promise<BuildResult> => {
     }
 
     const duration = Date.now() - startTime
-    return {
+    const result: BuildResult = {
       project: 'browser-extension',
       success: true,
       artifacts,
       duration,
     }
+
+    // 如果启用分析，检查并打开报告
+    if (analyze) {
+      const reportPath = join(outputDir, 'browser-extension-analysis.html')
+      if (existsSync(reportPath)) {
+        result.reportPath = reportPath
+        await open(reportPath)
+      }
+    }
+
+    return result
   } catch (error) {
     const duration = Date.now() - startTime
     return {
@@ -249,6 +273,9 @@ const sendSlackNotification = async (results: BuildResult[]): Promise<void> => {
       }
       if (result.artifacts.length > 0) {
         details.push(`   产物: ${result.artifacts.join(', ')}`)
+      }
+      if (result.reportPath) {
+        details.push(`   📊 分析报告已生成`)
       }
       if (result.error) {
         details.push(`   错误: ${result.error}`)
@@ -325,6 +352,7 @@ const main = async () => {
     .description('构建项目')
     .option('-p, --project <type>', '项目类型: desktop, browser-extension, all')
     .option('-v, --version', '升级版本号')
+    .option('-a, --analyze', '生成并打开打包分析报告')
     .option('--no-slack', '不发送 Slack 通知')
     .parse()
 
@@ -372,6 +400,22 @@ const main = async () => {
     shouldUpgradeVersion = confirmed
   }
 
+  // 选择是否生成分析报告
+  let shouldAnalyze = options.analyze
+  if (shouldAnalyze === undefined) {
+    const confirmed = await confirm({
+      message: '是否生成打包分析报告？',
+      initialValue: false,
+    })
+
+    if (isCancel(confirmed)) {
+      cancel('操作已取消')
+      process.exit(0)
+    }
+
+    shouldAnalyze = confirmed
+  }
+
   // 升级版本号
   let version: string | undefined
   if (shouldUpgradeVersion) {
@@ -392,11 +436,13 @@ const main = async () => {
   if (project === 'browser-extension' || project === 'all') {
     const s = spinner()
     s.start('构建 Browser Extension...')
-    const result = await buildBrowserExtension()
+    const result = await buildBrowserExtension(shouldAnalyze)
     result.version = project === 'all' ? version?.split(' / ')[1] : version
     results.push(result)
     if (result.success) {
-      s.stop(`✅ Browser Extension 构建完成 (${result.artifacts.length} 个产物)`)
+      const artifactInfo = `${result.artifacts.length} 个产物`
+      const analyzeInfo = result.reportPath ? ' + 分析报告已打开' : ''
+      s.stop(`✅ Browser Extension 构建完成 (${artifactInfo}${analyzeInfo})`)
     } else {
       s.stop(`❌ Browser Extension 构建失败: ${result.error}`)
     }
@@ -405,11 +451,13 @@ const main = async () => {
   if (project === 'desktop' || project === 'all') {
     const s = spinner()
     s.start('构建 Desktop 应用...')
-    const result = await buildDesktop()
+    const result = await buildDesktop(shouldAnalyze)
     result.version = version?.split(' / ')[0] || undefined
     results.push(result)
     if (result.success) {
-      s.stop(`✅ Desktop 构建完成 (${result.artifacts.length} 个产物)`)
+      const artifactInfo = `${result.artifacts.length} 个产物`
+      const analyzeInfo = result.reportPath ? ' + 分析报告已打开' : ''
+      s.stop(`✅ Desktop 构建完成 (${artifactInfo}${analyzeInfo})`)
     } else {
       s.stop(`❌ Desktop 构建失败: ${result.error}`)
     }
@@ -432,6 +480,9 @@ const main = async () => {
     }
     if (result.artifacts.length > 0) {
       console.log(chalk.gray(`    产物: ${result.artifacts.join(', ')}`))
+    }
+    if (result.reportPath) {
+      console.log(chalk.gray(`    📊 分析报告: ${result.reportPath}`))
     }
     if (result.error) {
       console.log(chalk.red(`    错误: ${result.error}`))

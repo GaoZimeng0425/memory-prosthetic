@@ -8,8 +8,10 @@ import { KEYS } from 'platejs'
 import type { PlateElementProps } from 'platejs/react'
 import { PlateElement, useEditorPlugin, withHOC } from 'platejs/react'
 import { useFilePicker } from 'use-file-picker'
+import type { SelectedFilesOrErrors } from 'use-file-picker/types'
 
 import { useUploadFile } from '@memory-prosthetic/editor/hooks/use-upload-file'
+import { fileListFromFiles } from '@memory-prosthetic/editor/utils/file-list'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
 const CONTENT: Record<
@@ -62,14 +64,17 @@ export const PlaceholderElement = withHOC(
     const { openFilePicker } = useFilePicker({
       accept: currentContent.accept,
       multiple: true,
-      onFilesSelected: ({ plainFiles: updatedFiles }) => {
+      readFilesContent: false,
+      onFilesSelected: (data: SelectedFilesOrErrors<undefined, unknown>) => {
+        if (!('plainFiles' in data) || !data.plainFiles?.length) return
+        const updatedFiles = data.plainFiles
         const firstFile = updatedFiles[0]
         const restFiles = updatedFiles.slice(1)
 
         replaceCurrentPlaceholder(firstFile)
 
         if (restFiles.length > 0) {
-          editor.getTransforms(PlaceholderPlugin).insert.media(restFiles)
+          editor.getTransforms(PlaceholderPlugin).insert.media(fileListFromFiles(restFiles))
         }
       },
     })

@@ -7,6 +7,7 @@ import { ArrowUpToLineIcon } from 'lucide-react'
 import { useEditorRef } from 'platejs/react'
 import { getEditorDOMFromHtmlString } from 'platejs/static'
 import { useFilePicker } from 'use-file-picker'
+import type { SelectedFilesOrErrors } from 'use-file-picker/types'
 
 import {
   DropdownMenu,
@@ -43,8 +44,10 @@ export function ImportToolbarButton(props: DropdownMenuProps) {
   const { openFilePicker: openMdFilePicker } = useFilePicker({
     accept: ['.md', '.mdx'],
     multiple: false,
-    onFilesSelected: async ({ plainFiles }) => {
-      const text = await plainFiles[0].text()
+    readFilesContent: false,
+    onFilesSelected: async (data: SelectedFilesOrErrors<undefined, unknown>) => {
+      if (!('plainFiles' in data) || !data.plainFiles?.length) return
+      const text = await data.plainFiles[0].text()
 
       const nodes = getFileNodes(text, 'markdown')
 
@@ -55,8 +58,10 @@ export function ImportToolbarButton(props: DropdownMenuProps) {
   const { openFilePicker: openHtmlFilePicker } = useFilePicker({
     accept: ['text/html'],
     multiple: false,
-    onFilesSelected: async ({ plainFiles }) => {
-      const text = await plainFiles[0].text()
+    readFilesContent: false,
+    onFilesSelected: async (data: SelectedFilesOrErrors<undefined, unknown>) => {
+      if (!('plainFiles' in data) || !data.plainFiles?.length) return
+      const text = await data.plainFiles[0].text()
 
       const nodes = getFileNodes(text, 'html')
 

@@ -8,6 +8,7 @@ import { isUrl, KEYS } from 'platejs'
 import { useEditorRef } from 'platejs/react'
 import { toast } from 'sonner'
 import { useFilePicker } from 'use-file-picker'
+import type { SelectedFilesOrErrors } from 'use-file-picker/types'
 
 import {
   AlertDialog,
@@ -27,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { Input } from '@memory-prosthetic/ui/components/ui/input'
+import { fileListFromFiles } from '@memory-prosthetic/editor/utils/file-list'
 import { ToolbarSplitButton, ToolbarSplitButtonPrimary, ToolbarSplitButtonSecondary } from './toolbar'
 
 const MEDIA_CONFIG: Record<
@@ -74,8 +76,11 @@ export function MediaToolbarButton({ nodeType, ...props }: DropdownMenuProps & {
   const { openFilePicker } = useFilePicker({
     accept: currentConfig.accept,
     multiple: true,
-    onFilesSelected: ({ plainFiles: updatedFiles }) => {
-      editor.getTransforms(PlaceholderPlugin).insert.media(updatedFiles)
+    readFilesContent: false,
+    onFilesSelected: (data: SelectedFilesOrErrors<undefined, unknown>) => {
+      if (!('plainFiles' in data) || !data.plainFiles?.length) return
+      const fileList = fileListFromFiles(data.plainFiles)
+      editor.getTransforms(PlaceholderPlugin).insert.media(fileList)
     },
   })
 

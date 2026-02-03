@@ -58,6 +58,10 @@ const ENDPOINT_COMMANDS: Record<string, string> = {
 
   // Search
   'POST /api/search': 'search',
+
+  // Sync
+  'GET /api/sync': 'get_sync',
+  'GET /api/favorites/': 'get_favorite_collections',
 }
 
 /**

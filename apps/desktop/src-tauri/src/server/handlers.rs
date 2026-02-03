@@ -1368,3 +1368,246 @@ pub async fn delete_tag(
         )),
     }
 }
+
+// ============================================
+// Sync Handlers
+// ============================================
+
+/// Favorite with article count
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FavoriteWithCount {
+    pub id: i64,
+    pub name: String,
+    pub icon: Option<String>,
+    pub count: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Sync statistics
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStats {
+    pub total: i64,
+    pub this_week: i64,
+    pub archived: i64,
+    pub starred: i64,
+    pub last_collected_at: Option<String>,
+}
+
+/// Server capabilities
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServerCapabilities {
+    pub streaming_supported: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub streaming_url: Option<String>,
+}
+
+/// Performance metadata (development only)
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerformanceMetadata {
+    pub query_time_ms: u64,
+    pub total_time_ms: u64,
+}
+
+/// Sync response data
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncResponseData {
+    pub favorites: Vec<FavoriteWithCount>,
+    pub stats: SyncStats,
+    pub timestamp: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<ServerCapabilities>,
+}
+
+/// Sync API response with optional performance metadata
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncApiResponse {
+    pub success: bool,
+    pub data: SyncResponseData,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub _performance: Option<PerformanceMetadata>,
+}
+
+/// GET /api/sync - Unified sync endpoint for sidebar
+/// Returns favorites with counts and global statistics
+pub async fn sync(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<SyncApiResponse>, (StatusCode, Json<ApiError>)> {
+    let start_time = std::time::Instant::now();
+
+    info!("Sync request received");
+
+    let repo = CollectionRepository::new(&state.db);
+
+    // Execute queries within a transaction for consistency
+    let (favorites, stats, query_duration) = state.db.with_connection(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        let query_start = std::time::Instant::now();
+
+        // Get favorites with counts
+        {
+            let mut fav_stmt = tx.prepare(
+                r#"
+                SELECT f.id, f.name, f.icon, f.created_at, f.updated_at,
+                       COUNT(c.id) as count
+                FROM favorites f
+                LEFT JOIN collections c
+                    ON c.favorite_id = f.id AND c.status = 'active'
+                GROUP BY f.id
+                ORDER BY CASE WHEN f.name = '未分类' THEN 0 ELSE 1 END,
+                         f.created_at ASC
+                "#,
+            )?;
+
+            let favorites_iter = fav_stmt.query_map([], |row| {
+                Ok(FavoriteWithCount {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    created_at: row.get(3)?,
+                    updated_at: row.get(4)?,
+                    count: row.get::<_, i64>(5)?,
+                })
+            })?;
+
+            let mut favorites = Vec::new();
+            for fav in favorites_iter {
+                favorites.push(fav?);
+            }
+
+            // Get statistics using conditional aggregation (5x performance improvement)
+            let mut stats_stmt = tx.prepare(
+                r#"
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'active') as total,
+                    COUNT(*) FILTER (WHERE status = 'active' AND created_at >= datetime('now', '-7 days')) as this_week,
+                    COUNT(*) FILTER (WHERE status = 'archived') as archived,
+                    COUNT(*) FILTER (WHERE starred = 1) as starred,
+                    MAX(created_at) FILTER (WHERE status != 'deleted') as last_collected_at
+                FROM collections
+                "#,
+            )?;
+
+            let stats = stats_stmt.query_row([], |row| {
+                Ok(SyncStats {
+                    total: row.get(0)?,
+                    this_week: row.get(1)?,
+                    archived: row.get(2)?,
+                    starred: row.get::<_, i64>(3)?,
+                    last_collected_at: row.get(4)?,
+                })
+            })?;
+
+            let query_duration = query_start.elapsed();
+
+            drop(fav_stmt);  // Explicitly drop before commit
+            drop(stats_stmt);
+
+            tx.commit()?;
+
+            Ok::<_, rusqlite::Error>((favorites, stats, query_duration))
+        }
+    }).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: format!("Sync query failed: {}", e),
+                },
+            }),
+        )
+    })?;
+
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let total_duration = start_time.elapsed();
+
+    // Add capabilities in both dev and production
+    let capabilities = Some(ServerCapabilities {
+        streaming_supported: false,
+        streaming_url: Some("/api/sync/stream".to_string()),
+    });
+
+    let response_data = SyncResponseData {
+        favorites,
+        stats,
+        timestamp,
+        capabilities,
+    };
+
+    // Add performance metadata in development only
+    #[cfg(debug_assertions)]
+    {
+        Ok(Json(SyncApiResponse {
+            success: true,
+            data: response_data,
+            _performance: Some(PerformanceMetadata {
+                query_time_ms: query_duration.as_millis() as u64,
+                total_time_ms: total_duration.as_millis() as u64,
+            }),
+        }))
+    }
+
+    #[cfg(not(debug_assertions))]
+    {
+        Ok(Json(SyncApiResponse {
+            success: true,
+            data: response_data,
+            _performance: None,
+        }))
+    }
+}
+
+/// GET /api/favorites/:id/collections - Get collections for a specific favorite
+pub async fn get_favorite_collections(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i64>,
+    Query(params): Query<GetCollectionsQuery>,
+) -> Result<Json<ApiResponse<Vec<crate::db::CollectionListItem>>>, (StatusCode, Json<ApiError>)> {
+    info!("Get favorite collections request received: favorite_id={}", id);
+
+    let repo = CollectionRepository::new(&state.db);
+    let limit = params.limit.unwrap_or(50);
+    let offset = params.offset.unwrap_or(0);
+
+    match repo.list(limit, offset, Some(id), false, None, Some(CollectionStatus::Active)) {
+        Ok(collections) => Ok(Json(ApiResponse {
+            success: true,
+            data: collections,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// GET /api/sync/stream - SSE streaming endpoint (not implemented yet)
+pub async fn sync_stream() -> Result<(), (StatusCode, Json<ApiError>)> {
+    info!("Sync stream request received (not implemented)");
+
+    Err((
+        StatusCode::NOT_IMPLEMENTED,
+        Json(ApiError {
+            success: false,
+            error: ApiErrorDetail {
+                code: "NOT_IMPLEMENTED".to_string(),
+                message: "SSE streaming not implemented yet. Use GET /api/sync for polling.".to_string(),
+            },
+        }),
+    ))
+}

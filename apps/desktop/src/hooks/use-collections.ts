@@ -1,7 +1,34 @@
 /**
- * Collections Hook
+ * Collections Hook - Main Content Area Data Fetching
  *
- * Fetches and manages collection data using react-query.
+ * @deprecated For sidebar scenarios, use {@link useSidebarSync} instead.
+ *
+ * **Purpose:**
+ * - Main content area: Fetch article lists with filtering, pagination, and mutations
+ * - Mutation operations: setFavorite, toggleStar, archive, restore, delete, permanentlyDelete
+ *
+ * **When to use:**
+ * - ✅ Main content area (article lists, filtering, pagination)
+ * - ✅ Mutation operations (archive, delete, star, etc.)
+ * - ❌ Sidebar scenarios (use {@link useSidebarSync} instead for favorites list + statistics)
+ *
+ * **Sidebar scenarios:**
+ * For displaying favorites list with article counts and global statistics,
+ * use `useSidebarSync()` which is optimized for sidebar data fetching.
+ *
+ * @example
+ * ```tsx
+ * // ❌ Wrong for sidebar:
+ * const { collections, stats } = useCollections() // Returns articles, not favorites
+ *
+ * // ✅ Correct for sidebar:
+ * const { favorites, stats } = useSidebarSync() // Returns favorites with counts
+ *
+ * // ✅ Correct for main content area:
+ * const { collections, archive, delete } = useCollections({ favoriteId: 1 })
+ * ```
+ *
+ * @see {@link useSidebarSync} for sidebar-optimized data fetching
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

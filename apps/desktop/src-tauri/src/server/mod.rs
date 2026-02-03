@@ -4,7 +4,7 @@
 //! with the desktop app.
 
 mod routes;
-mod handlers;
+pub mod handlers;  // Make handlers public for Tauri commands to access types
 mod mcp;
 
 pub use routes::create_router;

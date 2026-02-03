@@ -1209,6 +1209,134 @@ fn get_favorite(
 }
 
 // ============================================
+// Sync Commands
+// ============================================
+
+/// Sync response types (reusing from handlers)
+use server::handlers::{SyncResponseData, FavoriteWithCount, SyncStats, ServerCapabilities};
+
+/// Get sync data (favorites with counts and statistics)
+#[tauri::command]
+fn get_sync(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<SyncResponseData>, CommandError> {
+    use crate::db::CollectionRepository;
+    use std::time::Instant;
+
+    let start_time = Instant::now();
+    let repo = CollectionRepository::new(&state.db);
+
+    // Execute queries within a transaction for consistency
+    let (favorites, stats) = state.db.with_connection(|conn| {
+        let tx = conn.unchecked_transaction()?;
+
+        // Get favorites with counts
+        {
+            let mut fav_stmt = tx.prepare(
+                r#"
+                SELECT f.id, f.name, f.icon, f.created_at, f.updated_at,
+                       COUNT(c.id) as count
+                FROM favorites f
+                LEFT JOIN collections c
+                    ON c.favorite_id = f.id AND c.status = 'active'
+                GROUP BY f.id
+                ORDER BY CASE WHEN f.name = '未分类' THEN 0 ELSE 1 END,
+                         f.created_at ASC
+                "#,
+            )?;
+
+            let favorites_iter = fav_stmt.query_map([], |row| {
+                Ok(FavoriteWithCount {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    icon: row.get(2)?,
+                    created_at: row.get(3)?,
+                    updated_at: row.get(4)?,
+                    count: row.get::<_, i64>(5)?,
+                })
+            })?;
+
+            let mut favorites = Vec::new();
+            for fav in favorites_iter {
+                favorites.push(fav?);
+            }
+
+            // Get statistics using conditional aggregation
+            let mut stats_stmt = tx.prepare(
+                r#"
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'active') as total,
+                    COUNT(*) FILTER (WHERE status = 'active' AND created_at >= datetime('now', '-7 days')) as this_week,
+                    COUNT(*) FILTER (WHERE status = 'archived') as archived,
+                    COUNT(*) FILTER (WHERE starred = 1) as starred,
+                    MAX(created_at) FILTER (WHERE status != 'deleted') as last_collected_at
+                FROM collections
+                "#,
+            )?;
+
+            let stats = stats_stmt.query_row([], |row| {
+                Ok(SyncStats {
+                    total: row.get(0)?,
+                    this_week: row.get(1)?,
+                    archived: row.get(2)?,
+                    starred: row.get::<_, i64>(3)?,
+                    last_collected_at: row.get(4)?,
+                })
+            })?;
+
+            drop(fav_stmt);  // Explicitly drop before commit
+            drop(stats_stmt);
+
+            tx.commit()?;
+            Ok::<_, rusqlite::Error>((favorites, stats))
+        }
+    })?;
+
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let total_duration = start_time.elapsed();
+
+    // Add capabilities
+    let capabilities = Some(ServerCapabilities {
+        streaming_supported: false,
+        streaming_url: Some("/api/sync/stream".to_string()),
+    });
+
+    let response_data = SyncResponseData {
+        favorites,
+        stats,
+        timestamp,
+        capabilities,
+    };
+
+    // Log performance in development
+    #[cfg(debug_assertions)]
+    {
+        info!("Sync completed in {}ms", total_duration.as_millis());
+    }
+
+    Ok(CommandResult { data: response_data })
+}
+
+/// Get collections for a specific favorite
+#[tauri::command]
+fn get_favorite_collections(
+    state: State<'_, Arc<AppState>>,
+    id: i64,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<CommandResult<Vec<CollectionListItem>>, CommandError> {
+    use crate::db::{CollectionRepository, CollectionStatus};
+
+    let repo = CollectionRepository::new(&state.db);
+    let limit = limit.unwrap_or(50);
+    let offset = offset.unwrap_or(0);
+
+    let collections = repo.list(limit, offset, Some(id), false, None, Some(CollectionStatus::Active))?;
+
+    Ok(CommandResult { data: collections })
+}
+
+// ============================================
 // Tags Commands
 // ============================================
 
@@ -2314,6 +2442,9 @@ pub fn run() {
             set_auto_start,
             update_theme,
             update_auto_cleanup_deleted,
+            // Sync
+            get_sync,
+            get_favorite_collections,
             // Favorites
             create_favorite,
             update_favorite,

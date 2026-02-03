@@ -26,6 +26,9 @@ pub fn create_router(state: Arc<AppState>, uploads_dir: PathBuf) -> Router {
         .route("/api/collect", post(handlers::collect))
         // Semantic search
         .route("/api/search", post(handlers::search))
+        // Sync API (optimized for sidebar)
+        .route("/api/sync", get(handlers::sync))
+        .route("/api/sync/stream", get(handlers::sync_stream))
         // Collections
         .route("/api/collections", get(handlers::get_collections))
         .route("/api/collections", post(handlers::create_collection))
@@ -40,6 +43,7 @@ pub fn create_router(state: Arc<AppState>, uploads_dir: PathBuf) -> Router {
         .route("/api/favorites/{id}", get(handlers::get_favorite))
         .route("/api/favorites/{id}", put(handlers::update_favorite))
         .route("/api/favorites/{id}", delete(handlers::delete_favorite))
+        .route("/api/favorites/{id}/collections", get(handlers::get_favorite_collections))
         // Tags
         .route("/api/tags", get(handlers::get_tags))
         .route("/api/tags", post(handlers::create_tag))

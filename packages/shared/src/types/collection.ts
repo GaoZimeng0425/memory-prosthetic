@@ -125,3 +125,67 @@ export type Tag = {
   createdAt: string
   updatedAt: string
 }
+
+/**
+ * Favorite with article count
+ * Used in sidebar sync API to display folders with their collection counts
+ */
+export type FavoriteWithCount = {
+  id: number
+  name: string
+  icon?: string
+  count: number // Total number of collections in this favorite
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Sync statistics
+ * Global statistics for the sync API response
+ */
+export type SyncStats = {
+  total: number // Total active collections
+  thisWeek: number // Collections created this week
+  archived: number // Archived collections
+  starred: number // Starred collections
+  lastCollectedAt?: string // ISO 8601 timestamp of last collection
+}
+
+/**
+ * Server capabilities
+ * Used for capability discovery in the sync API
+ */
+export type ServerCapabilities = {
+  streamingSupported: boolean
+  streamingUrl?: string | null
+}
+
+/**
+ * Performance metadata
+ * Query performance metrics (development environment only)
+ */
+export type PerformanceMetadata = {
+  queryTimeMs: number
+  totalTimeMs: number
+}
+
+/**
+ * Sync API response
+ * Unified response for sidebar synchronization
+ */
+export type SyncResponse = {
+  favorites: FavoriteWithCount[]
+  stats: SyncStats
+  timestamp: string // ISO 8601 timestamp
+  capabilities?: ServerCapabilities // Optional, only in development
+}
+
+/**
+ * Sync API response wrapper
+ * Extends ApiResponse with performance metadata for development
+ */
+export type SyncApiResponse = {
+  success: boolean
+  data: SyncResponse
+  _performance?: PerformanceMetadata // Development environment only
+}

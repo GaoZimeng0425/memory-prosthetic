@@ -233,5 +233,23 @@
         "noReactSpecificProps": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "warn",
+              "options": {
+                "paths": {
+                  "@/hooks/use-collections": "侧边栏组件请使用 useSidebarSync 代替。参考: docs/hooks-selection-guide.md"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

@@ -44,6 +44,8 @@ export type {
   CreateCollectionInput,
   EmbeddingStatus,
   Favorite,
+  FavoriteWithCount,
+  SyncStats,
   Tag,
   UpdateCollectionInput,
 } from './collection'

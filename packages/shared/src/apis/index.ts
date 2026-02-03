@@ -19,6 +19,7 @@ export {
   type TagsApi,
   type UpdateTagInput,
 } from './tags'
+export { type SyncApi, createSyncApi } from './sync'
 
 // Convenience function to create all APIs at once
 import type { RequestAdapter } from '../request/adapter'
@@ -26,6 +27,7 @@ import { createCollectionsApi } from './collections'
 import { createFavoritesApi } from './favorites'
 import { createHealthApi } from './health'
 import { createSearchApi } from './search'
+import { createSyncApi } from './sync'
 import { createTagsApi } from './tags'
 
 export interface ApiBundle {
@@ -34,6 +36,7 @@ export interface ApiBundle {
   favorites: ReturnType<typeof createFavoritesApi>
   tags: ReturnType<typeof createTagsApi>
   search: ReturnType<typeof createSearchApi>
+  sync: ReturnType<typeof createSyncApi>
 }
 
 /**
@@ -46,5 +49,6 @@ export function createApis(adapter: RequestAdapter): ApiBundle {
     favorites: createFavoritesApi(adapter),
     tags: createTagsApi(adapter),
     search: createSearchApi(adapter),
+    sync: createSyncApi(adapter),
   }
 }

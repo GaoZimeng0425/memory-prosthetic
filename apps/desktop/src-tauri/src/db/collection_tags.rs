@@ -142,9 +142,10 @@ mod tests {
 
         // Create a collection
         let coll_input = CreateCollection {
-            url: "https://example.com".to_string(),
+            url: Some("https://example.com".to_string()),
             title: "Test".to_string(),
             content: "Content".to_string(),
+            r#type: Some("网页".to_string()),
         };
         let coll_id = coll_repo.upsert(&coll_input).unwrap();
 
@@ -180,9 +181,10 @@ mod tests {
         // Create collection and tag
         let coll_id = coll_repo
             .upsert(&CreateCollection {
-                url: "https://example.com".to_string(),
+                url: Some("https://example.com".to_string()),
                 title: "Test".to_string(),
                 content: "Content".to_string(),
+                r#type: Some("网页".to_string()),
             })
             .unwrap();
 

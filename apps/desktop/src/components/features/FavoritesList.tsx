@@ -2,13 +2,14 @@
  * Favorites List Component
  *
  * Displays a list of favorites (folders) with expand/collapse functionality.
+ * Optimized to use useSidebarSync for favorites with counts.
  */
 import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Folder, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import type { Favorite } from '@memory-prosthetic/shared'
+import type { FavoriteWithCount } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
   ContextMenu,
@@ -18,7 +19,7 @@ import {
 } from '@memory-prosthetic/ui/components/ui/context-menu'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { EditFavoriteDialog } from '@/components/features/EditFavoriteDialog'
-import { useCollections } from '@/hooks/use-collections'
+import { useSidebarSync } from '@/hooks/use-sidebar-sync'
 import { useFavorites } from '@/hooks/use-favorites'
 
 type FavoritesListProps = {
@@ -29,7 +30,8 @@ type FavoritesListProps = {
 
 export const FavoritesList = ({ isCollapsed, onCreateClick, onFavoriteChange }: FavoritesListProps) => {
   const [isExpanded, setIsExpanded] = useState(true)
-  const { favorites, isLoading } = useFavorites()
+  // Use useSidebarSync for optimized favorites with counts data
+  const { favorites, isLoading } = useSidebarSync()
   const params = useParams({ strict: false })
   const activeFavoriteId = params.favoriteId ? Number(params.favoriteId) : null
 
@@ -91,18 +93,17 @@ export const FavoritesList = ({ isCollapsed, onCreateClick, onFavoriteChange }: 
 }
 
 interface FavoriteItemWithCountProps {
-  favorite: Favorite
+  favorite: FavoriteWithCount
   active: boolean
   onFavoriteChange?: () => void
 }
 
 function FavoriteItemWithCount({ favorite, active, onFavoriteChange }: FavoriteItemWithCountProps) {
-  // Use favoriteId for all favorites (including "未分类" which has its own ID)
-  const { collections } = useCollections({ favoriteId: favorite.id, status: 'active' })
+  // favorite now includes count from useSidebarSync, no need to fetch collections
   const { deleteFavorite } = useFavorites()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const count = collections.length
+  const count = favorite.count // Use count directly from FavoriteWithCount
 
   const handleDelete = async () => {
     // if (favorite.name === '未分类') {

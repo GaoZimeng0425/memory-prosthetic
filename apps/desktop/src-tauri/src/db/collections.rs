@@ -731,9 +731,10 @@ mod tests {
         let repo = CollectionRepository::new(&db);
 
         let input = CreateCollection {
-            url: "https://example.com/article".to_string(),
+            url: Some("https://example.com/article".to_string()),
             title: "Test Article".to_string(),
             content: "This is test content.".to_string(),
+            r#type: Some("网页".to_string()),
         };
 
         let id = repo.upsert(&input).unwrap();
@@ -751,17 +752,19 @@ mod tests {
         let repo = CollectionRepository::new(&db);
 
         let input1 = CreateCollection {
-            url: "https://example.com/article".to_string(),
+            url: Some("https://example.com/article".to_string()),
             title: "Original Title".to_string(),
             content: "Original content.".to_string(),
+            r#type: Some("网页".to_string()),
         };
 
         let id1 = repo.upsert(&input1).unwrap();
 
         let input2 = CreateCollection {
-            url: "https://example.com/article".to_string(),
+            url: Some("https://example.com/article".to_string()),
             title: "Updated Title".to_string(),
             content: "Updated content.".to_string(),
+            r#type: Some("网页".to_string()),
         };
 
         let id2 = repo.upsert(&input2).unwrap();
@@ -784,9 +787,10 @@ mod tests {
         let repo = CollectionRepository::new(&db);
 
         let input = CreateCollection {
-            url: "https://example.com/delete-me".to_string(),
+            url: Some("https://example.com/delete-me".to_string()),
             title: "To Delete".to_string(),
             content: "Content".to_string(),
+            r#type: Some("网页".to_string()),
         };
 
         let id = repo.upsert(&input).unwrap();
@@ -811,5 +815,123 @@ mod tests {
         assert_eq!(extract_domain("https://example.com/path"), "example.com");
         assert_eq!(extract_domain("http://sub.example.com/"), "sub.example.com");
         assert_eq!(extract_domain("https://example.com"), "example.com");
+    }
+
+    /// Test sync query logic - LEFT JOIN + GROUP BY + conditional aggregation
+    /// This test verifies the optimized query structure used in /api/sync endpoint
+    #[test]
+    fn test_sync_query_structure() {
+        let db = setup_test_db();
+
+        // Create a new favorite for testing
+        let fav_repo = crate::db::FavoriteRepository::new(&db);
+        let fav1_id = fav_repo.create(&crate::db::CreateFavorite {
+            name: "测试收藏夹".to_string(),
+            icon: Some("📁".to_string()),
+        }).unwrap();
+
+        // Create test collections
+        let coll_repo = CollectionRepository::new(&db);
+
+        // Add 3 collections to fav1
+        for i in 1..=3 {
+            let input = CreateCollection {
+                url: Some(format!("https://example.com/article{}", i)),
+                title: format!("Article {}", i),
+                content: "Content".to_string(),
+                r#type: Some("网页".to_string()),
+            };
+            let id = coll_repo.upsert(&input).unwrap();
+            coll_repo.set_favorite(id, Some(fav1_id)).unwrap();
+        }
+
+        // Verify counts using raw SQL query (same as in handler)
+        db.with_connection(|conn| {
+            let mut stmt = conn.prepare(
+                r#"
+                SELECT f.id, f.name, COUNT(c.id) as count
+                FROM favorites f
+                LEFT JOIN collections c
+                    ON c.favorite_id = f.id AND c.status = 'active'
+                WHERE f.id = ?1
+                GROUP BY f.id
+                "#,
+            ).unwrap();
+
+            let result = stmt.query_row([&fav1_id], |row| {
+                Ok((
+                    row.get::<_, String>(1)?, // name
+                    row.get::<_, i64>(2)?,    // count
+                ))
+            });
+
+            assert!(result.is_ok(), "Query should succeed");
+
+            let (name, count) = result.unwrap();
+            assert_eq!(name, "测试收藏夹");
+            assert_eq!(count, 3); // 3 collections
+
+            Ok::<_, rusqlite::Error>(())
+        }).unwrap();
+    }
+
+    /// Test conditional aggregation for stats query
+    #[test]
+    fn test_sync_stats_conditional_aggregation() {
+        let db = setup_test_db();
+        let coll_repo = CollectionRepository::new(&db);
+
+        // Create active collections
+        for i in 1..=5 {
+            let input = CreateCollection {
+                url: Some(format!("https://example.com/active{}", i)),
+                title: format!("Active {}", i),
+                content: "Content".to_string(),
+                r#type: Some("网页".to_string()),
+            };
+            coll_repo.upsert(&input).unwrap();
+        }
+
+        // Create archived collections
+        for i in 1..=2 {
+            let input = CreateCollection {
+                url: Some(format!("https://example.com/archived{}", i)),
+                title: format!("Archived {}", i),
+                content: "Content".to_string(),
+                r#type: Some("网页".to_string()),
+            };
+            let id = coll_repo.upsert(&input).unwrap();
+            coll_repo.archive(id).unwrap();
+        }
+
+        // Verify conditional aggregation
+        db.with_connection(|conn| {
+            let mut stmt = conn.prepare(
+                r#"
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'active') as total,
+                    COUNT(*) FILTER (WHERE status = 'active' AND created_at >= datetime('now', '-7 days')) as this_week,
+                    COUNT(*) FILTER (WHERE status = 'archived') as archived,
+                    COUNT(*) FILTER (WHERE starred = 1) as starred
+                FROM collections
+                "#,
+            ).unwrap();
+
+            let (total, this_week, archived, starred) = stmt.query_row([], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, i64>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            }).unwrap();
+
+            assert_eq!(total, 5);  // 5 active collections
+            assert_eq!(this_week, 5); // All created within last 7 days
+            assert_eq!(archived, 2); // 2 archived collections
+            assert_eq!(starred, 0); // 0 starred
+
+            Ok::<_, rusqlite::Error>(())
+        }).unwrap();
     }
 }

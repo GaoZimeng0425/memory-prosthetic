@@ -19,6 +19,7 @@ import { SearchOverlay } from '@/components/SearchOverlay'
 import { DialogProvider, useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
 import { useCollections } from '@/hooks/use-collections'
+import { useSidebarSync } from '@/hooks/use-sidebar-sync'
 import { useHotkey } from '@/hooks/use-hotkey'
 import { useTags } from '@/hooks/use-tags'
 import type { SearchResult } from '@/types/api'
@@ -80,18 +81,18 @@ function RootLayout() {
     void checkWindowType()
   }, [navigate])
 
-  // Load stats for sidebar (only in main window)
-  const { stats } = useCollections({ status: 'active', limit: 0 })
-  const { collections } = useCollections({ status: 'active' })
+  // Load stats for sidebar (only in main window) - use optimized useSidebarSync
+  // No need for useCollections here - all sidebar stats come from useSidebarSync
+  const { stats: syncStats } = useSidebarSync()
 
   // Calculate sidebar stats (only used in main window)
-  const starredCount = collections.filter((c) => c.starred).length
+  // All stats now come from sync API, no dual polling needed
   const sidebarStats = {
-    total: stats?.total ?? collections.length,
-    starred: starredCount,
-    recent: stats?.thisWeek ?? 0,
-    archived: stats?.archived ?? 0,
-    deleted: stats?.deleted ?? 0,
+    total: syncStats?.total ?? 0,
+    starred: syncStats?.starred ?? 0,
+    recent: syncStats?.thisWeek ?? 0,
+    archived: syncStats?.archived ?? 0,
+    deleted: 0, // syncStats doesn't include deleted, use 0 for now
   }
 
   // Listen for search result selection from SearchWindow (only in main window)

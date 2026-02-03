@@ -1,10 +1,10 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 inputDocuments:
-  - _bmad-output/prd.md
-  - _bmad-output/index.md
-  - _bmad-output/project-overview.md
-  - _bmad-output/analysis/product-brief-tauri-app-2025-12-21.md
+  - docs/prd.md
+  - docs/index.md
+  - docs/project-overview.md
+  - docs/analysis/product-brief-tauri-app-2025-12-21.md
 workflowType: 'architecture'
 lastStep: 8
 status: 'complete'
@@ -1607,7 +1607,7 @@ AI 助手用户输入 → "使用 MP 搜索 React 文章"
 **Architecture Decision Workflow:** COMPLETED ✅
 **Total Steps Completed:** 8
 **Date Completed:** 2025-12-22
-**Document Location:** _bmad-output/architecture.md (用户文档: docs/architecture.md)
+**Document Location:** docs/architecture.md
 
 ### Final Architecture Deliverables
 

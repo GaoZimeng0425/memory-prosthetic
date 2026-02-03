@@ -9,6 +9,8 @@
 
 ## 📖 Overview
 
+> **🤖 Fully AI-Developed**: This project was developed entirely by autonomous AI agents using the [BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD) workflow methodology.
+
 **Memory Prosthetic** (记忆外挂) is a desktop application that transforms vague memories into precise retrieval. It allows you to:
 
 - 📥 **Collect** web content from your browser with one click
@@ -174,12 +176,27 @@ Reusable UI component library:
 
 ## 📚 Documentation
 
+### User & Developer Documentation
+
+Located in `docs/` directory:
+
 - 📋 [API Endpoints](./docs/api-endpoints.md) - Complete backend API reference
 - 🏗️ [Architecture](./docs/architecture.md) - System architecture and design decisions
 - 📖 [Development Guide](./docs/development-guide.md) - Setup and development workflow
 - 📝 [Project Overview](./docs/project-overview.md) - Project background and features
 - 🔌 [Integration Architecture](./docs/integration-architecture.md) - MCP and external integrations
 - 🗺️ [AI Graph Architecture](./docs/architecture-ai-graph-separation.md) - AI and graph system design
+- 📚 [Documentation Guide](./docs/README.md) - Documentation organization and navigation
+
+### BMAD Development Artifacts
+
+Located in `_bmad-output/` directory (internal):
+
+- **PRD & Epics**: Product requirements and task breakdown
+- **Architecture**: Source architecture documents
+- **Implementation**: Technical specs and implementation plans
+- **Workflows**: BMAD workflow execution history
+- 📖 [BMAD Output Guide](./_bmad-output/README.md) - Internal documentation structure
 
 ## 🛠️ Development
 
@@ -225,7 +242,22 @@ bun run --filter @memory-prosthetic/desktop dev
 bun run --filter @memory-prosthetic/desktop build
 ```
 
-## 🤝 Contributing
+## 🤖 Development
+
+This project was **developed entirely by AI agents** using advanced autonomous development methodologies.
+
+### AI-Agent Development
+
+The entire codebase, including features, bug fixes, documentation, and infrastructure, was created through autonomous AI agent collaboration using:
+
+- **Claude Code** (Anthropic) - Primary AI development agent
+- **BMAD Method** - Structured AI-agent development workflow
+- **Autonomous Testing & Review** - Automated code quality assurance
+- **Iterative Development** - Continuous AI-driven improvement
+
+Special thanks to the **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** project for providing the structured workflow methodology that enabled this fully autonomous development process.
+
+### Traditional Development
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
@@ -241,10 +273,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [Tauri](https://tauri.app/) - For the amazing desktop framework
-- [shadcn/ui](https://ui.shadcn.com/) - For beautiful UI components
-- [TanStack](https://tanstack.com/) - For excellent React libraries
-- [WXT](https://wxt.dev/) - For browser extension tooling
+### Development Methodology
+- **[BMAD-METHOD](https://github.com/bmad-code-org/BMAD-METHOD)** - For the revolutionary AI-agent development methodology that made this project possible
+- **[Claude Code](https://claude.ai/code)** - For the powerful AI development agent
+
+### Technologies & Libraries
+- **[Tauri](https://tauri.app/)** - For the amazing desktop framework
+- **[shadcn/ui](https://ui.shadcn.com/)** - For beautiful UI components
+- **[TanStack](https://tanstack.com/)** - For excellent React libraries
+- **[WXT](https://wxt.dev/)** - For browser extension tooling
 
 ## 📧 Contact
 

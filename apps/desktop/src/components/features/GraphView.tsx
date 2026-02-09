@@ -802,7 +802,6 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
         }
         return '标签共享'
       case 'folder':
-      case 'favorite': // Handle old 'favorite' type associations
         if (edge.domain) {
           return `收藏夹: ${edge.domain}`
         }

@@ -631,6 +631,11 @@ impl Database {
             Self::migrate_add_type_field(conn)
         })?;
 
+        // Migration: Add shared_keywords field to association_metadata table
+        self.with_connection_mut(|conn| {
+            Self::migrate_add_shared_keywords_field(conn)
+        })?;
+
         // Migration: Convert notes from Slate JSON to Markdown format
         // This is a data migration, not a schema migration
         {
@@ -859,6 +864,32 @@ impl Database {
         info!("Created index on type field");
 
         info!("✅ Type field migration completed successfully");
+        Ok(())
+    }
+
+    /// Migration: Add shared_keywords field to association_metadata table
+    fn migrate_add_shared_keywords_field(conn: &mut Connection) -> Result<(), rusqlite::Error> {
+        // Check if column already exists
+        let has_column = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('association_metadata') WHERE name = 'shared_keywords'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )? > 0;
+
+        if has_column {
+            info!("shared_keywords column already exists in association_metadata table");
+            return Ok(());
+        }
+
+        info!("Adding shared_keywords column to association_metadata table");
+
+        // Add the column
+        conn.execute(
+            "ALTER TABLE association_metadata ADD COLUMN shared_keywords TEXT",
+            [],
+        )?;
+
+        info!("✅ shared_keywords column added to association_metadata table");
         Ok(())
     }
 }

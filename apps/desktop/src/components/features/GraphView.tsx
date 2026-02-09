@@ -63,6 +63,7 @@ type GraphEdgeData = {
     semanticSimilarity?: number
     sharedTags?: string[]
     sharedFolders?: string[]
+    sharedKeywords?: string[]
     timeInterval?: number
     domain?: string
     keywordOverlap?: number
@@ -253,6 +254,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               semanticSimilarity: edge.semanticSimilarity,
               sharedTags: edge.sharedTags,
               sharedFolders: edge.sharedFolders,
+              sharedKeywords: edge.sharedKeywords,
               timeInterval: edge.timeInterval,
               domain: edge.domain,
               keywordOverlap: edge.keywordOverlap,
@@ -800,6 +802,10 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
         }
         return '标签共享'
       case 'folder':
+      case 'favorite': // Handle old 'favorite' type associations
+        if (edge.domain) {
+          return `收藏夹: ${edge.domain}`
+        }
         if (edge.sharedFolders && edge.sharedFolders.length > 0) {
           return `收藏夹: ${edge.sharedFolders.slice(0, 2).join(', ')}`
         }
@@ -813,11 +819,21 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
       case 'domain':
         return edge.domain ? `来自: ${edge.domain}` : '同一网站'
       case 'keyword':
+        if (edge.sharedKeywords && edge.sharedKeywords.length > 0) {
+          const keywords = edge.sharedKeywords.slice(0, 3)
+          return `关键词: ${keywords.join(', ')}${edge.sharedKeywords.length > 3 ? '...' : ''}`
+        }
         if (edge.keywordOverlap !== undefined) {
           return `关键词重叠 ${(edge.keywordOverlap * 100).toFixed(0)}%`
         }
         return '关键词重叠'
       case 'topic':
+        console.log('Topic edge - topicMatch:', edge.topicMatch, 'sharedFolders:', edge.sharedFolders)
+        if (edge.sharedFolders && edge.sharedFolders.length > 0) {
+          // sharedFolders is reused to store shared topics
+          const topics = edge.sharedFolders.slice(0, 3)
+          return `主题: ${topics.join(', ')}${edge.sharedFolders.length > 3 ? '...' : ''}`
+        }
         if (edge.topicMatch !== undefined) {
           return `主题匹配 ${(edge.topicMatch * 100).toFixed(0)}%`
         }

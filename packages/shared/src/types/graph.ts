@@ -41,6 +41,7 @@ export type Association = {
   semanticSimilarity?: number
   sharedTags?: string[]
   sharedFolders?: string[]
+  sharedKeywords?: string[]
   timeInterval?: number
   domain?: string
   keywordOverlap?: number

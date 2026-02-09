@@ -756,7 +756,7 @@ fn shortcut_from_config(config: &ShortcutConfig) -> Shortcut {
 
 /// Insert or update a collection
 #[tauri::command]
-fn collect(
+async fn collect(
     state: State<'_, Arc<AppState>>,
     request: CollectRequest,
 ) -> Result<CommandResult<CollectResponse>, CommandError> {
@@ -770,7 +770,26 @@ fn collect(
     let repo = CollectionRepository::new(&state.db);
     let id = repo.upsert(&input)?;
 
-    // Embedding service runs in background and will pick up new collections automatically
+    // Auto-trigger association discovery for the new collection
+    // This runs as a background task on the shared tokio runtime
+    let db_clone = state.db.clone();
+    let id_clone = id;
+    tokio::spawn(async move {
+        use crate::graph::discovery::IncrementalDiscovery;
+        let discovery = IncrementalDiscovery::new(db_clone.clone());
+
+        let collection_repo = CollectionRepository::new(&db_clone);
+        if let Ok(Some(new_collection)) = collection_repo.get_by_id(id_clone) {
+            match discovery.discover_for_new_content(&new_collection).await {
+                Ok(_) => {
+                    tracing::info!("Auto-discovered associations for new collection {}", id_clone);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to auto-discover associations for collection {}: {}", id_clone, e);
+                }
+            }
+        }
+    });
 
     Ok(CommandResult {
         data: CollectResponse { id },
@@ -779,7 +798,7 @@ fn collect(
 
 /// Create a new note (user-created content without URL)
 #[tauri::command]
-fn create_note(
+async fn create_note(
     state: State<'_, Arc<AppState>>,
     request: CreateNoteRequest,
 ) -> Result<CommandResult<CollectResponse>, CommandError> {
@@ -793,7 +812,25 @@ fn create_note(
     let repo = CollectionRepository::new(&state.db);
     let id = repo.create_note(&input)?;
 
-    // Embedding service runs in background and will pick up new collections automatically
+    // Auto-trigger association discovery for the new note
+    let db_clone = state.db.clone();
+    let id_clone = id;
+    tokio::spawn(async move {
+        use crate::graph::discovery::IncrementalDiscovery;
+        let discovery = IncrementalDiscovery::new(db_clone.clone());
+
+        let collection_repo = CollectionRepository::new(&db_clone);
+        if let Ok(Some(new_collection)) = collection_repo.get_by_id(id_clone) {
+            match discovery.discover_for_new_content(&new_collection).await {
+                Ok(_) => {
+                    tracing::info!("Auto-discovered associations for new note {}", id_clone);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to auto-discover associations for note {}: {}", id_clone, e);
+                }
+            }
+        }
+    });
 
     Ok(CommandResult {
         data: CollectResponse { id },
@@ -1545,6 +1582,7 @@ async fn update_collection_ai_metadata(
                         semantic_similarity: assoc.semantic_similarity,
                         shared_tags: assoc.shared_tags,
                         shared_folders: assoc.shared_folders,
+                        shared_keywords: assoc.shared_keywords,
                         time_interval: assoc.time_interval,
                         domain: assoc.domain,
                         keyword_overlap: assoc.keyword_overlap,
@@ -1710,6 +1748,7 @@ async fn discover_all_associations(
                 semantic_similarity: assoc.semantic_similarity,
                 shared_tags: assoc.shared_tags,
                 shared_folders: assoc.shared_folders,
+                shared_keywords: assoc.shared_keywords,
                 time_interval: assoc.time_interval,
                 domain: assoc.domain,
                 keyword_overlap: assoc.keyword_overlap,
@@ -1925,6 +1964,223 @@ fn get_association_stats(
     });
 
     Ok(CommandResult { data: stats })
+}
+
+/// Diagnose keyword association issues
+#[tauri::command]
+fn diagnose_keyword_associations(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<serde_json::Value>, CommandError> {
+    use crate::db::{AiMetadataRepository, CollectionRepository};
+    let collection_repo = CollectionRepository::new(&state.db);
+    let ai_repo = AiMetadataRepository::new(state.db.clone());
+
+    // 1. Check keyword coverage
+    let coverage_stats = state.db.with_connection(|conn| {
+        conn.query_row(
+            "SELECT
+                (SELECT COUNT(*) FROM collections) as total,
+                (SELECT COUNT(DISTINCT collection_id) FROM keywords) as with_keywords",
+            [],
+            |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+        )
+    }).map_err(|e| CommandError {
+        code: "DB_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    let (total_collections, collections_with_keywords) = coverage_stats;
+    let collections_without_keywords = total_collections - collections_with_keywords;
+
+    // 2. Check keyword association stats
+    let assoc_stats = state.db.with_connection(|conn| {
+        conn.query_row(
+            "SELECT
+                COUNT(*) as count,
+                AVG(weight) as avg_weight
+            FROM associations
+            WHERE type = 'keyword'",
+            [],
+            |row| Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, f64>(1)?,
+            )),
+        )
+    }).map_err(|e| CommandError {
+        code: "DB_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    let (keyword_associations_count, avg_keyword_weight) = assoc_stats;
+
+    // 3. Generate recommendations
+    let mut recommendations = Vec::new();
+    let coverage_pct = if total_collections > 0 {
+        (collections_with_keywords as f64 / total_collections as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    if coverage_pct < 50.0 {
+        recommendations.push(
+            "Less than 50% of content has keywords, consider running batch AI processing".to_string()
+        );
+    }
+
+    if avg_keyword_weight < 0.3 && keyword_associations_count > 0 {
+        recommendations.push(
+            "Low average keyword weight detected, formula has been optimized and frontend threshold lowered".to_string()
+        );
+    }
+
+    if keyword_associations_count == 0 {
+        recommendations.push(
+            "No keyword associations found, run discovery: invoke('discover_all_associations')".to_string()
+        );
+    }
+
+    if recommendations.is_empty() {
+        recommendations.push(
+            "Keyword association system is working normally".to_string()
+        );
+    }
+
+    let report = serde_json::json!({
+        "totalCollections": total_collections,
+        "collectionsWithKeywords": collections_with_keywords,
+        "collectionsWithoutKeywords": collections_without_keywords,
+        "keywordAssociationsCount": keyword_associations_count,
+        "avgKeywordWeight": avg_keyword_weight,
+        "coveragePercentage": coverage_pct,
+        "recommendations": recommendations,
+    });
+
+    Ok(CommandResult { data: report })
+}
+
+/// Diagnose topics and associations data
+#[tauri::command]
+fn diagnose_topics_data(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<serde_json::Value>, CommandError> {
+    use crate::db::{AiMetadataRepository, CollectionRepository};
+    let collection_repo = CollectionRepository::new(&state.db);
+    let ai_repo = AiMetadataRepository::new(state.db.clone());
+
+    // 1. Get all collections
+    let all_collections = collection_repo.list(1000, 0, None, false, None, None)
+        .map_err(|e| CommandError {
+            code: "DB_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    // 2. Find collections with topics and show their topics
+    let mut collections_with_topics_info = Vec::new();
+
+    for collection in &all_collections {
+        match ai_repo.get_topics(collection.id) {
+            Ok(topics) => {
+                if !topics.is_empty() {
+                    let topic_names: Vec<String> = topics.iter().map(|t| t.topic.clone()).collect();
+                    collections_with_topics_info.push(serde_json::json!({
+                        "id": collection.id,
+                        "title": collection.title,
+                        "topics": topic_names,
+                        "topicCount": topics.len()
+                    }));
+                }
+            }
+            Err(_) => continue,
+        }
+    }
+
+    // 3. Check for shared topics between these collections
+    let mut shared_topic_pairs = Vec::new();
+
+    for i in 0..collections_with_topics_info.len() {
+        for j in (i + 1)..collections_with_topics_info.len() {
+            let coll1_json = &collections_with_topics_info[i];
+            let coll2_json = &collections_with_topics_info[j];
+
+            // Extract IDs
+            let id1 = coll1_json["id"].as_i64().unwrap();
+            let id2 = coll2_json["id"].as_i64().unwrap();
+
+            // Get topics from database to ensure we have the data
+            let topics1 = match ai_repo.get_topics(id1) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            let topics2 = match ai_repo.get_topics(id2) {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+
+            // Find shared topics
+            let set1: std::collections::HashSet<&str> = topics1.iter()
+                .map(|t| t.topic.as_str())
+                .collect();
+            let set2: std::collections::HashSet<&str> = topics2.iter()
+                .map(|t| t.topic.as_str())
+                .collect();
+
+            let shared: Vec<&str> = set1.intersection(&set2).cloned().collect();
+
+            if !shared.is_empty() {
+                shared_topic_pairs.push(serde_json::json!({
+                    "collection1": id1,
+                    "collection1_title": coll1_json["title"],
+                    "collection2": id2,
+                    "collection2_title": coll2_json["title"],
+                    "sharedTopics": shared,
+                    "sharedCount": shared.len()
+                }));
+            }
+        }
+    }
+
+    // 4. Check associations by type
+    let association_counts = state.db.with_connection(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT type, COUNT(*) as count FROM associations GROUP BY type"
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+            ))
+        })?;
+        let mut counts = std::collections::HashMap::new();
+        for row in rows {
+            if let Ok((type_name, count)) = row {
+                counts.insert(type_name, count);
+            }
+        }
+        Ok(counts)
+    }).map_err(|e| CommandError {
+        code: "DB_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    let has_topic_assoc = association_counts.get("topic").copied().unwrap_or(0) > 0;
+
+    let report = serde_json::json!({
+        "totalCollections": all_collections.len(),
+        "collectionsWithTopics": collections_with_topics_info.len(),
+        "collectionsWithTopicsInfo": collections_with_topics_info,
+        "sharedTopicPairs": shared_topic_pairs,
+        "associationsByType": association_counts,
+        "hasTopicAssociations": has_topic_assoc,
+        "summary": if shared_topic_pairs.is_empty() {
+            format!("Found {} collections with topics, but NO shared topics between them. Topic associations will be 0.", collections_with_topics_info.len())
+        } else if !has_topic_assoc {
+            format!("Found {} pairs with shared topics, but NO topic associations in database! Run discover_all_associations.", shared_topic_pairs.len())
+        } else {
+            format!("Found {} topic associations in database - should be visible!", association_counts.get("topic").copied().unwrap_or(0))
+        }
+    });
+
+    Ok(CommandResult { data: report })
 }
 
 /// Graph filters request
@@ -2476,6 +2732,8 @@ pub fn run() {
             get_graph_clusters,
             discover_all_associations,
             get_association_stats,
+            diagnose_keyword_associations,
+            diagnose_topics_data,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

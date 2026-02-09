@@ -81,6 +81,7 @@ impl IncrementalDiscovery {
                         semantic_similarity: Some(similarity),
                         shared_tags: None,
                         shared_folders: None,
+                        shared_keywords: None,
                         time_interval: None,
                         domain: None,
                         keyword_overlap: None,
@@ -111,6 +112,7 @@ impl IncrementalDiscovery {
                     semantic_similarity: None,
                     shared_tags: Some(shared_tags),
                     shared_folders: None,
+                        shared_keywords: None,
                     time_interval: None,
                     domain: None,
                     keyword_overlap: None,
@@ -138,6 +140,7 @@ impl IncrementalDiscovery {
                     semantic_similarity: None,
                     shared_tags: None,
                     shared_folders: None,
+                        shared_keywords: None,
                     time_interval: Some(time_interval),
                     domain: None,
                     keyword_overlap: None,
@@ -165,6 +168,7 @@ impl IncrementalDiscovery {
                     semantic_similarity: None,
                     shared_tags: None,
                     shared_folders: None,
+                        shared_keywords: None,
                     time_interval: None,
                     domain: Some(domain),
                     keyword_overlap: None,
@@ -173,7 +177,7 @@ impl IncrementalDiscovery {
             }
 
             // Keyword association
-            if let Ok(Some(weight)) = self
+            if let Ok(Some((weight, shared_keywords))) = self
                 .calculator
                 .calculate_keyword_association(new_content.id, existing.id)
                 .await
@@ -194,6 +198,7 @@ impl IncrementalDiscovery {
                     semantic_similarity: None,
                     shared_tags: None,
                     shared_folders: None,
+                    shared_keywords: Some(shared_keywords), // Store shared keywords here
                     time_interval: None,
                     domain: None,
                     keyword_overlap: Some(weight),
@@ -202,7 +207,7 @@ impl IncrementalDiscovery {
             }
 
             // Topic association
-            if let Ok(Some(weight)) = self
+            if let Ok(Some((weight, shared_topics))) = self
                 .calculator
                 .calculate_topic_association(new_content.id, existing.id)
                 .await
@@ -222,11 +227,41 @@ impl IncrementalDiscovery {
                     direction: None,
                     semantic_similarity: None,
                     shared_tags: None,
-                    shared_folders: None,
+                    shared_folders: Some(shared_topics), // Store shared topics here
+                    shared_keywords: None,
                     time_interval: None,
                     domain: None,
                     keyword_overlap: None,
                     topic_match: Some(weight),
+                });
+            }
+
+            // Favorite (folder) association
+            if let Some((weight, favorite_name)) = self
+                .calculator
+                .calculate_favorite_association(new_content, existing)
+            {
+                associations.push(CreateAssociation {
+                    source_id: new_content.id,
+                    target_id: existing.id,
+                    r#type: AssociationType::Folder.as_str().to_string(),
+                    types: None,
+                    weight,
+                    confidence: 0.8,
+                    quality_score: weight,
+                    reason: Some("auto_discovered".to_string()),
+                    user_feedback: None,
+                    is_expired: false,
+                    is_directional: false,
+                    direction: None,
+                    semantic_similarity: None,
+                    shared_tags: None,
+                    shared_folders: None,
+                        shared_keywords: None,
+                    time_interval: None,
+                    domain: Some(favorite_name),
+                    keyword_overlap: None,
+                    topic_match: None,
                 });
             }
         }
@@ -239,13 +274,51 @@ impl IncrementalDiscovery {
     pub async fn discover_all_pairs(
         &self,
     ) -> Result<Vec<CreateAssociation>, DiscoveryError> {
+        use std::time::Instant;
+
+        let start = Instant::now();
+
+        // Auto-cleanup old keyword, folder, and topic associations in a single transaction
+        let (deleted_keyword, deleted_folder, deleted_topic, deleted_meta) = self
+            .db
+            .with_connection_mut(|conn| {
+                // Delete keyword associations
+                let deleted_kw = conn.execute("DELETE FROM associations WHERE type = 'keyword'", [])?;
+
+                // Delete folder associations (old ones without domain info)
+                let deleted_fol = conn.execute("DELETE FROM associations WHERE type = 'folder'", [])?;
+
+                // Delete topic associations (old ones without shared topics)
+                let deleted_tp = conn.execute("DELETE FROM associations WHERE type = 'topic'", [])?;
+
+                // Delete orphaned metadata
+                let deleted_meta = conn.execute(
+                    "DELETE FROM association_metadata
+                     WHERE association_id IN (
+                         SELECT id FROM associations WHERE type = 'keyword'
+                     )",
+                    [],
+                )?;
+
+                Ok((deleted_kw, deleted_fol, deleted_tp, deleted_meta))
+            })
+            .map_err(DiscoveryError::Database)?;
+
+        tracing::info!(
+            "Cleaned up {} old keyword associations, {} old folder associations, {} old topic associations, and {} metadata records",
+            deleted_keyword,
+            deleted_folder,
+            deleted_topic,
+            deleted_meta
+        );
+
         let collection_repo = CollectionRepository::new(&self.db);
         // Get all collections (up to 1000)
         let all_list = collection_repo
             .list(1000, 0, None, false, None, None)
             .map_err(DiscoveryError::Database)?;
 
-        tracing::info!("🔍 discover_all_pairs: 找到 {} 个内容", all_list.len());
+        tracing::info!("discover_all_pairs: found {} collections", all_list.len());
 
         // Convert to full Collection objects
         let mut all_contents = Vec::new();
@@ -255,64 +328,27 @@ impl IncrementalDiscovery {
             }
         }
 
-        tracing::info!("📦 discover_all_pairs: 成功加载 {} 个内容对象", all_contents.len());
-
-        // 检查关键词和主题数据
-        use crate::db::AiMetadataRepository;
-        let ai_repo = AiMetadataRepository::new(self.db.clone());
-        let mut collections_with_keywords = 0;
-        let mut collections_with_topics = 0;
-        for content in &all_contents {
-            if let Ok(keywords) = ai_repo.get_keywords(content.id) {
-                if !keywords.is_empty() {
-                    collections_with_keywords += 1;
-                }
-            }
-            if let Ok(topics) = ai_repo.get_topics(content.id) {
-                if !topics.is_empty() {
-                    collections_with_topics += 1;
-                }
-            }
-        }
         tracing::info!(
-            "📊 数据统计: {} 个内容有关键词, {} 个内容有主题",
-            collections_with_keywords,
-            collections_with_topics
+            "discover_all_pairs: loaded {} collection objects",
+            all_contents.len()
         );
-
-        // 详细列出有关键词和主题的collection
-        for content in &all_contents {
-            if let Ok(keywords) = ai_repo.get_keywords(content.id) {
-                if !keywords.is_empty() {
-                    tracing::info!(
-                        "  Collection {}: {} 个关键词: {:?}",
-                        content.id,
-                        keywords.len(),
-                        keywords.iter().map(|k| k.keyword.clone()).collect::<Vec<_>>()
-                    );
-                }
-            }
-            if let Ok(topics) = ai_repo.get_topics(content.id) {
-                if !topics.is_empty() {
-                    tracing::info!(
-                        "  Collection {}: {} 个主题: {:?}",
-                        content.id,
-                        topics.len(),
-                        topics.iter().map(|t| t.topic.clone()).collect::<Vec<_>>()
-                    );
-                }
-            }
-        }
 
         let mut associations = Vec::new();
         let mut keyword_count = 0;
         let mut topic_count = 0;
+        let mut favorite_count = 0;
+
+        // Track statistics
+        let mut total_attempts = 0;
+        let mut topic_attempts = 0;
+        let mut topic_created = 0;
 
         // Compare each pair of collections
         for i in 0..all_contents.len() {
             let content1 = &all_contents[i];
             for j in (i + 1)..all_contents.len() {
                 let content2 = &all_contents[j];
+                total_attempts += 1;
 
                 // Semantic similarity
                 if let Ok(similarity) = self
@@ -337,6 +373,7 @@ impl IncrementalDiscovery {
                             semantic_similarity: Some(similarity),
                             shared_tags: None,
                             shared_folders: None,
+                        shared_keywords: None,
                             time_interval: None,
                             domain: None,
                             keyword_overlap: None,
@@ -367,6 +404,7 @@ impl IncrementalDiscovery {
                         semantic_similarity: None,
                         shared_tags: Some(shared_tags),
                         shared_folders: None,
+                        shared_keywords: None,
                         time_interval: None,
                         domain: None,
                         keyword_overlap: None,
@@ -394,6 +432,7 @@ impl IncrementalDiscovery {
                         semantic_similarity: None,
                         shared_tags: None,
                         shared_folders: None,
+                        shared_keywords: None,
                         time_interval: Some(time_interval),
                         domain: None,
                         keyword_overlap: None,
@@ -421,6 +460,7 @@ impl IncrementalDiscovery {
                         semantic_similarity: None,
                         shared_tags: None,
                         shared_folders: None,
+                        shared_keywords: None,
                         time_interval: None,
                         domain: Some(domain),
                         keyword_overlap: None,
@@ -429,7 +469,7 @@ impl IncrementalDiscovery {
                 }
 
                 // Keyword association
-                if let Ok(Some(weight)) = self
+                if let Ok(Some((weight, shared_keywords))) = self
                     .calculator
                     .calculate_keyword_association(content1.id, content2.id)
                     .await
@@ -451,6 +491,7 @@ impl IncrementalDiscovery {
                         semantic_similarity: None,
                         shared_tags: None,
                         shared_folders: None,
+                        shared_keywords: Some(shared_keywords), // Store shared keywords here
                         time_interval: None,
                         domain: None,
                         keyword_overlap: Some(weight),
@@ -459,19 +500,71 @@ impl IncrementalDiscovery {
                 }
 
                 // Topic association
-                if let Ok(Some(weight)) = self
+                topic_attempts += 1;
+                match self.calculator.calculate_topic_association(content1.id, content2.id).await {
+                    Ok(Some((weight, shared_topics))) => {
+                        topic_count += 1;
+                        topic_created += 1;
+                        tracing::info!(
+                            "Creating topic association: {} <-> {} with topics {:?}",
+                            content1.id,
+                            content2.id,
+                            shared_topics
+                        );
+                        associations.push(CreateAssociation {
+                            source_id: content1.id,
+                            target_id: content2.id,
+                            r#type: AssociationType::Topic.as_str().to_string(),
+                            types: None,
+                            weight,
+                            confidence: 0.7,
+                            quality_score: weight,
+                            reason: Some("auto_discovered".to_string()),
+                            user_feedback: None,
+                            is_expired: false,
+                            is_directional: false,
+                            direction: None,
+                            semantic_similarity: None,
+                            shared_tags: None,
+                            shared_folders: Some(shared_topics), // Store shared topics here
+                            shared_keywords: None,
+                            time_interval: None,
+                            domain: None,
+                            keyword_overlap: None,
+                            topic_match: Some(weight),
+                        });
+                    }
+                    Ok(None) => {
+                        // No shared topics between these collections
+                        tracing::debug!(
+                            "No shared topics between {} and {}",
+                            content1.id,
+                            content2.id
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to calculate topic association between {} and {}: {}",
+                            content1.id,
+                            content2.id,
+                            e
+                        );
+                    }
+                }
+
+                // Favorite (folder) association
+                if let Some((weight, favorite_name)) = self
                     .calculator
-                    .calculate_topic_association(content1.id, content2.id)
-                    .await
+                    .calculate_favorite_association(content1, content2)
                 {
-                    topic_count += 1;
+                    favorite_count += 1;
                     associations.push(CreateAssociation {
                         source_id: content1.id,
                         target_id: content2.id,
-                        r#type: AssociationType::Topic.as_str().to_string(),
+                        r#type: AssociationType::Folder.as_str().to_string(),
                         types: None,
                         weight,
-                        confidence: 0.7,
+                        confidence: 0.8,
                         quality_score: weight,
                         reason: Some("auto_discovered".to_string()),
                         user_feedback: None,
@@ -481,32 +574,50 @@ impl IncrementalDiscovery {
                         semantic_similarity: None,
                         shared_tags: None,
                         shared_folders: None,
+                        shared_keywords: None,
                         time_interval: None,
-                        domain: None,
+                        domain: Some(favorite_name),
                         keyword_overlap: None,
-                        topic_match: Some(weight),
+                        topic_match: None,
                     });
                 }
             }
         }
 
+        let duration = start.elapsed();
+
+        // Calculate statistics
+        let avg_weight = if !associations.is_empty() {
+            associations.iter().map(|a| a.weight).sum::<f64>() / associations.len() as f64
+        } else {
+            0.0
+        };
+
+        // Detailed statistics log
         tracing::info!(
-            "🎯 discover_all_pairs: 发现 {} 个关联（关键词: {}, 主题: {}）",
+            "Association discovery statistics:
+            - Total pairs attempted: {}
+            - Associations created: {}
+            - Keyword associations: {}
+            - Topic associations: {} (attempts: {}, created: {})
+            - Favorite associations: {}
+            - Average weight: {:.2}
+            - Duration: {:?}",
+            total_attempts,
             associations.len(),
             keyword_count,
-            topic_count
+            topic_count,
+            topic_attempts,
+            topic_created,
+            favorite_count,
+            avg_weight,
+            duration
         );
 
-        // 详细日志：列出所有发现的关联
-        for assoc in &associations {
-            tracing::info!(
-                "  → 关联: {} -> {} (type: {}, weight: {:.2}, keyword_overlap: {:?}, topic_match: {:?})",
-                assoc.source_id,
-                assoc.target_id,
-                assoc.r#type,
-                assoc.weight,
-                assoc.keyword_overlap,
-                assoc.topic_match
+        if duration.as_secs() > 30 {
+            tracing::warn!(
+                "Association discovery took over 30 seconds ({:?}), consider optimization",
+                duration
             );
         }
 

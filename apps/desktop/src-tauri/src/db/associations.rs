@@ -33,6 +33,7 @@ pub struct Association {
     pub semantic_similarity: Option<f64>,
     pub shared_tags: Option<Vec<String>>,
     pub shared_folders: Option<Vec<String>>,
+    pub shared_keywords: Option<Vec<String>>,
     pub time_interval: Option<i64>,
     pub domain: Option<String>,
     pub keyword_overlap: Option<f64>,
@@ -54,6 +55,24 @@ impl AssociationRepository {
         let now = Utc::now().timestamp();
 
         self.db.with_connection_mut(|conn| {
+            // Auto-cleanup: Delete old keyword associations for the same pair
+            // This prevents accumulation of stale keyword associations
+            if assoc.r#type == "keyword" {
+                let deleted = conn.execute(
+                    "DELETE FROM associations
+                     WHERE source_id = ?1 AND target_id = ?2 AND type = 'keyword'",
+                    params![assoc.source_id, assoc.target_id],
+                )?;
+                if deleted > 0 {
+                    tracing::debug!(
+                        "Auto-cleaned {} old keyword associations for {} <-> {}",
+                        deleted,
+                        assoc.source_id,
+                        assoc.target_id
+                    );
+                }
+            }
+
             // Insert association
             conn.execute(
                 r#"
@@ -89,6 +108,7 @@ impl AssociationRepository {
             if assoc.semantic_similarity.is_some()
                 || assoc.shared_tags.is_some()
                 || assoc.shared_folders.is_some()
+                || assoc.shared_keywords.is_some()
                 || assoc.time_interval.is_some()
                 || assoc.domain.is_some()
                 || assoc.keyword_overlap.is_some()
@@ -98,14 +118,15 @@ impl AssociationRepository {
                     r#"
                     INSERT INTO association_metadata (
                         association_id, semantic_similarity, shared_tags, shared_folders,
-                        time_interval, domain, keyword_overlap, topic_match
-                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                        shared_keywords, time_interval, domain, keyword_overlap, topic_match
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
                     "#,
                     params![
                         id,
                         assoc.semantic_similarity,
                         assoc.shared_tags.as_ref().map(|t| serde_json::to_string(t).unwrap()),
                         assoc.shared_folders.as_ref().map(|t| serde_json::to_string(t).unwrap()),
+                        assoc.shared_keywords.as_ref().map(|t| serde_json::to_string(t).unwrap()),
                         assoc.time_interval,
                         assoc.domain,
                         assoc.keyword_overlap,
@@ -131,7 +152,7 @@ impl AssociationRepository {
                     a.user_feedback, a.access_count, a.last_accessed_at,
                     a.is_expired, a.is_directional, a.direction,
                     a.created_at, a.updated_at,
-                    m.semantic_similarity, m.shared_tags, m.shared_folders,
+                    m.semantic_similarity, m.shared_tags, m.shared_folders, m.shared_keywords,
                     m.time_interval, m.domain, m.keyword_overlap, m.topic_match
                 FROM associations a
                 LEFT JOIN association_metadata m ON a.id = m.association_id
@@ -144,6 +165,7 @@ impl AssociationRepository {
                 let types: Option<String> = row.get(4)?;
                 let shared_tags: Option<String> = row.get(18)?;
                 let shared_folders: Option<String> = row.get(19)?;
+                let shared_keywords: Option<String> = row.get(20)?;
 
                 Ok(Association {
                     id: row.get(0)?,
@@ -166,10 +188,11 @@ impl AssociationRepository {
                     semantic_similarity: row.get(17)?,
                     shared_tags: shared_tags.and_then(|t| serde_json::from_str(&t).ok()),
                     shared_folders: shared_folders.and_then(|t| serde_json::from_str(&t).ok()),
-                    time_interval: row.get(20)?,
-                    domain: row.get(21)?,
-                    keyword_overlap: row.get(22)?,
-                    topic_match: row.get(23)?,
+                    shared_keywords: shared_keywords.and_then(|t| serde_json::from_str(&t).ok()),
+                    time_interval: row.get(21)?,
+                    domain: row.get(22)?,
+                    keyword_overlap: row.get(23)?,
+                    topic_match: row.get(24)?,
                 })
             })?;
 
@@ -193,7 +216,7 @@ impl AssociationRepository {
                     a.user_feedback, a.access_count, a.last_accessed_at,
                     a.is_expired, a.is_directional, a.direction,
                     a.created_at, a.updated_at,
-                    m.semantic_similarity, m.shared_tags, m.shared_folders,
+                    m.semantic_similarity, m.shared_tags, m.shared_folders, m.shared_keywords,
                     m.time_interval, m.domain, m.keyword_overlap, m.topic_match
                 FROM associations a
                 LEFT JOIN association_metadata m ON a.id = m.association_id
@@ -261,11 +284,12 @@ impl AssociationRepository {
         // 9: user_feedback, 10: access_count, 11: last_accessed_at
         // 12: is_expired, 13: is_directional, 14: direction
         // 15: created_at, 16: updated_at
-        // 17: semantic_similarity, 18: shared_tags, 19: shared_folders
-        // 20: time_interval, 21: domain, 22: keyword_overlap, 23: topic_match
+        // 17: semantic_similarity, 18: shared_tags, 19: shared_folders, 20: shared_keywords
+        // 21: time_interval, 22: domain, 23: keyword_overlap, 24: topic_match
         let types: Option<String> = row.get(4)?;
         let shared_tags: Option<String> = row.get(18)?;
         let shared_folders: Option<String> = row.get(19)?;
+        let shared_keywords: Option<String> = row.get(20)?;
 
         Ok(Association {
             id: row.get(0)?,
@@ -288,10 +312,11 @@ impl AssociationRepository {
             semantic_similarity: row.get(17)?,
             shared_tags: shared_tags.and_then(|t| serde_json::from_str(&t).ok()),
             shared_folders: shared_folders.and_then(|t| serde_json::from_str(&t).ok()),
-            time_interval: row.get(20)?,
-            domain: row.get(21)?,
-            keyword_overlap: row.get(22)?,
-            topic_match: row.get(23)?,
+            shared_keywords: shared_keywords.and_then(|t| serde_json::from_str(&t).ok()),
+            time_interval: row.get(21)?,
+            domain: row.get(22)?,
+            keyword_overlap: row.get(23)?,
+            topic_match: row.get(24)?,
         })
     }
 }
@@ -314,6 +339,7 @@ pub struct CreateAssociation {
     pub semantic_similarity: Option<f64>,
     pub shared_tags: Option<Vec<String>>,
     pub shared_folders: Option<Vec<String>>,
+    pub shared_keywords: Option<Vec<String>>,
     pub time_interval: Option<i64>,
     pub domain: Option<String>,
     pub keyword_overlap: Option<f64>,

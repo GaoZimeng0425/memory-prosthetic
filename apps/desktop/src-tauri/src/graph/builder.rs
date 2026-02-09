@@ -39,6 +39,8 @@ pub struct GraphEdge {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shared_folders: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub shared_keywords: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time_interval: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
@@ -73,6 +75,7 @@ pub struct CreateAssociation {
     pub semantic_similarity: Option<f64>,
     pub shared_tags: Option<Vec<String>>,
     pub shared_folders: Option<Vec<String>>,
+    pub shared_keywords: Option<Vec<String>>,
     pub time_interval: Option<i64>,
     pub domain: Option<String>,
     pub keyword_overlap: Option<f64>,
@@ -274,6 +277,7 @@ impl GraphBuilder {
                         semantic_similarity: a.semantic_similarity,
                         shared_tags: a.shared_tags,
                         shared_folders: a.shared_folders,
+                        shared_keywords: a.shared_keywords,
                         time_interval: Some(minutes_diff),
                         domain: a.domain,
                         keyword_overlap: a.keyword_overlap,
@@ -291,6 +295,7 @@ impl GraphBuilder {
                         semantic_similarity: a.semantic_similarity,
                         shared_tags: a.shared_tags,
                         shared_folders: a.shared_folders,
+                        shared_keywords: a.shared_keywords,
                         time_interval: a.time_interval,
                         domain: a.domain,
                         keyword_overlap: a.keyword_overlap,
@@ -488,6 +493,7 @@ impl GraphBuilder {
                         semantic_similarity: a.semantic_similarity,
                         shared_tags: a.shared_tags,
                         shared_folders: a.shared_folders,
+                        shared_keywords: a.shared_keywords,
                         time_interval: Some(minutes_diff),
                         domain: a.domain,
                         keyword_overlap: a.keyword_overlap,
@@ -505,6 +511,7 @@ impl GraphBuilder {
                         semantic_similarity: a.semantic_similarity,
                         shared_tags: a.shared_tags,
                         shared_folders: a.shared_folders,
+                        shared_keywords: a.shared_keywords,
                         time_interval: a.time_interval,
                         domain: a.domain,
                         keyword_overlap: a.keyword_overlap,

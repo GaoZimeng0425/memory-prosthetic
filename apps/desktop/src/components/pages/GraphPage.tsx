@@ -17,7 +17,7 @@ interface GraphPageProps {
 
 export function GraphPage({ onNodeSelect }: GraphPageProps) {
   const [filters, onFiltersChange] = useState<GraphFilters>({
-    minWeight: 0.3,
+    minWeight: 0.2,
     maxNodes: 100,
   })
   const queryClient = useQueryClient()
@@ -116,6 +116,14 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
   const handleDebugStats = async () => {
     try {
       await checkAssociationStats()
+
+      // 额外检查 topics 数据
+      const topicsResult = await invoke<CommandResult<any>>('diagnose_topics_data')
+      console.log('=== Topics 数据诊断 ===')
+      console.log('总内容数:', topicsResult.data.totalCollections)
+      console.log('有 topics 的内容:', topicsResult.data.collectionsWithTopics)
+      console.log('有关联的类型分布:', topicsResult.data.associationsByType)
+      console.log('推荐操作:', topicsResult.data.recommendations)
     } catch (error) {
       console.error('获取关联统计失败:', error)
     }

@@ -2,9 +2,9 @@
 //!
 //! Handles association discovery, calculation, and graph building
 
-mod association;
-mod discovery;
-mod builder;
+pub mod association;
+pub mod discovery;
+pub mod builder;
 pub mod clustering;
 
 pub use association::{

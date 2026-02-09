@@ -34,3 +34,4 @@ dist-ssr
 .claude*
 
 apps/SlideNote
+.nemo

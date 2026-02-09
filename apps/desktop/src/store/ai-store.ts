@@ -40,7 +40,8 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   openai: 'gpt-4o-mini',
   anthropic: 'claude-3-haiku-20240307',
   deepseek: 'deepseek-chat',
-  custom: 'gpt-4o-mini',
+  custom: 'glm-4.7',
+  zhipu: 'glm-4.7',
 }
 
 const initialState: Omit<

@@ -78,23 +78,23 @@ ${content}
 请分析以上内容并生成元数据。${existingTagsContext ? '\n注意：如果用户已有标签，生成的标签应尽量保持风格一致。' : ''}`
 
   try {
-    const { output: _output } = await generateText({
+    // 使用结构化输出
+    const { output } = await generateText({
       model,
-      // output: Output.object({
-      //   schema: UnifiedAnalysisSchema,
-      // }),
+      output: Output.object({
+        schema: UnifiedAnalysisSchema,
+      }),
       prompt,
       temperature: 0,
     })
-    const output: z.infer<typeof UnifiedAnalysisSchema> = JSON.parse(_output)
-    console.log('🚀 : processContentUnified : output:', output)
+    console.log('✅ 结构化输出成功')
 
-    // // 转换结果格式，添加 id 字段
+    // 转换结果格式，添加 id 字段
     const keywords = output.keywords
       .filter((k) => k.weight > 0.3)
       .map((k) => ({
         id: crypto.randomUUID(),
-        keyword: k.word.trim(),
+        keyword: k.keyword.trim(),
         weight: Math.min(1, Math.max(0, k.weight)),
         extractionMethod: 'ai' as const,
       }))
@@ -111,7 +111,7 @@ ${content}
       .filter((t) => t.confidence > 0.3)
       .map((t) => ({
         id: crypto.randomUUID(),
-        name: t.tag.trim(),
+        name: t.name.trim(),
         confidence: Math.min(1, Math.max(0, t.confidence)),
         isAuto: true,
       }))

@@ -33,6 +33,7 @@ export function ProviderSelect({ value, onValueChange, id = 'provider', label = 
           <SelectItem value="openai">OpenAI</SelectItem>
           <SelectItem value="anthropic">Anthropic</SelectItem>
           <SelectItem value="deepseek">DeepSeek</SelectItem>
+          <SelectItem value="zhipu">智谱 AI (Zhipu)</SelectItem>
           <SelectItem value="custom">自定义 API</SelectItem>
         </SelectContent>
       </Select>

@@ -39,6 +39,10 @@ const MODEL_OPTIONS: Record<AiProvider, Array<{ value: string; label: string }>>
     { value: 'deepseek-chat', label: 'DeepSeek Chat（推荐）' },
     { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner' },
   ],
+  zhipu: [
+    { value: 'glm-4.7', label: 'GLM-4.7（推荐）' },
+    { value: 'glm-4.7-flash', label: 'GLM-4.7-Flash' },
+  ],
   custom: [],
 }
 

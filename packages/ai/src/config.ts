@@ -1,10 +1,11 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createOpenAI } from '@ai-sdk/openai'
+import { createZhipu } from 'zhipu-ai-provider'
 import { invoke } from '@tauri-apps/api/core'
 import type { LanguageModel } from 'ai'
 
-export type AiProvider = 'openai' | 'anthropic' | 'custom' | 'deepseek'
+export type AiProvider = 'openai' | 'anthropic' | 'custom' | 'deepseek' | 'zhipu'
 
 export type AiConfig = {
   provider: AiProvider
@@ -116,6 +117,12 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
   }
 
   switch (config.provider) {
+    case 'zhipu': {
+      const zhipuProvider = createZhipu({
+        apiKey: config.apiKey,
+      })
+      return zhipuProvider(config.model ?? 'glm-4.7') as LanguageModel
+    }
     case 'deepseek': {
       const deepseekProvider = createDeepSeek({
         apiKey: config.apiKey,
@@ -141,7 +148,7 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
         throw new Error('Custom provider requires baseURL')
       }
       // 自定义 API 端点（兼容 OpenAI 格式）
-      const openaiProvider = createDeepSeek({
+      const openaiProvider = createOpenAI({
         apiKey: config.apiKey,
         baseURL: config.baseURL,
       })

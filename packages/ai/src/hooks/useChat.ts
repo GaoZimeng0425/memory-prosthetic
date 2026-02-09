@@ -57,7 +57,7 @@ export const useChat = () => {
         abortControllerRef.current = new AbortController()
 
         // 流式获取AI响应
-        const { textStream, usage } = await streamText({
+        const { textStream } = await streamText({
           model,
           prompt: input,
           abortSignal: abortControllerRef.current.signal,

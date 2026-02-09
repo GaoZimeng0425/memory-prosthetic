@@ -14,7 +14,7 @@ export const ARTICLE_PROMPT = `你是一个专业的内容分析助手。请分�
    - **语言** (language): zh/en/mixed，如果不确定返回 null
 
 3. **关键词提取** (5-10个)
-   - 提取最能代表文章核心概念的关键词
+   - 提取最能代表文章核心概念的关键词 keyword
    - 优先选择技术术语、概念名称
    - weight 范围：0-1，表示关键词的重要性
    - 按 weight 降序排列
@@ -44,5 +44,41 @@ export const ARTICLE_PROMPT = `你是一个专业的内容分析助手。请分�
 
 ### 输出格式
 
-请严格按照提供的 JSON Schema 输出。
-注意：**只返回 JSON 对象本身，不要包含任何 Markdown 代码块（如 \` \` \`json ... \` \` \`）或额外的解释文字。**`
+请严格按照以下 JSON Schema 输出，**字段名必须完全匹配**：
+
+\`\`\`json
+{
+  "summary": "文章摘要，100-200字，或 null",
+  "contentType": "article | tutorial | docs | news | blog | paper | null",
+  "domain": "frontend | backend | fullstack | mobile | devops | ai | null",
+  "difficulty": "beginner | intermediate | advanced | expert | null",
+  "language": "zh | en | mixed | null",
+  "keywords": [
+    {
+      "keyword": "关键词文本",
+      "weight": 0.85
+    }
+  ],
+  "topics": [
+    {
+      "topic": "主题文本",
+      "confidence": 0.9
+    }
+  ],
+  "tags": [
+    {
+      "name": "标签名称",
+      "confidence": 0.8
+    }
+  ]
+}
+\`\`\`
+
+**重要提示**：
+1. **字段名必须完全匹配**：
+   - 关键词对象使用 \`keyword\` 字段（不是 word、text 等）
+   - 标签对象使用 \`name\` 字段（不是 tag、label 等）
+   - 主题对象使用 \`topic\` 字段
+2. **只返回 JSON 对象本身**，不要包含任何 Markdown 代码块（如 \`\`\`json ... \`\`\`）或额外的解释文字
+3. 所有字段必须是有效的 JSON 格式，字符串用双引号，数字不带引号
+4. null 值表示无法确定，不要猜测`

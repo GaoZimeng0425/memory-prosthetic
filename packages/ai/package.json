@@ -48,7 +48,8 @@
     "@ai-sdk/google": "^3.0.6",
     "@ai-sdk/openai": "^3.0.7",
     "@ai-sdk/react": "^3.0.29",
-    "ai": "^6.0.27"
+    "ai": "^6.0.27",
+    "zhipu-ai-provider": "^0.2.2"
   },
   "peerDependenciesMeta": {
     "@tauri-apps/api": {
@@ -57,6 +58,5 @@
     "@tauri-apps/plugin-secure-store": {
       "optional": true
     }
-  },
-  "dependencies": {}
+  }
 }

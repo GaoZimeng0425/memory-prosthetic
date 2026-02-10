@@ -40,3 +40,4 @@ coverage
 apps/SlideNote
 .nemo
 coverage/
+_bmad-output/

@@ -33,5 +33,10 @@ dist-ssr
 
 .claude*
 
+# Test coverage reports
+coverage
+*.lcov
+
 apps/SlideNote
 .nemo
+coverage/

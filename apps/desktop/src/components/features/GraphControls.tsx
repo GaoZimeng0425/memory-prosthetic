@@ -4,10 +4,9 @@
  * Provides controls for filtering and configuring the graph view
  */
 
-import { useState } from 'react'
 import { Loader2, RefreshCw, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react'
 
-import type { AssociationType, GraphFilters } from '@memory-prosthetic/shared'
+import type { AssociationType, GraphFilters, GraphLayout } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@memory-prosthetic/ui/components/ui/card'
 import { Label } from '@memory-prosthetic/ui/components/ui/label'
@@ -41,10 +40,10 @@ const ASSOCIATION_TYPES: { value: AssociationType; label: string }[] = [
 ]
 
 const LAYOUT_OPTIONS = [
-  { value: 'force', label: '力导向布局' },
-  { value: 'circular', label: '圆形布局' },
-  { value: 'radial', label: '径向布局' },
-  { value: 'grid', label: '网格布局' },
+  { value: 'force' as GraphLayout, label: '力导向布局' },
+  { value: 'circular' as GraphLayout, label: '圆形布局' },
+  { value: 'radial' as GraphLayout, label: '径向布局' },
+  { value: 'grid' as GraphLayout, label: '网格布局' },
 ]
 
 export function GraphControls({
@@ -56,7 +55,8 @@ export function GraphControls({
   onZoomOut,
   isRefreshing = false,
 }: GraphControlsProps) {
-  const [layout, setLayout] = useState<string>('force')
+  // Get layout from filters/store, use local state as fallback
+  const layout = filters.layout ?? 'force'
 
   const handleMinWeightChange = (value: number[]) => {
     onFiltersChange({
@@ -76,6 +76,13 @@ export function GraphControls({
     onFiltersChange({
       ...filters,
       maxNodes: value === 'unlimited' ? undefined : Number.parseInt(value, 10),
+    })
+  }
+
+  const handleLayoutChange = (value: GraphLayout) => {
+    onFiltersChange({
+      ...filters,
+      layout: value,
     })
   }
 
@@ -140,7 +147,7 @@ export function GraphControls({
         {/* 布局模式 */}
         <div className="space-y-2">
           <Label>布局模式</Label>
-          <Select onValueChange={setLayout} value={layout}>
+          <Select onValueChange={handleLayoutChange} value={layout}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>

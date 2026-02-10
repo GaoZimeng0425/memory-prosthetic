@@ -30,22 +30,18 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
 
       // 验证 URL 格式
       if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-        console.error('🚀 Invalid URL format:', url)
         setError(true)
         setIsLoading(false)
         return
       }
-
-      console.log('🚀 Creating webview window with URL:', url, 'Title:', title)
 
       // 先关闭已存在的 webview
       try {
         await invoke('close_webview')
         // 等待 webview 完全关闭
         await new Promise((resolve) => setTimeout(resolve, 100))
-      } catch (err) {
+      } catch {
         // 忽略关闭错误，webview 可能不存在
-        console.debug('🚀 No existing webview to close:', err)
       }
       // 清除 ref 引用
       webviewWindowRef.current = null
@@ -64,7 +60,6 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
         y = rect.top
         width = rect.width
         height = rect.height
-        console.log('🚀 Using container element position:', { x, y, width, height })
       } else {
         // 使用整个窗口的内容区域（考虑工具栏高度）
         const toolbarHeight = 56
@@ -74,7 +69,6 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
         const mainSize = await mainWindow.innerSize()
         width = mainSize.width
         height = mainSize.height - toolbarHeight
-        console.log('🚀 Using main window content area:', { x, y, width, height })
       }
 
       // 通过 Rust 命令在主窗口内嵌入 webview（不是独立窗口）
@@ -86,7 +80,6 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
         height: Math.round(height),
       })
 
-      console.log('🚀 Embedded webview created via Rust command')
       setIsLoading(false)
       setError(false)
     } catch (err) {
@@ -128,39 +121,32 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
         width: Math.round(width),
         height: Math.round(height),
       })
-
-      console.log('🚀 Webview updated:', { x, y, width, height })
-    } catch (err) {
+    } catch {
       // 忽略错误，webview 可能不存在或已关闭
-      console.debug('Failed to update webview (may not exist):', err)
     }
   }, [])
 
   const hideWebview = useCallback(async () => {
     try {
       await invoke('hide_webview')
-    } catch (err) {
+    } catch {
       // 忽略错误，webview 可能不存在
-      console.debug('Failed to hide webview:', err)
     }
   }, [])
 
   const showWebview = useCallback(async () => {
     try {
       await invoke('show_webview')
-      console.log('🚀 Webview shown')
-    } catch (err) {
+    } catch {
       // 忽略错误，webview 可能不存在
-      console.debug('Failed to show webview:', err)
     }
   }, [])
 
   const closeWebview = useCallback(async () => {
     try {
       await invoke('close_webview')
-    } catch (err) {
+    } catch {
       // 忽略错误，webview 可能已经关闭或不存在
-      console.debug('Webview may already be closed:', err)
     }
     // 清除 ref 引用
     webviewWindowRef.current = null

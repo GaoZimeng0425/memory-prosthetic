@@ -21,7 +21,7 @@ use db::{
     AssociationRepository,
     CreateAssociation as DbCreateAssociation,
 };
-use graph::{GraphBuilder, GraphData, IncrementalDiscovery};
+use graph::{GraphBuilder, GraphData, IncrementalDiscovery, AssociationMigrator, MigrationOptions, MigrationProgress, MigrationStats, MigrationStatus, MigrationError as GraphMigrationError};
 use embedding::get_embedding_model;
 use embedding::EmbeddingService;
 use serde::{Deserialize, Serialize};
@@ -2183,6 +2183,115 @@ fn diagnose_topics_data(
     Ok(CommandResult { data: report })
 }
 
+/// Get collection associations request
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetCollectionAssociationsRequest {
+    pub collection_id: i64,
+    pub limit: Option<usize>,
+}
+
+/// Get associations for a single collection (optimized for article view)
+/// AC 6: Given 单篇文章 ID，when 调用 get_collection_associations，
+/// then 返回按权重降序排列的关联列表（最多 limit 条）
+#[tauri::command]
+fn get_collection_associations(
+    state: State<'_, Arc<AppState>>,
+    request: GetCollectionAssociationsRequest,
+) -> Result<CommandResult<Vec<db::Association>>, CommandError> {
+    let repo = AssociationRepository::new(state.db.clone());
+    let limit = request.limit.unwrap_or(50);
+
+    let associations = repo.get_by_collection_for_article_view(request.collection_id, limit)?;
+
+    Ok(CommandResult { data: associations })
+}
+
+// ============================================
+// Graph Migration Commands
+// ============================================
+
+/// Get migration statistics
+/// Returns counts of v1, v2, and NULL version associations
+#[tauri::command]
+fn get_migration_stats(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<MigrationStats>, CommandError> {
+    let migrator = AssociationMigrator::new(state.db.clone());
+    let stats = migrator.get_migration_stats().map_err(|e| CommandError {
+        code: "MIGRATION_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    Ok(CommandResult { data: stats })
+}
+
+/// Check if migration is currently in progress
+#[tauri::command]
+fn is_migration_in_progress(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<bool>, CommandError> {
+    let migrator = AssociationMigrator::new(state.db.clone());
+    let in_progress = migrator.is_migration_in_progress().map_err(|e| CommandError {
+        code: "MIGRATION_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    Ok(CommandResult { data: in_progress })
+}
+
+/// Migrate all v1 associations to v2 weights
+/// AC 5: Given 权重算法版本迁移，when 调用 migrate_associations_to_v2，
+/// then 数据库包含 weight_algorithm_version = 'v2' 的关联
+/// AC 21: Given 重复调用迁移 API，when 迁移正在进行，then 返回 409 Conflict 且不启动新迁移
+#[tauri::command]
+fn migrate_associations_to_v2(
+    state: State<'_, Arc<AppState>>,
+    options: Option<MigrationOptions>,
+) -> Result<CommandResult<MigrationProgress>, CommandError> {
+    let migrator = AssociationMigrator::new(state.db.clone());
+    let options = options.unwrap_or_default();
+
+    // AC 21: Check if migration is already in progress
+    if migrator.is_migration_in_progress().map_err(|e| CommandError {
+        code: "MIGRATION_ERROR".to_string(),
+        message: e.to_string(),
+    })? {
+        return Err(CommandError {
+            code: "CONFLICT".to_string(),
+            message: "Migration is already in progress".to_string(),
+        });
+    }
+
+    // Perform migration with a simple progress callback (no real-time updates in sync context)
+    let progress = migrator
+        .migrate_to_v2(options, |_progress| {
+            // In a real async context, this would emit events to the frontend
+            // For now, we just track progress internally
+        })
+        .map_err(|e| CommandError {
+            code: "MIGRATION_ERROR".to_string(),
+            message: e.to_string(),
+        })?;
+
+    Ok(CommandResult { data: progress })
+}
+
+/// Rollback all v2 associations
+/// AC 22: Given 迁移失败，when 执行回滚，then 所有 v2 关联被删除，v1 关联保持不变
+#[tauri::command]
+fn rollback_v2_associations(
+    state: State<'_, Arc<AppState>>,
+) -> Result<CommandResult<usize>, CommandError> {
+    let migrator = AssociationMigrator::new(state.db.clone());
+    let deleted_count = migrator.rollback_v2_associations().map_err(|e| CommandError {
+        code: "MIGRATION_ERROR".to_string(),
+        message: e.to_string(),
+    })?;
+
+    Ok(CommandResult { data: deleted_count })
+}
+
 /// Graph filters request
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -2734,6 +2843,12 @@ pub fn run() {
             get_association_stats,
             diagnose_keyword_associations,
             diagnose_topics_data,
+            get_collection_associations,
+            // Graph Migration
+            get_migration_stats,
+            is_migration_in_progress,
+            migrate_associations_to_v2,
+            rollback_v2_associations,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

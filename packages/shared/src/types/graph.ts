@@ -66,10 +66,13 @@ export type GraphData = {
   edges: GraphEdge[]
 }
 
+export type GraphLayout = 'force' | 'circular' | 'radial' | 'grid'
+
 export type GraphFilters = {
   minWeight?: number
   types?: AssociationType[]
   maxNodes?: number
+  layout?: GraphLayout // 布局模式
   focusedNodeId?: number // 焦点模式：中心节点 ID
   maxDepth?: number // 焦点模式：最大关联深度（默认 1，仅直接关联）
 }

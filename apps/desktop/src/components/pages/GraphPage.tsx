@@ -3,12 +3,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { invoke } from '@tauri-apps/api/core'
 import { Bug, Maximize2, Minimize2, Network, SlidersHorizontal, ZoomIn, ZoomOut } from 'lucide-react'
 
-import type { ClusteringResult, CommandResult, GraphFilters } from '@memory-prosthetic/shared'
+import type { ClusteringResult, CommandResult } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@memory-prosthetic/ui/components/ui/popover'
 import { ClusterPanel } from '@/components/features/ClusterPanel'
 import { GraphControls } from '@/components/features/GraphControls'
 import { GraphView, type GraphViewRef } from '@/components/features/GraphView'
+import { useGraphStore } from '@/store/graph-store'
 import { checkAssociationStats } from '@/utils/debug-associations'
 
 interface GraphPageProps {
@@ -16,18 +17,21 @@ interface GraphPageProps {
 }
 
 export function GraphPage({ onNodeSelect }: GraphPageProps) {
-  const [filters, onFiltersChange] = useState<GraphFilters>({
-    minWeight: 0.2,
-    maxNodes: 100,
-  })
+  // Shared state from graph-store
+  const filters = useGraphStore((state) => state.filters)
+  const updateFilters = useGraphStore((state) => state.updateFilters)
+  const clusterResult = useGraphStore((state) => state.clusterResult)
+  const selectedClusterId = useGraphStore((state) => state.selectedClusterId)
+  const setClusterResult = useGraphStore((state) => state.setClusterResult)
+  const selectCluster = useGraphStore((state) => state.selectCluster)
+
+  // Local state (not shared with other components)
   const queryClient = useQueryClient()
   const [isDiscovering, setIsDiscovering] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const graphViewRef = useRef<GraphViewRef>(null)
 
-  // Clustering state
-  const [clusterResult, setClusterResult] = useState<ClusteringResult>()
-  const [selectedClusterId, setSelectedClusterId] = useState<number>()
+  // Local cluster UI state (algorithm choice, threshold - not shared state)
   const [clusterAlgorithm, setClusterAlgorithm] = useState<'connected_components' | 'weighted_clustering'>(
     'weighted_clustering'
   )
@@ -35,7 +39,24 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
   const [isClusterLoading, setIsClusterLoading] = useState(false)
 
   const handleEdgeClick = (edgeId: string) => {
-    console.log('Edge clicked:', edgeId)
+    // Edge click handler - can be extended to show edge details
+  }
+
+  // Task 19: Double-click node for focus mode
+  const handleNodeDoubleClick = (nodeId: number) => {
+    // Toggle focus mode: if clicking the same focused node, exit focus mode
+    if (filters.focusedNodeId === nodeId) {
+      updateFilters({
+        focusedNodeId: undefined,
+        maxDepth: undefined,
+      })
+    } else {
+      // Enter focus mode on the clicked node
+      updateFilters({
+        focusedNodeId: nodeId,
+        maxDepth: 1, // Show only direct neighbors
+      })
+    }
   }
 
   // Fetch clustering results
@@ -49,10 +70,9 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
         },
       })
       setClusterResult(result.data)
-      setSelectedClusterId(undefined)
-      console.log('✅ Clusters fetched:', result.data.statistics)
+      selectCluster(undefined)
     } catch (error) {
-      console.error('❌ Failed to fetch clusters:', error)
+      console.error('Failed to fetch clusters:', error)
     } finally {
       setIsClusterLoading(false)
     }
@@ -87,27 +107,21 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
 
   const handleClusterAlgorithmChange = (algo: 'connected_components' | 'weighted_clustering') => {
     setClusterAlgorithm(algo)
-    // Auto-refetch with new algorithm
     setTimeout(() => fetchClusters(), 100)
   }
 
   const handleClusterThresholdChange = (threshold: number) => {
     setClusterThreshold(threshold)
-    // Debounce refetch
     setTimeout(() => fetchClusters(), 500)
   }
 
   const handleRefresh = async () => {
     setIsDiscovering(true)
     try {
-      // 先触发批量关联发现
-      const result = await invoke<CommandResult<number>>('discover_all_associations')
-      console.log(`发现了 ${result.data} 个关联`)
-
-      // 然后刷新图谱数据
+      await invoke<CommandResult<number>>('discover_all_associations')
       await queryClient.invalidateQueries({ queryKey: ['graph', 'data'] })
     } catch (error) {
-      console.error('刷新图谱失败:', error)
+      console.error('Failed to refresh graph:', error)
     } finally {
       setIsDiscovering(false)
     }
@@ -116,16 +130,11 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
   const handleDebugStats = async () => {
     try {
       await checkAssociationStats()
-
-      // 额外检查 topics 数据
       const topicsResult = await invoke<CommandResult<any>>('diagnose_topics_data')
-      console.log('=== Topics 数据诊断 ===')
-      console.log('总内容数:', topicsResult.data.totalCollections)
-      console.log('有 topics 的内容:', topicsResult.data.collectionsWithTopics)
-      console.log('有关联的类型分布:', topicsResult.data.associationsByType)
-      console.log('推荐操作:', topicsResult.data.recommendations)
+      // Results are logged in checkAssociationStats
+      void topicsResult // Use the result to avoid unused variable warning
     } catch (error) {
-      console.error('获取关联统计失败:', error)
+      console.error('Failed to get association stats:', error)
     }
   }
 
@@ -158,7 +167,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
     }
   }
 
-  // 监听全屏状态变化
+  // Listen for fullscreen changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement)
@@ -185,7 +194,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               <GraphControls
                 filters={filters}
                 isRefreshing={isDiscovering}
-                onFiltersChange={onFiltersChange}
+                onFiltersChange={updateFilters}
                 onRefresh={handleRefresh}
               />
             </PopoverContent>
@@ -203,7 +212,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
                 isLoading={isClusterLoading}
                 onAlgorithmChange={handleClusterAlgorithmChange}
                 onRefresh={fetchClusters}
-                onSelectCluster={setSelectedClusterId}
+                onSelectCluster={selectCluster}
                 onThresholdChange={handleClusterThresholdChange}
                 result={clusterResult}
                 selectedClusterId={selectedClusterId}
@@ -217,7 +226,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               className="bg-white/90 shadow-md hover:bg-white"
               onClick={handleZoomIn}
               size="icon"
-              title="放大"
+              title="Zoom In"
               variant="outline"
             >
               <ZoomIn className="h-4 w-4" />
@@ -226,7 +235,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               className="bg-white/90 shadow-md hover:bg-white"
               onClick={handleZoomOut}
               size="icon"
-              title="缩小"
+              title="Zoom Out"
               variant="outline"
             >
               <ZoomOut className="h-4 w-4" />
@@ -235,7 +244,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               className="bg-white/90 shadow-md hover:bg-white"
               onClick={handleFitView}
               size="icon"
-              title="适应视图 (1:1)"
+              title="Fit View (1:1)"
               variant="outline"
             >
               <span className="font-medium text-xs">1:1</span>
@@ -244,7 +253,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               className="bg-white/90 shadow-md hover:bg-white"
               onClick={handleToggleFullscreen}
               size="icon"
-              title={isFullscreen ? '退出全屏' : '全屏'}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               variant="outline"
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
@@ -256,7 +265,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
             className="absolute top-6 right-6 z-20"
             onClick={handleDebugStats}
             size="icon"
-            title="查看关联统计（在控制台）"
+            title="View Association Stats (in console)"
             variant="outline"
           >
             <Bug className="h-4 w-4" />
@@ -274,6 +283,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
               nodeColorMap={getClusterColorsMap(clusterResult)}
               onEdgeClick={handleEdgeClick}
               onNodeClick={onNodeSelect}
+              onNodeDoubleClick={handleNodeDoubleClick}
               ref={graphViewRef}
             />
           </div>

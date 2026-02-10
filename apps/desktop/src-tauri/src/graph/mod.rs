@@ -6,25 +6,29 @@ pub mod association;
 pub mod discovery;
 pub mod builder;
 pub mod clustering;
+pub mod migration;
 
 pub use association::{
     AssociationCalculator,
     AssociationType,
-    CalculationError,
 };
 pub use discovery::{
     IncrementalDiscovery,
-    DiscoveryError,
 };
 pub use builder::{
     GraphBuilder,
     GraphData,
-    GraphNode,
-    GraphEdge,
     CreateAssociation,
 };
 pub use clustering::{
     ClusterAnalyzer,
-    Cluster,
     ClusteringError,
+};
+pub use migration::{
+    AssociationMigrator,
+    MigrationOptions,
+    MigrationProgress,
+    MigrationStats,
+    MigrationStatus,
+    MigrationError,
 };

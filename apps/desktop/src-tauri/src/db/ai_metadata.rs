@@ -219,6 +219,31 @@ impl AiMetadataRepository {
         })
     }
 
+    /// Create a single keyword for a collection (helper for tests)
+    #[cfg(test)]
+    pub fn create_keyword_direct(&self, collection_id: i64, keyword: &CreateKeyword) -> Result<(), DbError> {
+        let now = Utc::now().timestamp();
+
+        self.db.with_connection_mut(|conn| {
+            conn.execute(
+                r#"
+                INSERT INTO keywords (id, collection_id, keyword, weight, extraction_method, created_at)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                "#,
+                params![
+                    keyword.id,
+                    collection_id,
+                    keyword.keyword,
+                    keyword.weight,
+                    keyword.extraction_method,
+                    now,
+                ],
+            )?;
+
+            Ok(())
+        })
+    }
+
     /// Get processing logs for a collection
     pub fn get_logs(&self, collection_id: i64) -> Result<Vec<AiProcessingLog>, DbError> {
         self.db.with_connection(|conn| {

@@ -14,6 +14,8 @@
  */
 export interface CommandResult<T> {
   data: T
+  success?: boolean
+  error?: string
 }
 
 /**

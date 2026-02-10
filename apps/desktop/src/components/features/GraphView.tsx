@@ -18,6 +18,28 @@ import { invoke } from '@tauri-apps/api/core'
 import type { GraphData, GraphEdge, GraphFilters, GraphNode as SharedGraphNode } from '@memory-prosthetic/shared'
 import type { CommandResult } from '@/types/api'
 
+// Type guard for G6Graph API methods
+interface GraphZoomMethods {
+  getZoom?: () => number
+  zoom?: (ratio: number) => void
+  zoomTo?: (ratio: number) => void
+}
+
+interface GraphFitMethods {
+  fitView?: () => void
+  fit?: () => void
+}
+
+function hasZoomMethods(graph: G6Graph | null): graph is G6Graph & GraphZoomMethods {
+  if (!graph) return false
+  return 'getZoom' in graph || 'zoom' in graph || 'zoomTo' in graph
+}
+
+function hasFitMethods(graph: G6Graph | null): graph is G6Graph & GraphFitMethods {
+  if (!graph) return false
+  return 'fitView' in graph || 'fit' in graph
+}
+
 // 单个关联节点的 Tooltip 信息
 type NodeAssociationTooltip = {
   nodeId: string
@@ -140,6 +162,7 @@ type GraphViewProps = {
   filters?: GraphFilters
   onNodeClick?: (nodeId: number) => void
   onEdgeClick?: (edgeId: string) => void
+  onNodeDoubleClick?: (nodeId: number) => void
   nodeColorMap?: Record<number, string>
   highlightedNodeIds?: number[]
 }
@@ -152,7 +175,7 @@ export type GraphViewRef = {
 }
 
 export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
-  ({ filters, onNodeClick, onEdgeClick, nodeColorMap, highlightedNodeIds }, ref) => {
+  ({ filters, onNodeClick, onEdgeClick, onNodeDoubleClick, nodeColorMap, highlightedNodeIds }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null)
     const graphRef = useRef<G6Graph | null>(null)
     const [tooltipInfo, setTooltipInfo] = useState<TooltipInfo>(null)
@@ -175,15 +198,9 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               maxDepth: filters?.maxDepth,
             },
           })
-          console.log(
-            '📊 GraphView: 获取成功，节点数:',
-            result.data?.nodes?.length,
-            '边数:',
-            result.data?.edges?.length
-          )
           return result.data
         } catch (err) {
-          console.error('📊 GraphView: 获取图谱数据失败:', err)
+          console.error('GraphView: Failed to fetch graph data:', err)
           throw err
         }
       },
@@ -226,19 +243,19 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
           const targetExists = nodeIdSet.has(targetId)
 
           if (!sourceExists || !targetExists) {
-            console.warn(
-              `⚠️ GraphView: 过滤掉引用不存在节点的边 ${edge.id}: sourceId=${edge.sourceId} (exists: ${sourceExists}), targetId=${edge.targetId} (exists: ${targetExists})`
-            )
             return false
           }
           return true
         })
         .map((edge) => {
           const weight = edge.weight
-          // 权重范围 0-1，映射到距离范围 30-150（权重越高，距离越短，关联节点更近）
-          const distance = 400 - weight * 50
-          // 权重范围 0-1，映射到强度范围 0.3-0.9（权重越高，强度越大，拉得更紧）
-          const strength = 0.3 + weight * 0.6
+          // 动态边距离：权重越高，距离越短（关联性越强，距离越近）
+          // baseDistance 150, weightFactor 0.5-1.5
+          const baseDistance = 150
+          const weightFactor = 0.5 + (1 - weight) // 0.5 for weight=1, 1.5 for weight=0
+          const distance = baseDistance * weightFactor
+          // 动态边强度：权重越高，强度越大（拉得更紧）
+          const strength = weight * 200
 
           return {
             id: edge.id,
@@ -295,31 +312,27 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               // 有边时使用力导向布局
               type: 'd3-force',
               preventOverlap: true,
-              nodeSize: 50,
+              nodeSize: (node: { data?: { degree?: number } }) => 20 + (node.data?.degree ?? 0) * 2,
               link: {
                 // 动态边距离：权重越高，距离越短（关联性越强，距离越近）
-                // G6 v5 的 d3-force 布局会从边的 data.distance 读取距离值
-                distance: (edge: { data?: { distance?: number } }) => {
-                  return edge.data?.distance ?? 150
-                },
+                distance: (edge: { data?: { distance?: number } }) => edge.data?.distance ?? 150,
                 // 动态边强度：权重越高，强度越大（拉得更近）
-                // G6 v5 的 d3-force 布局会从边的 data.strength 读取强度值
-                strength: (edge: { data?: { strength?: number } }) => {
-                  return edge.data?.strength ?? 0.3
-                },
+                strength: (edge: { data?: { strength?: number } }) => edge.data?.strength ?? 0.3,
               },
               manyBody: {
-                // 节点间斥力：负值越大，无关联节点距离越远
-                strength: -200,
+                // 节点间斥力：负值越大，无关联节点距离越远（从-200增加到-500）
+                strength: -500,
               },
               collide: {
                 // 碰撞检测：避免节点重叠
-                radius: 50,
+                radius: (node: { data?: { degree?: number } }) => 20 + (node.data?.degree ?? 0) * 2,
                 strength: 1,
               },
               center: {
                 strength: 0.05,
               },
+              // 降低衰减率，让布局收敛更慢但更稳定
+              alphaDecay: 0.05,
               // 焦点模式：如果有焦点节点，将其固定在中心附近
               ...(filters?.focusedNodeId
                 ? {
@@ -428,7 +441,21 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
             lineWidth: (d: Record<string, unknown>) => {
               const data = d.data as GraphEdgeData['data'] | undefined
               const weight = data?.weight ?? 0.5
-              return Math.max(1, Math.min(4, weight * 4))
+              // 边样式基于权重区分
+              // 高权重 (>0.7): 实线, stroke: 2px
+              // 中权重 (0.4-0.7): 虚线, stroke: 1.5px
+              // 低权重 (<0.4): 点线, stroke: 1px
+              if (weight > 0.7) return 2
+              if (weight >= 0.4) return 1.5
+              return 1
+            },
+            lineDash: (d: Record<string, unknown>) => {
+              const data = d.data as GraphEdgeData['data'] | undefined
+              const weight = data?.weight ?? 0.5
+              // 中权重虚线，低权重点线
+              if (weight < 0.4) return [2, 2] // 点线
+              if (weight < 0.7) return [6, 4] // 虚线
+              return undefined // 实线
             },
             opacity: (d: Record<string, unknown>) => {
               const data = d.data as GraphEdgeData['data'] | undefined
@@ -443,6 +470,8 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               }
 
               const weight = data?.weight ?? 0.5
+              // 低权重边更透明
+              if (weight < 0.4) return 0.5
               return Math.max(0.3, Math.min(0.8, weight))
             },
             endArrow: true,
@@ -487,6 +516,18 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
           const originalId = nodeData?.data?.originalId
           if (typeof originalId === 'number') {
             onNodeClick(originalId)
+          }
+        }
+      })
+
+      // 节点双击事件 - 焦点模式（Task 19）
+      graph.on('node:dblclick', (e: IElementEvent) => {
+        const nodeId = e.target?.id
+        if (nodeId && onNodeDoubleClick) {
+          const nodeData = graph.getNodeData(nodeId)
+          const originalId = nodeData?.data?.originalId
+          if (typeof originalId === 'number') {
+            onNodeDoubleClick(originalId)
           }
         }
       })
@@ -572,8 +613,8 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
               y: viewportPos[1],
               edges: uniqueEdges,
             })
-          } catch (err) {
-            console.log('🚀 处理节点时出错:', err)
+          } catch {
+            // Silently skip nodes that cannot be processed
           }
         }
 
@@ -583,8 +624,6 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
             hoveredNodeTitle,
             associations,
           })
-        } else {
-          console.log('🚀 associations 为空，不显示 tooltip')
         }
       })
 
@@ -629,45 +668,31 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
     // 暴露控制方法给父组件
     useImperativeHandle(ref, () => ({
       zoomIn: () => {
-        if (graphRef.current) {
+        if (hasZoomMethods(graphRef.current)) {
           try {
-            const graph = graphRef.current as unknown as {
-              getZoom?: () => number
-              zoom?: (ratio: number) => void
-              zoomTo?: (ratio: number) => void
-            }
-            const currentZoom = graph.getZoom?.() ?? 1
+            const currentZoom = graphRef.current.getZoom?.() ?? 1
             const newZoom = currentZoom * 1.2
-            graph.zoomTo?.(newZoom) || graph.zoom?.(newZoom)
+            graphRef.current.zoomTo?.(newZoom) || graphRef.current.zoom?.(newZoom)
           } catch (error) {
             console.error('Zoom in failed:', error)
           }
         }
       },
       zoomOut: () => {
-        if (graphRef.current) {
+        if (hasZoomMethods(graphRef.current)) {
           try {
-            const graph = graphRef.current as unknown as {
-              getZoom?: () => number
-              zoom?: (ratio: number) => void
-              zoomTo?: (ratio: number) => void
-            }
-            const currentZoom = graph.getZoom?.() ?? 1
+            const currentZoom = graphRef.current.getZoom?.() ?? 1
             const newZoom = Math.max(0.1, currentZoom * 0.8)
-            graph.zoomTo?.(newZoom) || graph.zoom?.(newZoom)
+            graphRef.current.zoomTo?.(newZoom) || graphRef.current.zoom?.(newZoom)
           } catch (error) {
             console.error('Zoom out failed:', error)
           }
         }
       },
       fitView: () => {
-        if (graphRef.current) {
+        if (hasFitMethods(graphRef.current)) {
           try {
-            const graph = graphRef.current as unknown as {
-              fitView?: () => void
-              fit?: () => void
-            }
-            graph.fitView?.() || graph.fit?.()
+            graphRef.current.fitView?.() || graphRef.current.fit?.()
           } catch (error) {
             console.error('Fit view failed:', error)
           }
@@ -784,12 +809,8 @@ type NodeAssociationTooltipProps = {
 }
 
 const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltipProps) => {
-  console.log('🚀 : NodeAssociationTooltipComponent : edges:', edges)
   // 根据关联类型生成详情描述
   const getDetailDescription = (edge: GraphEdge): string | null => {
-    // Debug log to see what types are coming in
-    console.log('� Tooltip processing edge type:', edge.type, edge)
-
     switch (edge.type) {
       case 'semantic':
         if (edge.semanticSimilarity !== undefined) {
@@ -827,7 +848,6 @@ const NodeAssociationTooltipComponent = ({ edges, x, y }: NodeAssociationTooltip
         }
         return '关键词重叠'
       case 'topic':
-        console.log('Topic edge - topicMatch:', edge.topicMatch, 'sharedFolders:', edge.sharedFolders)
         if (edge.sharedFolders && edge.sharedFolders.length > 0) {
           // sharedFolders is reused to store shared topics
           const topics = edge.sharedFolders.slice(0, 3)

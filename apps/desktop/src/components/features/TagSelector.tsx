@@ -37,7 +37,6 @@ export function TagSelector({ selectedTagIds, onSelectionChange, onCreateTag, tr
   const filteredTags = availableTags.filter((t) => t.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const handleToggleTag = (tagId: number) => {
-    console.log('Toggle tag:', tagId, 'Current selected:', selectedTagIds)
     if (selectedTagIds.includes(tagId)) {
       onSelectionChange(selectedTagIds.filter((id) => id !== tagId))
     } else {

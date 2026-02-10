@@ -35,7 +35,6 @@ export function useCollectionTags(collectionId: number | null): UseCollectionTag
       if (!collectionId) {
         throw new Error('Collection ID is required')
       }
-      console.log('Adding tags to collection:', collectionId, 'tags:', tagIds)
       return collections.api.addCollectionTags(collectionId, tagIds)
     },
     onSuccess: async () => {
@@ -58,7 +57,6 @@ export function useCollectionTags(collectionId: number | null): UseCollectionTag
       if (!collectionId) {
         throw new Error('Collection ID is required')
       }
-      console.log('Removing tag from collection:', collectionId, 'tag:', tagId)
       return collections.api.removeCollectionTag(collectionId, tagId)
     },
     onSuccess: async () => {

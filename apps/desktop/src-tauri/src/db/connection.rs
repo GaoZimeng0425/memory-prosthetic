@@ -636,6 +636,11 @@ impl Database {
             Self::migrate_add_shared_keywords_field(conn)
         })?;
 
+        // Migration: Add weight_algorithm_version field to associations table
+        self.with_connection_mut(|conn| {
+            Self::migrate_add_weight_algorithm_version_field(conn)
+        })?;
+
         // Migration: Convert notes from Slate JSON to Markdown format
         // This is a data migration, not a schema migration
         {
@@ -890,6 +895,60 @@ impl Database {
         )?;
 
         info!("✅ shared_keywords column added to association_metadata table");
+        Ok(())
+    }
+
+    /// Migration: Add weight_algorithm_version field to associations table
+    /// This is idempotent - it checks if the column already exists
+    fn migrate_add_weight_algorithm_version_field(conn: &mut Connection) -> Result<(), rusqlite::Error> {
+        // Check if column already exists (idempotency check)
+        let has_column = conn.query_row(
+            "SELECT COUNT(*) FROM pragma_table_info('associations') WHERE name = 'weight_algorithm_version'",
+            [],
+            |row| row.get::<_, i64>(0),
+        )? > 0;
+
+        if has_column {
+            info!("weight_algorithm_version column already exists in associations table");
+            // Still verify all existing data is marked as v1 (safety check)
+            let null_count: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM associations WHERE weight_algorithm_version IS NULL",
+                [],
+                |row| row.get(0),
+            ).unwrap_or(0);
+
+            if null_count > 0 {
+                info!("Found {} associations with NULL weight_algorithm_version, marking as v1", null_count);
+                let updated = conn.execute(
+                    "UPDATE associations SET weight_algorithm_version = 'v1' WHERE weight_algorithm_version IS NULL",
+                    [],
+                )?;
+                info!("Updated {} associations to weight_algorithm_version = 'v1'", updated);
+            }
+            return Ok(());
+        }
+
+        info!("Adding weight_algorithm_version column to associations table");
+
+        // Step 1: Add the column with default value 'v1'
+        conn.execute(
+            "ALTER TABLE associations ADD COLUMN weight_algorithm_version TEXT DEFAULT 'v1'",
+            [],
+        )?;
+
+        // Step 2: Create index for query performance
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_associations_version ON associations(weight_algorithm_version)",
+            [],
+        )?;
+
+        // Step 3: Verify all existing associations have version 'v1' (update any NULL values)
+        let updated = conn.execute(
+            "UPDATE associations SET weight_algorithm_version = 'v1' WHERE weight_algorithm_version IS NULL",
+            [],
+        )?;
+
+        info!("✅ weight_algorithm_version column added to associations table ({} associations marked as v1)", updated);
         Ok(())
     }
 }
@@ -1299,6 +1358,203 @@ mod tests {
                 |row| row.get(0),
             )?;
             assert_eq!(type_value, "网页");
+            Ok(())
+        }).unwrap();
+    }
+
+    // ========================================================================
+    // Task 5: Weight Algorithm Version Field Tests
+    // ========================================================================
+
+    #[test]
+    fn test_weight_algorithm_version_field_exists() {
+        // AC 5: Given 权重算法版本迁移，when 调用 migrate，then 数据库包含 weight_algorithm_version 字段
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        let db = Database::new(db_path).unwrap();
+        db.migrate().unwrap();
+
+        // Verify weight_algorithm_version column exists in associations table
+        db.with_connection(|conn| {
+            let has_column: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('associations') WHERE name = 'weight_algorithm_version'",
+                [],
+                |row| row.get(0),
+            ).expect("Column check query failed");
+            assert_eq!(has_column, 1, "weight_algorithm_version column should exist");
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn test_weight_algorithm_version_default_value() {
+        // Given: A new database is created
+        // When: An association is inserted without specifying weight_algorithm_version
+        // Then: The default value should be 'v1'
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        let db = Database::new(db_path).unwrap();
+        db.migrate().unwrap();
+
+        // Create test data (collections first due to foreign key constraint)
+        db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO collections (id, url, title, content, created_at, updated_at) VALUES (1, 'https://example.com/1', 'Test 1', 'Content 1', datetime('now'), datetime('now'))",
+                [],
+            )?;
+            conn.execute(
+                "INSERT INTO collections (id, url, title, content, created_at, updated_at) VALUES (2, 'https://example.com/2', 'Test 2', 'Content 2', datetime('now'), datetime('now'))",
+                [],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        // Insert an association without specifying weight_algorithm_version
+        db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO associations (id, source_id, target_id, type, weight, created_at, updated_at) VALUES ('test_assoc', 1, 2, 'semantic', 0.8, datetime('now'), datetime('now'))",
+                [],
+            )?;
+            Ok(())
+        }).unwrap();
+
+        // Verify default value is 'v1'
+        db.with_connection(|conn| {
+            let version: String = conn.query_row(
+                "SELECT weight_algorithm_version FROM associations WHERE id = 'test_assoc'",
+                [],
+                |row| row.get(0),
+            ).expect("Failed to query weight_algorithm_version");
+            assert_eq!(version, "v1", "Default weight_algorithm_version should be 'v1'");
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn test_weight_algorithm_version_index_exists() {
+        // Given: Database migration is run
+        // When: Checking for index on weight_algorithm_version
+        // Then: Index should exist for query performance
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        let db = Database::new(db_path).unwrap();
+        db.migrate().unwrap();
+
+        // Verify index exists
+        db.with_connection(|conn| {
+            let index_exists: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_associations_version'",
+                [],
+                |row| row.get(0),
+            ).expect("Index check query failed");
+            assert!(index_exists > 0, "idx_associations_version index should exist");
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn test_weight_algorithm_version_migration_idempotent() {
+        // Given: Database with weight_algorithm_version column
+        // When: Migration is run multiple times
+        // Then: Should not fail (idempotent)
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        let db = Database::new(db_path).unwrap();
+
+        // Run migration twice
+        db.migrate().unwrap();
+        db.migrate().unwrap(); // Should not fail
+
+        // Verify column still exists and works
+        db.with_connection(|conn| {
+            let has_column: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('associations') WHERE name = 'weight_algorithm_version'",
+                [],
+                |row| row.get(0),
+            ).expect("Column check query failed");
+            assert_eq!(has_column, 1);
+            Ok(())
+        }).unwrap();
+    }
+
+    #[test]
+    fn test_existing_data_marked_as_v1() {
+        // HIGH-3: Given existing associations without weight_algorithm_version
+        // When: Migration runs
+        // Then: All existing data should be marked as 'v1'
+        let dir = tempdir().unwrap();
+        let db_path = dir.path().join("test.db");
+
+        // Create database WITHOUT weight_algorithm_version column (simulate old schema)
+        {
+            let conn = Connection::open(&db_path).unwrap();
+            conn.execute_batch("PRAGMA journal_mode=WAL;").ok();
+
+            // Create tables with old schema (no weight_algorithm_version)
+            conn.execute_batch(
+                r#"
+                CREATE TABLE collections (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    url TEXT,
+                    title TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    summary TEXT,
+                    starred INTEGER NOT NULL DEFAULT 0,
+                    embedding_status TEXT NOT NULL DEFAULT 'pending',
+                    favorite_id INTEGER,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    type TEXT NOT NULL DEFAULT '网页',
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+
+                CREATE TABLE IF NOT EXISTS associations (
+                    id TEXT PRIMARY KEY,
+                    source_id INTEGER NOT NULL,
+                    target_id INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    weight REAL NOT NULL DEFAULT 0.0,
+                    created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL,
+                    FOREIGN KEY (source_id) REFERENCES collections(id) ON DELETE CASCADE,
+                    FOREIGN KEY (target_id) REFERENCES collections(id) ON DELETE CASCADE
+                );
+                "#,
+            ).unwrap();
+
+            // Insert test data
+            conn.execute(
+                "INSERT INTO collections (id, url, title, content, created_at, updated_at) VALUES (1, 'https://example.com/1', 'Test 1', 'Content 1', datetime('now'), datetime('now'))",
+                [],
+            ).unwrap();
+            conn.execute(
+                "INSERT INTO collections (id, url, title, content, created_at, updated_at) VALUES (2, 'https://example.com/2', 'Test 2', 'Content 2', datetime('now'), datetime('now'))",
+                [],
+            ).unwrap();
+
+            // Insert association WITHOUT weight_algorithm_version
+            conn.execute(
+                "INSERT INTO associations (id, source_id, target_id, type, weight, created_at, updated_at) VALUES ('old_assoc', 1, 2, 'semantic', 0.9, strftime('%s', 'now'), strftime('%s', 'now'))",
+                [],
+            ).unwrap();
+        }
+
+        // Now run migration
+        let db = Database::new(db_path).unwrap();
+        db.migrate().unwrap();
+
+        // Verify existing association is marked as 'v1'
+        db.with_connection(|conn| {
+            let version: Option<String> = conn.query_row(
+                "SELECT weight_algorithm_version FROM associations WHERE id = 'old_assoc'",
+                [],
+                |row| row.get(0),
+            ).expect("Failed to query weight_algorithm_version");
+            assert_eq!(version, Some("v1".to_string()), "Existing associations should be marked as 'v1'");
             Ok(())
         }).unwrap();
     }

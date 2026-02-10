@@ -624,3 +624,220 @@ impl IncrementalDiscovery {
         Ok(associations)
     }
 }
+
+// ========================================================================
+// Tests
+// ========================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{Collection, CollectionRepository, Database, FavoriteRepository};
+    use crate::db::init_database;
+    use std::sync::Arc;
+    use tempfile::tempdir;
+
+    /// Helper to create a test database
+    fn setup_test_db() -> Database {
+        let dir = tempdir().unwrap();
+        init_database(dir.path().to_path_buf()).unwrap()
+    }
+
+    /// Helper to create a test collection
+    fn create_test_collection(
+        db: &Database,
+        id: i64,
+        title: &str,
+        url: Option<&str>,
+        favorite_id: Option<i64>,
+        created_at: &str,
+    ) -> Collection {
+        db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO collections (id, url, title, content, favorite_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                rusqlite::params![id, url, title, "test content", favorite_id, created_at, created_at],
+            ).unwrap();
+
+            conn.query_row(
+                "SELECT id, url, title, content, summary, starred, embedding_status, favorite_id, status, type, created_at, updated_at FROM collections WHERE id = ?1",
+                rusqlite::params![id],
+                |row| {
+                    Ok(Collection {
+                        id: row.get(0)?,
+                        url: row.get(1)?,
+                        title: row.get(2)?,
+                        content: row.get(3)?,
+                        summary: row.get(4)?,
+                        starred: row.get::<_, i32>(5)? == 1,
+                        embedding_status: row.get::<_, String>(6)?.into(),
+                        favorite_id: row.get(7)?,
+                        status: row.get::<_, String>(8)?.into(),
+                        r#type: row.get(9)?,
+                        created_at: row.get(10)?,
+                        updated_at: row.get(11)?,
+                    })
+                },
+            )
+        }).unwrap()
+    }
+
+    // ========================================================================
+    // Task 6: Verify Favorite Associations Are Called During Discovery
+    // ========================================================================
+
+    #[tokio::test]
+    async fn test_incremental_discovery_includes_favorite_association() {
+        // Given: Two collections in the same favorite
+        let db = setup_test_db();
+        let calc = Arc::new(db.clone());
+        let discovery = IncrementalDiscovery::new(calc.clone());
+
+        // Create a favorite
+        let favorite_id: i64 = db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO favorites (name) VALUES ('Test Favorite')",
+                [],
+            ).unwrap();
+            Ok(conn.last_insert_rowid())
+        }).unwrap();
+
+        // Create two collections in the same favorite
+        let coll1 = create_test_collection(
+            &db,
+            1,
+            "Article 1",
+            Some("https://example.com/1"),
+            Some(favorite_id),
+            "2024-01-01 10:00:00",
+        );
+        let coll2 = create_test_collection(
+            &db,
+            2,
+            "Article 2",
+            Some("https://example.com/2"),
+            Some(favorite_id),
+            "2024-01-01 11:00:00",
+        );
+
+        // When: Running incremental discovery for the first collection
+        let result = discovery.discover_for_new_content(&coll1).await;
+
+        // Then: Should include a folder association
+        assert!(result.is_ok());
+        let associations = result.unwrap();
+
+        // Find folder associations
+        let folder_associations: Vec<_> = associations
+            .iter()
+            .filter(|a| a.r#type == AssociationType::Folder.as_str())
+            .collect();
+
+        assert!(!folder_associations.is_empty(), "Should have at least one folder association");
+        assert_eq!(folder_associations[0].r#type, "folder");
+        assert_eq!(folder_associations[0].source_id, coll1.id);
+        assert_eq!(folder_associations[0].target_id, coll2.id);
+    }
+
+    #[tokio::test]
+    async fn test_batch_discovery_includes_favorite_association() {
+        // Given: Multiple collections in the same favorite
+        let db = setup_test_db();
+        let calc = Arc::new(db.clone());
+        let discovery = IncrementalDiscovery::new(calc);
+
+        // Create a favorite
+        let favorite_id: i64 = db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO favorites (name) VALUES ('Batch Test Favorite')",
+                [],
+            ).unwrap();
+            Ok(conn.last_insert_rowid())
+        }).unwrap();
+
+        // Create multiple collections in the same favorite
+        for i in 1..=5 {
+            create_test_collection(
+                &db,
+                i,
+                &format!("Article {}", i),
+                Some(&format!("https://example.com/{}", i)),
+                Some(favorite_id),
+                "2024-01-01 10:00:00",
+            );
+        }
+
+        // When: Running batch discovery
+        let result = discovery.discover_all_pairs().await;
+
+        // Then: Should include folder associations
+        assert!(result.is_ok());
+        let associations = result.unwrap();
+
+        // Find folder associations
+        let folder_associations: Vec<_> = associations
+            .iter()
+            .filter(|a| a.r#type == AssociationType::Folder.as_str())
+            .collect();
+
+        // With 5 collections, we should have C(5,2) = 10 folder associations
+        assert!(!folder_associations.is_empty(), "Should have folder associations");
+
+        // Verify the folder associations have correct structure
+        for assoc in folder_associations {
+            assert_eq!(assoc.r#type, "folder");
+            assert!(assoc.weight > 0.0, "Folder association weight should be positive");
+            assert_eq!(assoc.confidence, 0.8);
+            assert_eq!(assoc.reason, Some("auto_discovered".to_string()));
+            assert!(assoc.domain.is_some(), "Folder association should have favorite name in domain field");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_discovery_no_favorite_association_for_different_favorites() {
+        // Given: Two collections in different favorites
+        let db = setup_test_db();
+        let calc = Arc::new(db.clone());
+        let discovery = IncrementalDiscovery::new(calc);
+
+        let fav1_id: i64 = db.with_connection(|conn| {
+            conn.execute("INSERT INTO favorites (name) VALUES ('Favorite 1')", []).unwrap();
+            Ok(conn.last_insert_rowid())
+        }).unwrap();
+
+        let fav2_id: i64 = db.with_connection(|conn| {
+            conn.execute("INSERT INTO favorites (name) VALUES ('Favorite 2')", []).unwrap();
+            Ok(conn.last_insert_rowid())
+        }).unwrap();
+
+        let coll1 = create_test_collection(
+            &db,
+            1,
+            "Article 1",
+            Some("https://example.com/1"),
+            Some(fav1_id),
+            "2024-01-01 10:00:00",
+        );
+        let coll2 = create_test_collection(
+            &db,
+            2,
+            "Article 2",
+            Some("https://example.com/2"),
+            Some(fav2_id),
+            "2024-01-01 11:00:00",
+        );
+
+        // When: Running incremental discovery
+        let result = discovery.discover_for_new_content(&coll1).await;
+
+        // Then: Should NOT include a folder association
+        assert!(result.is_ok());
+        let associations = result.unwrap();
+
+        let folder_associations: Vec<_> = associations
+            .iter()
+            .filter(|a| a.r#type == AssociationType::Folder.as_str())
+            .collect();
+
+        assert!(folder_associations.is_empty(), "Should not have folder associations for different favorites");
+    }
+}

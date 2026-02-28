@@ -22,7 +22,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@memory-prosthetic/ui/c
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { collections } from '@/apis'
-import { useDialog } from '@/contexts/DialogContext'
 import { useAiConfig } from '@/hooks/use-ai-config'
 import { useAiMetadata } from '@/hooks/use-ai-metadata'
 import { useAiProcessing } from '@/hooks/use-ai-processing'
@@ -30,6 +29,7 @@ import { useCollectionTags } from '@/hooks/use-collection-tags'
 
 type AiButtonProps = {
   article: Collection
+  onOpenSettings?: () => void
 }
 
 // 难度标签颜色
@@ -68,12 +68,11 @@ const domainLabels: Record<string, string> = {
   ai: 'AI/ML',
 }
 
-export const AiButton = ({ article }: AiButtonProps) => {
+export const AiButton = ({ article, onOpenSettings }: AiButtonProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [result, setResult] = useState<AiMetadata | null>(null)
   const { isConfigured, enabled } = useAiConfig()
   const { processCollection, isProcessing, error } = useAiProcessing()
-  const { openSettingsDialog } = useDialog()
   const { tags: collectionTags } = useCollectionTags(article.id)
   const queryClient = useQueryClient()
 
@@ -119,7 +118,7 @@ export const AiButton = ({ article }: AiButtonProps) => {
   }
 
   const handleOpenSettings = () => {
-    openSettingsDialog()
+    onOpenSettings?.()
   }
 
   // 未配置 AI 时显示配置提示

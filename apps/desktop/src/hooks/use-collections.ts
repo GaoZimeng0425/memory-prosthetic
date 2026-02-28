@@ -16,6 +16,10 @@
  * For displaying favorites list with article counts and global statistics,
  * use `useSidebarSync()` which is optimized for sidebar data fetching.
  *
+ * **Optimistic Updates:**
+ * All mutation operations now use optimistic updates with automatic rollback on failure.
+ * The UI updates instantly, and if the server operation fails, changes are rolled back.
+ *
  * @example
  * ```tsx
  * // ❌ Wrong for sidebar:
@@ -29,13 +33,15 @@
  * ```
  *
  * @see {@link useSidebarSync} for sidebar-optimized data fetching
+ * @see {@link useCollectionMutations} for optimistic mutation logic
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 import type { GetCollectionsParams } from '@memory-prosthetic/shared/apis'
 import type { CollectionListItem, CollectionStats } from '@memory-prosthetic/shared/types'
 import { collections } from '@/apis'
+import { useCollectionMutations } from './use-collection-mutations'
 
 interface UseCollectionsReturn {
   collections: CollectionListItem[]
@@ -52,8 +58,6 @@ interface UseCollectionsReturn {
 }
 
 export function useCollections(params?: GetCollectionsParams): UseCollectionsReturn {
-  const queryClient = useQueryClient()
-
   const listQuery = useQuery({
     ...collections.queries.list({
       // Merge params first, then ensure limit and offset are always set
@@ -61,90 +65,30 @@ export function useCollections(params?: GetCollectionsParams): UseCollectionsRet
       limit: params?.limit ?? 1000,
       offset: params?.offset ?? 0,
     }),
-    refetchInterval: 5000, // Poll every 5 seconds
+    // No refetchInterval - using event-driven updates via useCollectionEvents
   })
 
   const statsQuery = useQuery({
     ...collections.queries.stats(),
-    refetchInterval: 5000,
+    // No refetchInterval - using event-driven updates via useCollectionEvents
   })
 
-  const refresh = async () => {
-    await Promise.all([queryClient.invalidateQueries({ queryKey: collections.keys.all })])
-    // Force refetch to ensure data is updated immediately
-    await Promise.all([
-      queryClient.refetchQueries({ queryKey: collections.keys.lists() }),
-      queryClient.refetchQueries({ queryKey: collections.keys.stats() }),
-    ])
-  }
-
-  // Mutations
-  const setFavoriteMutation = useMutation({
-    mutationFn: ({ id, favoriteId }: { id: number; favoriteId: number | null }) =>
-      collections.api.setFavorite(id, favoriteId),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
-
-  const toggleStarMutation = useMutation({
-    mutationFn: (id: number) => collections.api.toggleStar(id),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
-
-  const archiveMutation = useMutation({
-    mutationFn: (id: number) => collections.api.archive(id),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
-
-  const restoreMutation = useMutation({
-    mutationFn: (id: number) => collections.api.restore(id),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => collections.api.delete(id),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
-
-  const permanentlyDeleteMutation = useMutation({
-    mutationFn: (id: number) => collections.api.permanentlyDelete(id),
-    onSuccess: () => {
-      void refresh()
-    },
-  })
+  // Use optimistic mutations with rollback protection
+  const mutations = useCollectionMutations()
 
   return {
     collections: listQuery.data ?? [],
     stats: statsQuery.data ?? null,
     isLoading: listQuery.isLoading || statsQuery.isLoading,
     error: listQuery.error?.message ?? statsQuery.error?.message ?? null,
-    refresh,
-    setFavorite: async (id: number, favoriteId: number | null) => {
-      await setFavoriteMutation.mutateAsync({ id, favoriteId })
+    refresh: async () => {
+      // Note: With event-driven updates, explicit refresh is rarely needed
+      // This method is kept for manual refresh scenarios
+      await Promise.all([
+        listQuery.refetch(),
+        statsQuery.refetch(),
+      ])
     },
-    toggleStar: async (id: number) => {
-      await toggleStarMutation.mutateAsync(id)
-    },
-    archive: async (id: number) => {
-      await archiveMutation.mutateAsync(id)
-    },
-    restore: async (id: number) => {
-      await restoreMutation.mutateAsync(id)
-    },
-    delete: async (id: number) => {
-      await deleteMutation.mutateAsync(id)
-    },
-    permanentlyDelete: async (id: number) => {
-      await permanentlyDeleteMutation.mutateAsync(id)
-    },
+    ...mutations,
   }
 }

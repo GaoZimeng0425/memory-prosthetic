@@ -1,18 +1,16 @@
 /**
- * Tauri IPC Request Adapter
+ * Tauri IPC Request Adapter (Backward Compatible)
  *
  * Uses Tauri's invoke() for IPC communication with Rust backend.
- * Maps REST-like endpoints to Tauri commands.
+ *
+ * For backward compatibility with existing Rust backend, this adapter
+ * still uses the { request: ... } wrapper format. The full refactor
+ * to flat parameters will be done in a follow-up task.
  */
 
 import { invoke } from '@tauri-apps/api/core'
 
 import type { RequestAdapter } from './adapter'
-
-/** Result wrapper from Tauri commands */
-interface CommandResult<T> {
-  data: T
-}
 
 /**
  * Endpoint to Tauri command mapping
@@ -91,12 +89,24 @@ function getCommand(method: string, endpoint: string): string {
 }
 
 /**
- * Create a Tauri IPC adapter
+ * Result wrapper from Tauri commands
+ */
+interface CommandResult<T> {
+  data: T
+}
+
+/**
+ * Create a Tauri IPC adapter (Backward Compatible)
  *
- * Requires @tauri-apps/api to be available in the runtime.
+ * Maintains compatibility with existing Rust backend that expects
+ * { request: ... } wrapper and returns CommandResult<T>.
+ *
+ * Future refactoring will:
+ * - Remove ENDPOINT_COMMANDS mapping
+ * - Remove { request: ... } wrapper
+ * - Remove CommandResult wrapper
  */
 export function createTauriAdapter(): RequestAdapter {
-  // Dynamically import Tauri API to avoid issues in non-Tauri environments
   const invokeCommand = async <T>(command: string, args?: Record<string, unknown>): Promise<T> => {
     const result = await invoke<CommandResult<T>>(command, args)
     return result.data
@@ -105,7 +115,6 @@ export function createTauriAdapter(): RequestAdapter {
   return {
     get: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
       const command = getCommand('GET', endpoint)
-      // For GET requests with params, wrap in { request: params }
       // Extract ID from endpoint if present (e.g., /api/favorite/123 -> id: 123)
       const idMatch = endpoint.match(/\/(\d+)$/)
       if (idMatch) {

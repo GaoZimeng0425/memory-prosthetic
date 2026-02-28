@@ -5,6 +5,8 @@
 mod cleanup;
 mod db;
 mod embedding;
+mod error;
+mod events;
 mod graph;
 mod server;
 mod settings;
@@ -46,23 +48,10 @@ pub struct CommandResult<T> {
     pub data: T,
 }
 
-/// Command error for error responses
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CommandError {
-    pub code: String,
-    pub message: String,
-}
+// Re-export CommandError from error module
+pub use error::CommandError;
 
-impl CommandError {
-    pub fn invalid_algorithm(algorithm: &str) -> Self {
-        CommandError {
-            code: "INVALID_ALGORITHM".to_string(),
-            message: format!("Unknown clustering algorithm: {}", algorithm),
-        }
-    }
-}
-
+// Add From implementations for CommandError
 impl From<DbError> for CommandError {
     fn from(e: DbError) -> Self {
         CommandError {
@@ -136,12 +125,6 @@ pub struct SearchResponse {
 }
 
 /// Collection operation request (for archive, restore, toggle-star, permanently-delete)
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CollectionOperationRequest {
-    pub id: i64,
-}
-
 /// Get collections request
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -162,44 +145,6 @@ pub struct UploadFileResponse {
     pub r#type: String,
     pub size: u64,
     pub url: String,
-}
-
-/// Get collection tags request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetCollectionTagsRequest {
-    pub collection_id: i64,
-}
-
-/// Add collection tags request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AddCollectionTagsRequest {
-    pub collection_id: i64,
-    pub tag_ids: Vec<i64>,
-}
-
-/// Remove collection tag request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RemoveCollectionTagRequest {
-    pub collection_id: i64,
-    pub tag_id: i64,
-}
-
-/// Set collection favorite request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SetCollectionFavoriteRequest {
-    pub id: i64,
-    pub favorite_id: Option<i64>,
-}
-
-/// Get collection request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetCollectionRequest {
-    pub id: i64,
 }
 
 // ============================================
@@ -841,10 +786,10 @@ async fn create_note(
 #[tauri::command]
 fn get_collection(
     state: State<'_, Arc<AppState>>,
-    request: GetCollectionRequest,
+    id: i64,
 ) -> Result<CommandResult<Option<Collection>>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    let collection = repo.get_by_id(request.id)?;
+    let collection = repo.get_by_id(id)?;
 
     Ok(CommandResult { data: collection })
 }
@@ -864,6 +809,7 @@ pub struct UpdateCollectionCommandRequest {
 
 #[tauri::command]
 fn update_collection(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
     request: UpdateCollectionCommandRequest,
 ) -> Result<CommandResult<Collection>, CommandError> {
@@ -964,6 +910,10 @@ fn update_collection(
             message: "Collection updated but not found".to_string(),
         })?;
 
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::Updated { id }.broadcast(&app)?;
+
     Ok(CommandResult { data: collection })
 }
 
@@ -1003,11 +953,18 @@ fn get_collections(
 /// Delete a collection by ID (soft delete)
 #[tauri::command]
 fn delete_collection(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
     id: i64,
 ) -> Result<CommandResult<bool>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
     let deleted = repo.delete(id)?;
+
+    // Broadcast event (only if actually deleted)
+    if deleted {
+        use events::CollectionEvent;
+        CollectionEvent::Deleted { id }.broadcast(&app)?;
+    }
 
     Ok(CommandResult { data: deleted })
 }
@@ -1015,11 +972,18 @@ fn delete_collection(
 /// Permanently delete a collection
 #[tauri::command]
 fn permanently_delete_collection(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: CollectionOperationRequest,
+    id: i64,
 ) -> Result<CommandResult<bool>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    let deleted = repo.permanently_delete(request.id)?;
+    let deleted = repo.permanently_delete(id)?;
+
+    // Broadcast event (only if actually deleted)
+    if deleted {
+        use events::CollectionEvent;
+        CollectionEvent::Deleted { id }.broadcast(&app)?;
+    }
 
     Ok(CommandResult { data: deleted })
 }
@@ -1027,11 +991,16 @@ fn permanently_delete_collection(
 /// Archive a collection
 #[tauri::command]
 fn archive_collection(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: CollectionOperationRequest,
+    id: i64,
 ) -> Result<CommandResult<()>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    repo.archive(request.id)?;
+    repo.archive(id)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::Archived { id }.broadcast(&app)?;
 
     Ok(CommandResult { data: () })
 }
@@ -1039,11 +1008,16 @@ fn archive_collection(
 /// Restore a collection
 #[tauri::command]
 fn restore_collection(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: CollectionOperationRequest,
+    id: i64,
 ) -> Result<CommandResult<()>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    repo.restore(request.id)?;
+    repo.restore(id)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::Restored { id }.broadcast(&app)?;
 
     Ok(CommandResult { data: () })
 }
@@ -1051,11 +1025,21 @@ fn restore_collection(
 /// Set collection favorite
 #[tauri::command]
 fn set_collection_favorite(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: SetCollectionFavoriteRequest,
+    id: i64,
+    favorite_id: Option<i64>,
 ) -> Result<CommandResult<()>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    repo.set_favorite(request.id, request.favorite_id)?;
+    repo.set_favorite(id, favorite_id)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::FavoriteChanged {
+        id,
+        favorite_id,
+    }
+    .broadcast(&app)?;
 
     Ok(CommandResult { data: () })
 }
@@ -1063,11 +1047,20 @@ fn set_collection_favorite(
 /// Toggle starred status for a collection
 #[tauri::command]
 fn toggle_collection_star(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: CollectionOperationRequest,
+    id: i64,
 ) -> Result<CommandResult<bool>, CommandError> {
     let repo = CollectionRepository::new(&state.db);
-    let starred = repo.toggle_star(request.id)?;
+    let starred = repo.toggle_star(id)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::StarToggled {
+        id,
+        starred,
+    }
+    .broadcast(&app)?;
 
     Ok(CommandResult { data: starred })
 }
@@ -1450,11 +1443,20 @@ fn get_tag(
 /// Add tags to a collection
 #[tauri::command]
 fn add_collection_tags(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: AddCollectionTagsRequest,
+    collection_id: i64,
+    tag_ids: Vec<i64>,
 ) -> Result<CommandResult<()>, CommandError> {
     let repo = CollectionTagRepository::new(&state.db);
-    repo.add_tags(request.collection_id, &request.tag_ids)?;
+    repo.add_tags(collection_id, &tag_ids)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::TagsChanged {
+        id: collection_id,
+    }
+    .broadcast(&app)?;
 
     Ok(CommandResult { data: () })
 }
@@ -1462,11 +1464,20 @@ fn add_collection_tags(
 /// Remove a tag from a collection
 #[tauri::command]
 fn remove_collection_tag(
+    app: AppHandle,
     state: State<'_, Arc<AppState>>,
-    request: RemoveCollectionTagRequest,
+    collection_id: i64,
+    tag_id: i64,
 ) -> Result<CommandResult<()>, CommandError> {
     let repo = CollectionTagRepository::new(&state.db);
-    repo.remove_tag(request.collection_id, request.tag_id)?;
+    repo.remove_tag(collection_id, tag_id)?;
+
+    // Broadcast event
+    use events::CollectionEvent;
+    CollectionEvent::TagsChanged {
+        id: collection_id,
+    }
+    .broadcast(&app)?;
 
     Ok(CommandResult { data: () })
 }
@@ -1475,10 +1486,10 @@ fn remove_collection_tag(
 #[tauri::command]
 fn get_collection_tags(
     state: State<'_, Arc<AppState>>,
-    request: GetCollectionTagsRequest,
+    collection_id: i64,
 ) -> Result<CommandResult<Vec<Tag>>, CommandError> {
     let repo = CollectionTagRepository::new(&state.db);
-    let tags = repo.get_tags_by_collection(request.collection_id)?;
+    let tags = repo.get_tags_by_collection(collection_id)?;
 
     Ok(CommandResult { data: tags })
 }
@@ -2184,25 +2195,19 @@ fn diagnose_topics_data(
 }
 
 /// Get collection associations request
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetCollectionAssociationsRequest {
-    pub collection_id: i64,
-    pub limit: Option<usize>,
-}
-
 /// Get associations for a single collection (optimized for article view)
 /// AC 6: Given 单篇文章 ID，when 调用 get_collection_associations，
 /// then 返回按权重降序排列的关联列表（最多 limit 条）
 #[tauri::command]
 fn get_collection_associations(
     state: State<'_, Arc<AppState>>,
-    request: GetCollectionAssociationsRequest,
+    collection_id: i64,
+    limit: Option<usize>,
 ) -> Result<CommandResult<Vec<db::Association>>, CommandError> {
     let repo = AssociationRepository::new(state.db.clone());
-    let limit = request.limit.unwrap_or(50);
+    let limit = limit.unwrap_or(50);
 
-    let associations = repo.get_by_collection_for_article_view(request.collection_id, limit)?;
+    let associations = repo.get_by_collection_for_article_view(collection_id, limit)?;
 
     Ok(CommandResult { data: associations })
 }

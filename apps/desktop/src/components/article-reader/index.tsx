@@ -11,7 +11,6 @@ import { ReaderSettings } from '@/components/article-reader/ReaderSettings'
 import { WebviewView } from '@/components/article-reader/WebviewView'
 import { AiButton } from '@/components/features/AiButton'
 import { ArticleActionsMenu } from '@/components/features/ArticleActionsMenu'
-import { useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
 import { useResizeObserver } from '@/hooks/use-resize-observer'
 import { useWebviewWindow } from '@/hooks/use-webview-window'
@@ -31,6 +30,9 @@ type ArticleReaderProps = {
   onArchive?: (id: number) => void
   onRestore?: (id: number) => void
   onPermanentDelete?: (id: number) => void
+  onOpenTagDialog?: (collectionId: number) => void
+  onOpenFavoriteDialog?: (collectionId: number) => void
+  onOpenSettingsDialog?: () => void
   isLoading?: boolean
 }
 
@@ -47,12 +49,14 @@ export const ArticleReader = ({
   onSetFavorite,
   onArchive,
   onRestore,
+  onOpenTagDialog,
+  onOpenFavoriteDialog,
+  onOpenSettingsDialog,
   isLoading,
 }: ArticleReaderProps) => {
   const scrollAreaRef = useRef<HTMLDivElement | null>(null)
   const webviewContainerRef = useRef<HTMLDivElement>(null)
   const { tags: collectionTags, removeTag } = useCollectionTags(article?.id ?? null)
-  const { openTagDialog, openFavoriteDialog } = useDialog()
   const [viewMode, setViewMode] = useState<ViewMode>('markdown')
   const [isNoteEditing, setIsNoteEditing] = useState(false)
   const { fontSize, fontFamily, layout, getBackgroundColorClassName } = useReaderStore()
@@ -180,7 +184,7 @@ export const ArticleReader = ({
           <Activity mode={viewMode === 'webview' ? 'hidden' : 'visible'}>
             <ButtonGroup className="divide-x divide-muted-foreground/5 overflow-hidden rounded-full bg-secondary shadow-lg">
               {/* AI 分析按钮 */}
-              <AiButton article={article} />
+              <AiButton article={article} onOpenSettings={onOpenSettingsDialog} />
               <ReaderSettings
                 trigger={
                   <Button size="icon" variant="ghost">
@@ -203,8 +207,8 @@ export const ArticleReader = ({
               <ArticleActionsMenu
                 article={article}
                 onDelete={onDelete}
-                onOpenFavoriteDialog={openFavoriteDialog}
-                onOpenTagDialog={openTagDialog}
+                onOpenFavoriteDialog={onOpenFavoriteDialog}
+                onOpenTagDialog={onOpenTagDialog}
                 onOpenUrl={onOpenUrl}
                 onSetFavorite={onSetFavorite}
                 onToggleStar={onToggleStar}

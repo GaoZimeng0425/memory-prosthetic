@@ -1,28 +1,24 @@
 /**
  * HTTP Request Adapter
  *
- * Uses axios for HTTP requests. Suitable for browser extension
- * communicating with the desktop app's HTTP server.
+ * Uses native fetch API for HTTP requests. Suitable for browser extension
+ * communicating with the desktop app's HTTP server or development testing.
  */
 
-import axios, { type AxiosInstance } from 'axios'
-
-import type { AdapterConfig, RequestAdapter } from './adapter'
-
-const DEFAULT_TIMEOUT = 10000
+import type { RequestAdapter } from './adapter'
 
 /**
  * API response wrapper from backend
  */
-interface ApiResponseWrapper<T> {
-  success: boolean
+type ApiResponseWrapper<T> = {
+  success: true
   data: T
 }
 
 /**
  * API error response wrapper
  */
-interface ApiErrorWrapper {
+type ApiErrorWrapper = {
   success: false
   error: {
     code: string
@@ -34,11 +30,10 @@ interface ApiErrorWrapper {
  * Unwrap API response if it's wrapped in { success, data }
  * For error responses, preserve the error structure
  */
-function unwrapResponse<T>(data: T | ApiResponseWrapper<T> | ApiErrorWrapper): T {
+const unwrapResponse = <T>(data: T | ApiResponseWrapper<T> | ApiErrorWrapper): T => {
   if (typeof data === 'object' && data !== null) {
     // Check if it's an error response
     if ('success' in data && data.success === false && 'error' in data) {
-      // For error responses, throw an error with the error message
       const errorWrapper = data as ApiErrorWrapper
       const error = new Error(errorWrapper.error.message)
       // Attach error code to the error object
@@ -54,40 +49,121 @@ function unwrapResponse<T>(data: T | ApiResponseWrapper<T> | ApiErrorWrapper): T
   return data as T
 }
 
-export function createHttpAdapter(config?: AdapterConfig): RequestAdapter {
-  const instance: AxiosInstance = axios.create({
-    baseURL: config?.baseURL,
-    timeout: config?.timeout ?? DEFAULT_TIMEOUT,
-    headers: {
-      'Content-Type': 'application/json',
-      ...config?.headers,
-    },
-  })
-
+/**
+ * Create an HTTP adapter using native fetch
+ *
+ * @param baseUrl - Base URL for all requests (e.g., 'http://localhost:21890')
+ */
+export function createHttpAdapter(baseUrl: string): RequestAdapter {
   return {
-    get: async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
-      const response = await instance.get<T | ApiResponseWrapper<T>>(url, { params })
-      return unwrapResponse(response.data)
+    get: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
+      const url = new URL(endpoint, baseUrl)
+
+      // Add query parameters
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value))
+          }
+        })
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return unwrapResponse<T>(data)
     },
 
-    post: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-      const response = await instance.post<T | ApiResponseWrapper<T>>(url, data)
-      return unwrapResponse(response.data)
+    post: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
+      const url = new URL(endpoint, baseUrl)
+
+      const response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const responseData = await response.json()
+      return unwrapResponse<T>(responseData)
     },
 
-    put: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-      const response = await instance.put<T | ApiResponseWrapper<T>>(url, data)
-      return unwrapResponse(response.data)
+    put: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
+      const url = new URL(endpoint, baseUrl)
+
+      const response = await fetch(url.toString(), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const responseData = await response.json()
+      return unwrapResponse<T>(responseData)
     },
 
-    patch: async <T, D = unknown>(url: string, data?: D): Promise<T> => {
-      const response = await instance.patch<T | ApiResponseWrapper<T>>(url, data)
-      return unwrapResponse(response.data)
+    patch: async <T, D = unknown>(endpoint: string, data?: D): Promise<T> => {
+      const url = new URL(endpoint, baseUrl)
+
+      const response = await fetch(url.toString(), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const responseData = await response.json()
+      return unwrapResponse<T>(responseData)
     },
 
-    delete: async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
-      const response = await instance.delete<T | ApiResponseWrapper<T>>(url, { params })
-      return unwrapResponse(response.data)
+    delete: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
+      const url = new URL(endpoint, baseUrl)
+
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            url.searchParams.set(key, String(value))
+          }
+        })
+      }
+
+      const response = await fetch(url.toString(), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return unwrapResponse<T>(data)
     },
   }
 }

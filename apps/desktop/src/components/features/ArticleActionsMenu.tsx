@@ -19,8 +19,8 @@ type ArticleActionsMenuProps = {
   onDelete: (id: number) => void
   onToggleStar?: (id: number) => void
   onSetFavorite?: (id: number, favoriteId: number | null) => void
-  onOpenTagDialog: (id: number) => void
-  onOpenFavoriteDialog: (id: number) => void
+  onOpenTagDialog?: (id: number) => void
+  onOpenFavoriteDialog?: (id: number) => void
 }
 
 export const ArticleActionsMenu = ({
@@ -78,22 +78,26 @@ export const ArticleActionsMenu = ({
           </Activity>
 
           {/* 第二行 */}
-          <DropdownMenuItem
-            className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-            onClick={() => onOpenTagDialog(article.id)}
-          >
-            <Hash className="size-5 text-foreground" />
-            <span className="text-foreground text-xs">标签</span>
-          </DropdownMenuItem>
+          {onOpenTagDialog && (
+            <DropdownMenuItem
+              className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
+              onClick={() => onOpenTagDialog(article.id)}
+            >
+              <Hash className="size-5 text-foreground" />
+              <span className="text-foreground text-xs">标签</span>
+            </DropdownMenuItem>
+          )}
 
           {/* 第三行 */}
-          <DropdownMenuItem
-            className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
-            onClick={() => onSetFavorite && onOpenFavoriteDialog(article.id)}
-          >
-            <Move className="size-5 text-foreground" />
-            <span className="text-foreground text-xs">移动</span>
-          </DropdownMenuItem>
+          {onOpenFavoriteDialog && onSetFavorite && (
+            <DropdownMenuItem
+              className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
+              onClick={() => onOpenFavoriteDialog(article.id)}
+            >
+              <Move className="size-5 text-foreground" />
+              <span className="text-foreground text-xs">移动</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="flex flex-col items-center justify-center gap-1.5 rounded-md p-3 hover:bg-accent"
             onClick={() => onToggleStar?.(article.id)}

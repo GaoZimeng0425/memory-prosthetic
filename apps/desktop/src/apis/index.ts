@@ -1,17 +1,25 @@
 /**
  * Desktop App API Setup
  *
- * Creates API instances using Tauri adapter for IPC communication
- * with the Rust backend.
+ * Creates API instances using AdapterManager for flexible communication
+ * with the Rust backend (Tauri IPC) or HTTP server.
  */
 
-import { createApis, createTauriAdapter } from '@memory-prosthetic/shared'
+import { AdapterManager, createApis } from '@memory-prosthetic/shared'
 
-// Create Tauri IPC adapter
-const adapter = createTauriAdapter()
+// Create adapter manager with auto mode
+// - Development: HTTP adapter (for testing)
+// - Production: Tauri IPC adapter (for performance)
+const manager = new AdapterManager({
+  httpBaseUrl: 'http://localhost:21890',
+  initialMode: 'auto',
+  onAdapterChange: (mode) => {
+    console.log(`[适配器] 切换到: ${mode}`)
+  },
+})
 
-// Create all API instances
-const apis = createApis(adapter)
+// Create all API instances using the managed adapter
+const apis = createApis(manager.adapter)
 
 // Export individual APIs for convenience
 export const { health, collections, favorites, tags, search, sync } = apis
@@ -19,5 +27,5 @@ export const { health, collections, favorites, tags, search, sync } = apis
 // Export the bundle
 export { apis }
 
-// Re-export adapter for custom use cases
-export { adapter }
+// Export adapter manager for runtime mode switching
+export { manager as adapterManager }

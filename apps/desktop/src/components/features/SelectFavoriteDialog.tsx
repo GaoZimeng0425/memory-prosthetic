@@ -1,10 +1,15 @@
 /**
- * Select Favorite Dialog Component
+ * Select Favorite Dialog Component (Composable)
  *
  * Dialog for selecting a favorite (folder) for a collection.
+ * Supports two modes:
+ * 1. With collectionId: Directly updates the collection's favorite
+ * 2. With onSelect: Just returns selected favoriteId (for new collections)
  */
 
 import { Check, Folder, FolderPlus } from 'lucide-react'
+import { useCallback } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import {
@@ -18,28 +23,51 @@ import {
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { useFavorites } from '@/hooks/use-favorites'
+import { useCollections } from '@/hooks/use-collections'
 
 interface SelectFavoriteDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** For existing collections: directly updates the favorite */
+  collectionId?: number
+  /** For new collections: just returns the selected favoriteId */
+  onSelect?: (favoriteId: number | null) => void
   currentFavoriteId?: number | null
-  onSelect: (favoriteId: number | null) => void
   onCreateNew?: () => void
 }
 
 export function SelectFavoriteDialog({
   open,
   onOpenChange,
-  currentFavoriteId,
+  collectionId,
   onSelect,
+  currentFavoriteId,
   onCreateNew,
 }: SelectFavoriteDialogProps) {
   const { favorites, isLoading } = useFavorites()
+  const { setFavorite } = useCollections({ status: 'active' })
 
-  const handleSelect = (favoriteId: number | null) => {
-    onSelect(favoriteId)
-    onOpenChange(false)
-  }
+  const handleSelect = useCallback(
+    async (favoriteId: number | null) => {
+      // Mode 1: Direct update for existing collection
+      if (collectionId) {
+        try {
+          await setFavorite(collectionId, favoriteId)
+          toast.success('收藏夹已设置')
+          onOpenChange(false)
+        } catch (error) {
+          console.error('[SelectFavoriteDialog] Failed to set favorite:', error)
+          toast.error(`设置收藏夹失败: ${error instanceof Error ? error.message : '未知错误'}`)
+        }
+      }
+      // Mode 2: Just callback for new collection
+      else if (onSelect) {
+        onSelect(favoriteId)
+        onOpenChange(false)
+      }
+    },
+    [collectionId, setFavorite, onSelect, onOpenChange]
+  )
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -69,6 +97,15 @@ export function SelectFavoriteDialog({
                 </Button>
               ))
             )}
+            {/* Option to remove favorite */}
+            <Button
+              className="w-full justify-start gap-2"
+              onClick={() => handleSelect(null)}
+              variant="ghost"
+            >
+              <Folder className="h-4 w-4 opacity-50" />
+              <span className="flex-1 text-left text-muted-foreground">移除收藏夹</span>
+            </Button>
           </div>
         </ScrollArea>
 

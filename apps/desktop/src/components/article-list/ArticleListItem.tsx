@@ -10,7 +10,6 @@ import {
 } from '@memory-prosthetic/ui/components/ui/context-menu'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { TagBadge } from '@/components/features/TagBadge'
-import { useDialog } from '@/contexts/DialogContext'
 import { useFavorites } from '@/hooks/use-favorites'
 import type { CollectionListItem } from '@/types/api'
 import { formatTime, getDomain } from './utils'
@@ -23,6 +22,8 @@ interface ArticleListItemProps {
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
   onArchive?: (id: number) => void
+  onManageTags?: (collectionId: number) => void
+  onSelectFavorite?: (collectionId: number) => void
   tags?: Tag[]
   thumbnailUrl?: string
 }
@@ -35,10 +36,11 @@ export function ArticleListItem({
   onOpenUrl,
   onToggleStar,
   onArchive,
+  onManageTags,
+  onSelectFavorite,
   tags = [],
   thumbnailUrl,
 }: ArticleListItemProps) {
-  const { openTagDialog, openFavoriteDialog } = useDialog()
   const { favorites } = useFavorites()
   const favorite = item.favoriteId ? favorites.find((f) => f.id === item.favoriteId) : null
   return (
@@ -128,14 +130,18 @@ export function ArticleListItem({
             {item.starred ? '取消星标' : '添加星标'}
           </ContextMenuItem>
         )}
-        <ContextMenuItem onClick={() => openTagDialog(item.id)}>
-          <Hash className="mr-2 h-4 w-4" />
-          管理标签
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => openFavoriteDialog(item.id)}>
-          <Folder className="mr-2 h-4 w-4" />
-          添加到收藏夹
-        </ContextMenuItem>
+        {onManageTags && (
+          <ContextMenuItem onClick={() => onManageTags(item.id)}>
+            <Hash className="mr-2 h-4 w-4" />
+            管理标签
+          </ContextMenuItem>
+        )}
+        {onSelectFavorite && (
+          <ContextMenuItem onClick={() => onSelectFavorite(item.id)}>
+            <Folder className="mr-2 h-4 w-4" />
+            添加到收藏夹
+          </ContextMenuItem>
+        )}
         {onArchive && (
           <ContextMenuItem onClick={() => onArchive(item.id)}>
             <Archive className="mr-2 h-4 w-4" />

@@ -12,16 +12,14 @@ import { collections as collectionsApi } from '@/apis'
 import { AppSidebar, type SidebarState } from '@/components/AppSidebar'
 import { DragRegion } from '@/components/DragRegion'
 import { CreateFavoriteDialog } from '@/components/features/CreateFavoriteDialog'
-import { SelectFavoriteDialog } from '@/components/features/SelectFavoriteDialog'
 import { SettingsDialog } from '@/components/features/SettingsDialog'
 import { TagDialog } from '@/components/features/TagDialog'
 import { SearchOverlay } from '@/components/SearchOverlay'
-import { DialogProvider, useDialog } from '@/contexts/DialogContext'
 import { useCollectionTags } from '@/hooks/use-collection-tags'
-import { useCollections } from '@/hooks/use-collections'
+import { useCollectionEvents } from '@/hooks/use-collection-events'
+import { useTags } from '@/hooks/use-tags'
 import { useSidebarSync } from '@/hooks/use-sidebar-sync'
 import { useHotkey } from '@/hooks/use-hotkey'
-import { useTags } from '@/hooks/use-tags'
 import type { SearchResult } from '@/types/api'
 
 export const Route = createRootRoute({
@@ -33,6 +31,9 @@ function RootLayout() {
   const [sidebarState, setSidebarState] = useState<SidebarState>('expanded')
   const [isSearchWindow, setIsSearchWindow] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  // Dialog states managed locally
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isCreateFavoriteOpen, setIsCreateFavoriteOpen] = useState(false)
 
   // Redirect root route to /all
   useEffect(() => {
@@ -84,6 +85,9 @@ function RootLayout() {
   // Load stats for sidebar (only in main window) - use optimized useSidebarSync
   // No need for useCollections here - all sidebar stats come from useSidebarSync
   const { stats: syncStats } = useSidebarSync()
+
+  // Enable event-driven updates (replaces polling with real-time cache updates via Tauri events)
+  useCollectionEvents()
 
   // Calculate sidebar stats (only used in main window)
   // All stats now come from sync API, no dual polling needed
@@ -193,18 +197,20 @@ function RootLayout() {
 
   // For main window, render full layout with sidebar
   return (
-    <DialogProvider>
-      <RootLayoutContent
-        handleOpenUrl={handleOpenUrl}
-        handleSearchClick={handleSearchClick}
-        handleSearchResultSelect={handleSearchResultSelect}
-        isSearchOpen={isSearchOpen}
-        setIsSearchOpen={setIsSearchOpen}
-        setSidebarState={setSidebarState}
-        sidebarState={sidebarState}
-        sidebarStats={sidebarStats}
-      />
-    </DialogProvider>
+    <RootLayoutContent
+      handleOpenUrl={handleOpenUrl}
+      handleSearchClick={handleSearchClick}
+      handleSearchResultSelect={handleSearchResultSelect}
+      isCreateFavoriteOpen={isCreateFavoriteOpen}
+      isSearchOpen={isSearchOpen}
+      isSettingsOpen={isSettingsOpen}
+      setIsCreateFavoriteOpen={setIsCreateFavoriteOpen}
+      setIsSearchOpen={setIsSearchOpen}
+      setIsSettingsOpen={setIsSettingsOpen}
+      setSidebarState={setSidebarState}
+      sidebarState={sidebarState}
+      sidebarStats={sidebarStats}
+    />
   )
 }
 
@@ -217,6 +223,10 @@ function RootLayoutContent({
   sidebarStats,
   handleOpenUrl,
   handleSearchResultSelect,
+  isSettingsOpen,
+  setIsSettingsOpen,
+  isCreateFavoriteOpen,
+  setIsCreateFavoriteOpen,
 }: {
   handleSearchClick: () => void
   isSearchOpen: boolean
@@ -232,11 +242,13 @@ function RootLayoutContent({
   }
   handleOpenUrl: (url: string) => void
   handleSearchResultSelect: (result: SearchResult) => void
+  isSettingsOpen: boolean
+  setIsSettingsOpen: (open: boolean) => void
+  isCreateFavoriteOpen: boolean
+  setIsCreateFavoriteOpen: (open: boolean) => void
 }) {
-  const { openSettingsDialog } = useDialog()
-
   const handleSettingsClick = () => {
-    openSettingsDialog()
+    setIsSettingsOpen(true)
   }
 
   // CMD + , to open settings
@@ -273,75 +285,11 @@ function RootLayoutContent({
         onSelectResult={handleSearchResultSelect}
       />
 
-      {/* Dialog components managed by DialogContext */}
-      <DialogComponents />
-    </>
-  )
-}
-
-// Component to render dialogs managed by DialogContext
-function DialogComponents() {
-  const {
-    tagDialogCollectionId,
-    closeTagDialog,
-    favoriteDialogState,
-    closeFavoriteDialog,
-    isCreateFavoriteOpen,
-    closeCreateFavoriteDialog,
-    openCreateFavoriteDialog,
-    isSettingsOpen,
-    closeSettingsDialog,
-  } = useDialog()
-  const { collections, setFavorite } = useCollections({ status: 'active' })
-
-  // Get current article's favoriteId for SelectFavoriteDialog
-  // This ensures we get the correct favoriteId even if the article is not in the filtered collections list
-  const { data: currentArticle } = useQuery({
-    ...collectionsApi.queries.detail(favoriteDialogState.collectionId ?? 0),
-    enabled: favoriteDialogState.collectionId !== null && favoriteDialogState.collectionId > 0,
-  })
-
-  // Fallback to collections list if article query fails or is not available
-  const currentFavoriteId =
-    currentArticle?.favoriteId ?? collections.find((c) => c.id === favoriteDialogState.collectionId)?.favoriteId ?? null
-
-  return (
-    <>
-      {/* Tag Dialog for list items and ArticleReader */}
-      {tagDialogCollectionId !== null && (
-        <TagDialogWrapper collectionId={tagDialogCollectionId} onClose={closeTagDialog} />
-      )}
-
-      {/* Select Favorite Dialog */}
-      {favoriteDialogState.collectionId !== null && (
-        <SelectFavoriteDialog
-          currentFavoriteId={currentFavoriteId}
-          onCreateNew={openCreateFavoriteDialog}
-          onOpenChange={(open) => {
-            if (!open) {
-              closeFavoriteDialog()
-            }
-          }}
-          onSelect={async (favoriteId) => {
-            if (favoriteDialogState.collectionId !== null) {
-              try {
-                await setFavorite(favoriteDialogState.collectionId, favoriteId)
-                toast.success('收藏夹已设置')
-              } catch (error) {
-                console.error('[DialogComponents] Failed to set favorite:', error)
-                toast.error(`设置收藏夹失败: ${error instanceof Error ? error.message : '未知错误'}`)
-              }
-            }
-          }}
-          open={favoriteDialogState.open}
-        />
-      )}
-
       {/* Create Favorite Dialog */}
       <CreateFavoriteDialog
         onOpenChange={(open) => {
           if (!open) {
-            closeCreateFavoriteDialog()
+            setIsCreateFavoriteOpen(false)
           }
         }}
         open={isCreateFavoriteOpen}
@@ -351,7 +299,7 @@ function DialogComponents() {
       <SettingsDialog
         onOpenChange={(open) => {
           if (!open) {
-            closeSettingsDialog()
+            setIsSettingsOpen(false)
           }
         }}
         open={isSettingsOpen}
@@ -360,8 +308,9 @@ function DialogComponents() {
   )
 }
 
-// Wrapper component for TagDialog to manage its own state
-function TagDialogWrapper({ collectionId, onClose }: { collectionId: number; onClose: () => void }) {
+// TagDialogWrapper is now in ArticleGroupSection.tsx
+// Legacy wrapper kept for ArticleReader which imports it
+export function TagDialogWrapper({ collectionId, onClose }: { collectionId: number; onClose: () => void }) {
   const { tags: collectionTags, addTags, removeTag } = useCollectionTags(collectionId)
   const { createTag } = useTags()
 

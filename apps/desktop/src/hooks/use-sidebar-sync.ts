@@ -41,7 +41,7 @@ interface UseSidebarSyncReturn {
 export function useSidebarSync(): UseSidebarSyncReturn {
   const syncQuery = useQuery({
     ...sync.queries.data(),
-    refetchInterval: 5000, // Poll every 5 seconds
+    // No refetchInterval - using event-driven updates via useCollectionEvents
   })
 
   return {

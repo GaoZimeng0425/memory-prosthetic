@@ -8,11 +8,8 @@
 import { createApis, createHttpAdapter } from '@memory-prosthetic/shared'
 import { DEFAULT_PORT, getApiBaseUrl } from '../constants/api'
 
-// Create HTTP adapter with default config
-const adapter = createHttpAdapter({
-  baseURL: getApiBaseUrl(DEFAULT_PORT),
-  timeout: 3000, // Short timeout for extension
-})
+// Create HTTP adapter (refactored: takes baseUrl string directly)
+const adapter = createHttpAdapter(getApiBaseUrl(DEFAULT_PORT))
 
 // Create all API instances
 const apis = createApis(adapter)

@@ -19,6 +19,7 @@ import { Badge } from '@memory-prosthetic/ui/components/ui/badge'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
 import { ScrollArea } from '@memory-prosthetic/ui/components/ui/scroll-area'
 import { Clock, Folder, FolderOpen, Sparkles, Tag } from 'lucide-react'
+import { useState } from 'react'
 
 import { useArticleAssociations } from '@/hooks/useArticleAssociations'
 
@@ -119,7 +120,8 @@ function AssociationCard({ association, onClick }: AssociationCardProps) {
       <div className="min-w-0 flex-1">
         <p className="text-sm truncate font-medium" title={String(association.id)}>
           {/* 关联的另一个节点标题 - 需要从后端返回 */}
-          关联 #{association.sourceId === Number.parseInt(association.id, 10) ? association.targetId : association.sourceId}
+          关联 #
+          {association.sourceId === Number.parseInt(association.id, 10) ? association.targetId : association.sourceId}
         </p>
         <p className="text-muted-foreground text-xs" title={config.label}>
           {config.label}
@@ -133,7 +135,10 @@ function AssociationCard({ association, onClick }: AssociationCardProps) {
           style={{
             width: `${dotSize}px`,
             height: `${dotSize}px`,
-            backgroundColor: config.color.replace('text-', 'rgb(').replace(/(\d+)$/, '0.$1, 1)').replace('rgb(rose', 'rgb(244'),
+            backgroundColor: config.color
+              .replace('text-', 'rgb(')
+              .replace(/(\d+)$/, '0.$1, 1)')
+              .replace('rgb(rose', 'rgb(244'),
             opacity: dotOpacity,
           }}
         />
@@ -145,13 +150,9 @@ function AssociationCard({ association, onClick }: AssociationCardProps) {
 /**
  * Article associations component for displaying related articles
  */
-export function ArticleAssociations({
-  articleId,
-  onSelect,
-  maxDisplay = 10,
-  className,
-}: ArticleAssociationsProps) {
+export function ArticleAssociations({ articleId, onSelect, maxDisplay = 10, className }: ArticleAssociationsProps) {
   const { associations, isLoading, error } = useArticleAssociations(articleId ?? null)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // 不显示的情况
   if (!articleId) {
@@ -188,8 +189,9 @@ export function ArticleAssociations({
     )
   }
 
-  // 显示关联列表
-  const displayAssociations = associations.slice(0, maxDisplay)
+  // 显示关联列表 - 根据展开状态决定显示数量
+  const displayAssociations = isExpanded ? associations : associations.slice(0, maxDisplay)
+  const hasMore = associations.length > maxDisplay
 
   return (
     <div className={className + ' border-t'}>
@@ -206,34 +208,20 @@ export function ArticleAssociations({
       {/* 关联列表 */}
       <ScrollArea className="h-64">
         <div className="space-y-1 p-2">
-          {displayAssociations.map((association) => {
+          {displayAssociations.map((association: Association) => {
             // 获取目标节点 ID（与当前文章不同的那一边）
-            const targetId =
-              association.sourceId === articleId ? association.targetId : association.sourceId
+            const targetId = association.sourceId === articleId ? association.targetId : association.sourceId
 
-            return (
-              <AssociationCard
-                association={association}
-                key={association.id}
-                onClick={() => onSelect(targetId)}
-              />
-            )
+            return <AssociationCard association={association} key={association.id} onClick={() => onSelect(targetId)} />
           })}
         </div>
       </ScrollArea>
 
-      {/* "查看全部"按钮 */}
-      {associations.length > maxDisplay && (
+      {/* "查看全部/收起"按钮 */}
+      {hasMore && (
         <div className="border-t p-2">
-          <Button
-            className="w-full"
-            onClick={() => {
-              /* TODO: 实现查看全部功能 */
-            }}
-            size="sm"
-            variant="ghost"
-          >
-            查看全部 {associations.length} 篇 →
+          <Button className="w-full" onClick={() => setIsExpanded(!isExpanded)} size="sm" variant="ghost">
+            {isExpanded ? `收起` : `查看全部 ${associations.length} 篇 →`}
           </Button>
         </div>
       )}

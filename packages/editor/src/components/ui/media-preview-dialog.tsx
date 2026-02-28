@@ -4,6 +4,7 @@ import { PreviewImage, useImagePreview, useImagePreviewValue, useScaleInput } fr
 import { cva } from 'class-variance-authority'
 import { ArrowLeft, ArrowRight, Download, Minus, Plus, X } from 'lucide-react'
 import { useEditorRef } from 'platejs/react'
+import { useRef } from 'react'
 
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 
@@ -21,11 +22,28 @@ const buttonVariants = cva('rounded bg-[rgba(0,0,0,0.5)] px-1', {
 
 const SCROLL_SPEED = 4
 
+function getFilenameFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url)
+    const pathname = urlObj.pathname
+    const filename = pathname.split('/').pop()
+    return filename || 'image'
+  } catch {
+    // If URL parsing fails, extract filename from string
+    const parts = url.split('/')
+    const lastPart = parts[parts.length - 1]
+    // Remove query parameters if present
+    const filename = lastPart.split('?')[0]
+    return filename || 'download'
+  }
+}
+
 export function MediaPreviewDialog() {
   const editor = useEditorRef()
   const isOpen = useImagePreviewValue('isOpen', editor.id)
   const scale = useImagePreviewValue('scale')
   const isEditingScale = useImagePreviewValue('isEditingScale')
+  const imageRef = useRef<HTMLImageElement>(null)
   const {
     closeProps,
     currentUrlIndex,
@@ -41,6 +59,22 @@ export function MediaPreviewDialog() {
     zoomOutDisabled,
   } = useImagePreview({ scrollSpeed: SCROLL_SPEED })
 
+  const handleDownload = () => {
+    const imageUrl = imageRef.current?.src
+    if (!imageUrl) return
+
+    try {
+      const link = document.createElement('a')
+      link.href = imageUrl
+      link.download = getFilenameFromUrl(imageUrl)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Failed to download image:', error)
+    }
+  }
+
   return (
     <div
       className={cn('fixed top-0 left-0 z-50 h-screen w-screen select-none', !isOpen && 'hidden')}
@@ -48,11 +82,11 @@ export function MediaPreviewDialog() {
       {...maskLayerProps}
     >
       <div className="absolute inset-0 size-full bg-black opacity-30" />
-      <div className="absolute inset-0 size-full bg-black opacity-30" />
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative flex max-h-screen w-full items-center">
           <PreviewImage
             className={cn('mx-auto block max-h-[calc(100vh-4rem)] w-auto object-contain transition-transform')}
+            ref={imageRef}
           />
           <div
             className="absolute bottom-0 left-1/2 z-40 flex w-fit -translate-x-1/2 justify-center gap-4 p-2 text-center text-white"
@@ -116,8 +150,8 @@ export function MediaPreviewDialog() {
                 <Plus className="size-4" />
               </button>
             </div>
-            {/* TODO: downLoad the image */}
-            <button className={cn(buttonVariants())} type="button">
+            {/* Download the image */}
+            <button className={cn(buttonVariants())} onClick={handleDownload} type="button">
               <Download className="size-4" />
             </button>
             <button {...closeProps} className={cn(buttonVariants())} type="button">

@@ -267,7 +267,9 @@ const useResolvedDiscussion = (commentNodes: NodeEntry<TCommentText>[], blockPat
 
       return
     }
-    // TODO: fix throw error
+
+    // previousPath is either undefined or not a valid Path
+    // Update the map with the current block path
     setOption('uniquePathMap', new Map(map).set(id, blockPath))
   })
 

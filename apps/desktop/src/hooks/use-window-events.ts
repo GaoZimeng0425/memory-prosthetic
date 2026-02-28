@@ -70,10 +70,7 @@ export function useSearchSelectListener(isSearchWindow: boolean) {
  * @param isSearchWindow - Whether current window is the search window
  * @param onOpenSettings - Callback to open settings dialog
  */
-export function useTrayNavigationListener(
-  isSearchWindow: boolean,
-  onOpenSettings?: () => void
-) {
+export function useTrayNavigationListener(isSearchWindow: boolean, onOpenSettings?: () => void) {
   useEffect(() => {
     if (isSearchWindow) return // Don't listen in search window
 
@@ -107,10 +104,7 @@ export function useTrayNavigationListener(
  * @param isSearchWindow - Whether current window is the search window
  * @param onOpenSettings - Callback to open settings dialog
  */
-export function useWindowEventListeners(
-  isSearchWindow: boolean,
-  onOpenSettings?: () => void
-) {
+export function useWindowEventListeners(isSearchWindow: boolean, onOpenSettings?: () => void) {
   useSearchSelectListener(isSearchWindow)
   useTrayNavigationListener(isSearchWindow, onOpenSettings)
 }

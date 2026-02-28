@@ -82,13 +82,7 @@ describe('GraphControls', () => {
         return state
       })
 
-      renderWithQueryClient(
-        <GraphControls
-          filters={filtersWithLayout}
-          onFiltersChange={vi.fn()}
-          onRefresh={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<GraphControls filters={filtersWithLayout} onFiltersChange={vi.fn()} onRefresh={vi.fn()} />)
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()
     })
@@ -100,11 +94,7 @@ describe('GraphControls', () => {
       const onFiltersChange = vi.fn()
 
       renderWithQueryClient(
-        <GraphControls
-          filters={defaultFilters}
-          onFiltersChange={onFiltersChange}
-          onRefresh={vi.fn()}
-        />
+        <GraphControls filters={defaultFilters} onFiltersChange={onFiltersChange} onRefresh={vi.fn()} />
       )
 
       // Verify the component renders
@@ -119,13 +109,7 @@ describe('GraphControls', () => {
         maxNodes: 200,
       }
 
-      renderWithQueryClient(
-        <GraphControls
-          filters={customFilters}
-          onFiltersChange={vi.fn()}
-          onRefresh={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<GraphControls filters={customFilters} onFiltersChange={vi.fn()} onRefresh={vi.fn()} />)
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()
     })
@@ -134,11 +118,7 @@ describe('GraphControls', () => {
       const handleChange = vi.fn()
 
       renderWithQueryClient(
-        <GraphControls
-          filters={defaultFilters}
-          onFiltersChange={handleChange}
-          onRefresh={vi.fn()}
-        />
+        <GraphControls filters={defaultFilters} onFiltersChange={handleChange} onRefresh={vi.fn()} />
       )
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()
@@ -148,11 +128,7 @@ describe('GraphControls', () => {
       const handleRefresh = vi.fn()
 
       renderWithQueryClient(
-        <GraphControls
-          filters={defaultFilters}
-          onFiltersChange={vi.fn()}
-          onRefresh={handleRefresh}
-        />
+        <GraphControls filters={defaultFilters} onFiltersChange={vi.fn()} onRefresh={handleRefresh} />
       )
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()
@@ -162,12 +138,7 @@ describe('GraphControls', () => {
   describe('Edge Cases', () => {
     it('should handle optional onResetLayout', () => {
       renderWithQueryClient(
-        <GraphControls
-          filters={defaultFilters}
-          onFiltersChange={vi.fn()}
-          onRefresh={vi.fn()}
-          onResetLayout={vi.fn()}
-        />
+        <GraphControls filters={defaultFilters} onFiltersChange={vi.fn()} onRefresh={vi.fn()} onResetLayout={vi.fn()} />
       )
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()
@@ -189,12 +160,7 @@ describe('GraphControls', () => {
 
     it('should handle isRefreshing state', () => {
       renderWithQueryClient(
-        <GraphControls
-          filters={defaultFilters}
-          onFiltersChange={vi.fn()}
-          onRefresh={vi.fn()}
-          isRefreshing={true}
-        />
+        <GraphControls filters={defaultFilters} onFiltersChange={vi.fn()} onRefresh={vi.fn()} isRefreshing={true} />
       )
 
       expect(screen.getByText(/图谱控制/i)).toBeInTheDocument()

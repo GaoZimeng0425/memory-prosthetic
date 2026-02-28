@@ -84,10 +84,7 @@ export function useCollections(params?: GetCollectionsParams): UseCollectionsRet
     refresh: async () => {
       // Note: With event-driven updates, explicit refresh is rarely needed
       // This method is kept for manual refresh scenarios
-      await Promise.all([
-        listQuery.refetch(),
-        statsQuery.refetch(),
-      ])
+      await Promise.all([listQuery.refetch(), statsQuery.refetch()])
     },
     ...mutations,
   }

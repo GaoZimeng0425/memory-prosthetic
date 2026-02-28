@@ -56,9 +56,7 @@ export function MigrationProgress({ current, total, onCancel, isComplete = false
     <div className="border-border bg-background flex items-center gap-4 rounded-lg border p-4">
       <div className="flex-1">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium">
-            {isFinished ? 'Migration Complete' : 'Migrating Associations...'}
-          </p>
+          <p className="text-sm font-medium">{isFinished ? 'Migration Complete' : 'Migrating Associations...'}</p>
           <p className="text-muted-foreground text-sm">
             {progress.current} / {progress.total}
           </p>

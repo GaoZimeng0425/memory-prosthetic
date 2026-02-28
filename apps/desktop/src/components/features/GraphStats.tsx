@@ -55,10 +55,13 @@ function calculateStats(data: GraphData) {
   const avgDegree = totalNodes > 0 ? totalDegree / totalNodes : 0
 
   // Count associations by type
-  const edgesByType = edges.reduce((acc, edge) => {
-    acc[edge.type] = (acc[edge.type] || 0) + 1
-    return acc
-  }, {} as Record<AssociationType, number>)
+  const edgesByType = edges.reduce(
+    (acc, edge) => {
+      acc[edge.type] = (acc[edge.type] || 0) + 1
+      return acc
+    },
+    {} as Record<AssociationType, number>
+  )
 
   // Calculate average weight
   const totalWeight = edges.reduce((sum, edge) => sum + edge.weight, 0)

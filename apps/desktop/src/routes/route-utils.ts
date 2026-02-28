@@ -38,10 +38,7 @@ export function createArticlesRoute(path: string) {
  * export const Route = createRouteWithComponent('/search', 'search')
  * ```
  */
-export function createRouteWithComponent(
-  path: string,
-  componentKey: keyof typeof ROUTE_COMPONENTS
-) {
+export function createRouteWithComponent(path: string, componentKey: keyof typeof ROUTE_COMPONENTS) {
   return createFileRoute(path)({
     component: ROUTE_COMPONENTS[componentKey],
   })
@@ -91,9 +88,7 @@ export interface ArticleListSearchParams {
  * )
  * ```
  */
-export function useRouteParams<T extends Record<string, unknown>>(
-  selector: (params: T) => unknown
-) {
+export function useRouteParams<T extends Record<string, unknown>>(selector: (params: T) => unknown) {
   const { useParams } = require('@tanstack/react-router')
   const params = useParams({ strict: false })
   return selector(params as T)
@@ -108,10 +103,7 @@ export function useRouteParams<T extends Record<string, unknown>>(
  * // Returns: '/all/article/123'
  * ```
  */
-export function buildRoutePath(
-  template: string,
-  params: Record<string, string | number>
-): string {
+export function buildRoutePath(template: string, params: Record<string, string | number>): string {
   return template.replace(/\$(\w+)/g, (_, key) => {
     const value = params[key]
     if (value === undefined) {

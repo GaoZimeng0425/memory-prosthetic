@@ -48,43 +48,32 @@ function updateCollectionInCache(
   id: number,
   updates: Partial<CollectionListItem>
 ) {
-  queryClient.setQueriesData(
-    { queryKey: collections.keys.lists() },
-    (oldData: unknown) => {
-      if (!oldData || typeof oldData !== 'object' || !('data' in oldData)) {
-        return oldData
-      }
-      const collections = (oldData as { data: CollectionListItem[] }).data
-      return {
-        ...oldData,
-        data: collections.map((item) =>
-          item.id === id ? { ...item, ...updates } : item
-        ),
-      }
+  queryClient.setQueriesData({ queryKey: collections.keys.lists() }, (oldData: unknown) => {
+    if (!oldData || typeof oldData !== 'object' || !('data' in oldData)) {
+      return oldData
     }
-  )
+    const collections = (oldData as { data: CollectionListItem[] }).data
+    return {
+      ...oldData,
+      data: collections.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+    }
+  })
 }
 
 /**
  * Helper to remove collection from cache (for delete operations)
  */
-function removeCollectionFromCache(
-  queryClient: ReturnType<typeof useQueryClient>,
-  id: number
-) {
-  queryClient.setQueriesData(
-    { queryKey: collections.keys.lists() },
-    (oldData: unknown) => {
-      if (!oldData || typeof oldData !== 'object' || !('data' in oldData)) {
-        return oldData
-      }
-      const collections = (oldData as { data: CollectionListItem[] }).data
-      return {
-        ...oldData,
-        data: collections.filter((item) => item.id !== id),
-      }
+function removeCollectionFromCache(queryClient: ReturnType<typeof useQueryClient>, id: number) {
+  queryClient.setQueriesData({ queryKey: collections.keys.lists() }, (oldData: unknown) => {
+    if (!oldData || typeof oldData !== 'object' || !('data' in oldData)) {
+      return oldData
     }
-  )
+    const collections = (oldData as { data: CollectionListItem[] }).data
+    return {
+      ...oldData,
+      data: collections.filter((item) => item.id !== id),
+    }
+  })
 }
 
 export function useCollectionMutations(): UseCollectionMutationsReturn {
@@ -99,9 +88,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
       // Snapshot previous value
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically update cache
       updateCollectionInCache(queryClient, id, { favorite_id: favoriteId })
@@ -112,10 +99,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onError: (error, variables, context) => {
       // Rollback to previous value on error
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       console.error('[setFavorite] Mutation failed, rolled back:', error)
     },
@@ -136,9 +120,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Find current starred state
       const currentData = queryClient.getQueriesData({
@@ -154,9 +136,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
           'data' in data &&
           Array.isArray((data as { data: CollectionListItem[] }).data)
         ) {
-          const collection = (data as { data: CollectionListItem[] }).data.find(
-            (item) => item.id === id
-          )
+          const collection = (data as { data: CollectionListItem[] }).data.find((item) => item.id === id)
           if (collection) {
             currentStarred = collection.starred ?? false
           }
@@ -170,10 +150,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     },
     onError: (error, variables, context) => {
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       // Also rollback specific collection's starred state
       if (typeof context?.previousStarred === 'boolean') {
@@ -199,9 +176,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically update status
       updateCollectionInCache(queryClient, id, { status: 'archived' })
@@ -210,10 +185,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     },
     onError: (error, variables, context) => {
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       // Rollback status to active
       updateCollectionInCache(queryClient, variables, { status: 'active' })
@@ -235,9 +207,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically update status
       updateCollectionInCache(queryClient, id, { status: 'active' })
@@ -246,10 +216,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     },
     onError: (error, variables, context) => {
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       // Rollback status to archived
       updateCollectionInCache(queryClient, variables, { status: 'archived' })
@@ -271,9 +238,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically update status to deleted
       updateCollectionInCache(queryClient, id, { status: 'deleted' })
@@ -282,10 +247,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     },
     onError: (error, variables, context) => {
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       // Rollback status to active
       updateCollectionInCache(queryClient, variables, { status: 'active' })
@@ -307,9 +269,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: collections.keys.lists() })
 
-      const previousCollections = queryClient.getQueryData(
-        collections.keys.lists()
-      )
+      const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically remove from cache
       removeCollectionFromCache(queryClient, id)
@@ -318,10 +278,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
     },
     onError: (error, variables, context) => {
       if (context?.previousCollections) {
-        queryClient.setQueryData(
-          collections.keys.lists(),
-          context.previousCollections
-        )
+        queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
       console.error('[permanentlyDelete] Mutation failed, rolled back:', error)
     },

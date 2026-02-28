@@ -222,10 +222,7 @@ describe('useArticleAssociations', () => {
         data: mockAssociations,
       })
 
-      const { result } = renderHook(
-        () => useArticleAssociations(1, { types: ['semantic'] }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useArticleAssociations(1, { types: ['semantic'] }), { wrapper })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)
@@ -347,10 +344,9 @@ describe('useArticleAssociations', () => {
         data: mockAssociations,
       })
 
-      const { result } = renderHook(
-        () => useArticleAssociations(1, { types: ['semantic'], minWeight: 0.5 }),
-        { wrapper }
-      )
+      const { result } = renderHook(() => useArticleAssociations(1, { types: ['semantic'], minWeight: 0.5 }), {
+        wrapper,
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)

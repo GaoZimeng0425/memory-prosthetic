@@ -10,10 +10,7 @@ declare module '@tauri-apps/api/event' {
     label: string
   }
 
-  export function listen<T>(
-    event: string,
-    handler: (event: Event<T>) => void
-  ): Promise<UnlistenFn>
+  export function listen<T>(event: string, handler: (event: Event<T>) => void): Promise<UnlistenFn>
 
   export function emit<T>(event: string, payload?: T): Promise<void>
 

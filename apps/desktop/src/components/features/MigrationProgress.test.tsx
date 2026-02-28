@@ -41,26 +41,14 @@ describe('MigrationProgress', () => {
 
   describe('AC9: Migration Progress Display', () => {
     it('should display progress bar with current and total counts', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={50}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={50} total={100} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/50 \/ 100/i)).toBeInTheDocument()
     })
 
     it('should show cancel button', () => {
       const onCancel = vi.fn()
-      renderWithQueryClient(
-        <MigrationProgress
-          current={50}
-          total={100}
-          onCancel={onCancel}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={50} total={100} onCancel={onCancel} />)
 
       // Cancel button is only shown when not finished (current < total)
       const buttons = screen.getAllByRole('button')
@@ -72,13 +60,7 @@ describe('MigrationProgress', () => {
       const user = userEvent.setup()
       const onCancel = vi.fn()
 
-      renderWithQueryClient(
-        <MigrationProgress
-          current={50}
-          total={100}
-          onCancel={onCancel}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={50} total={100} onCancel={onCancel} />)
 
       // Find the cancel button by SVG icon (X icon)
       const buttons = screen.getAllByRole('button')
@@ -92,37 +74,19 @@ describe('MigrationProgress', () => {
 
   describe('Progress Calculation', () => {
     it('should show 0% when starting', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={0}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={0} total={100} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/0 \/ 100/i)).toBeInTheDocument()
     })
 
     it('should show 50% at halfway', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={50}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={50} total={100} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/50 \/ 100/i)).toBeInTheDocument()
     })
 
     it('should show 100% when complete', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={100}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={100} total={100} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/100 \/ 100/i)).toBeInTheDocument()
       expect(screen.getByText(/Migration Complete/i)).toBeInTheDocument()
@@ -131,25 +95,13 @@ describe('MigrationProgress', () => {
 
   describe('Edge Cases', () => {
     it('should handle zero total gracefully', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={0}
-          total={0}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={0} total={0} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/0 \/ 0/i)).toBeInTheDocument()
     })
 
     it('should handle current greater than total', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={150}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={150} total={100} onCancel={vi.fn()} />)
 
       expect(screen.getByText(/150 \/ 100/i)).toBeInTheDocument()
       expect(screen.getByText(/Migration Complete/i)).toBeInTheDocument()
@@ -158,13 +110,7 @@ describe('MigrationProgress', () => {
 
   describe('Conditional Rendering', () => {
     it('should not render when total is 0', () => {
-      const { container } = renderWithQueryClient(
-        <MigrationProgress
-          current={0}
-          total={0}
-          onCancel={vi.fn()}
-        />
-      )
+      const { container } = renderWithQueryClient(<MigrationProgress current={0} total={0} onCancel={vi.fn()} />)
 
       // Component should still render, but show 0/0
       expect(screen.getByText(/0 \/ 0/i)).toBeInTheDocument()
@@ -172,13 +118,7 @@ describe('MigrationProgress', () => {
     })
 
     it('should hide cancel button when complete', () => {
-      renderWithQueryClient(
-        <MigrationProgress
-          current={100}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={100} total={100} onCancel={vi.fn()} />)
 
       // When complete (current >= total), cancel button should not be shown
       // The component should show "Migration Complete" instead
@@ -194,13 +134,7 @@ describe('MigrationProgress', () => {
     it('should listen to association_migration:progress events', async () => {
       const { listen } = await import('@tauri-apps/api/event')
 
-      renderWithQueryClient(
-        <MigrationProgress
-          current={0}
-          total={100}
-          onCancel={vi.fn()}
-        />
-      )
+      renderWithQueryClient(<MigrationProgress current={0} total={100} onCancel={vi.fn()} />)
 
       // Verify listen was called for migration events
       expect(listen).toHaveBeenCalled()

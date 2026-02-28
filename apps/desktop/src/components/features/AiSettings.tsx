@@ -109,17 +109,15 @@ export const AiSettings = () => {
             <p className="text-muted-foreground text-xs">您的 API Key 将加密存储在本地，不会上传到任何服务器</p>
           </div>
 
-          {provider === 'custom' && (
-            <div className="space-y-2">
-              <Label htmlFor="base-url">API 端点</Label>
-              <Input
-                id="base-url"
-                onChange={(e) => setBaseURL(e.target.value)}
-                placeholder="https://api.example.com/v1"
-                value={baseURL}
-              />
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="base-url">API 端点</Label>
+            <Input
+              id="base-url"
+              onChange={(e) => setBaseURL(e.target.value)}
+              placeholder="https://api.example.com/v1"
+              value={baseURL}
+            />
+          </div>
 
           <ModelSelect onValueChange={setModel} provider={provider} value={model} />
 

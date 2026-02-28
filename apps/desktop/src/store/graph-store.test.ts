@@ -211,7 +211,17 @@ describe('GraphStore', () => {
       const store = useGraphStore.getState()
 
       const firstResult: ClusteringResult = {
-        clusters: [{ id: 1, nodeIds: [1], internalEdges: 0, externalEdges: 0, totalWeight: 0, density: 0, modularityContribution: 0 }],
+        clusters: [
+          {
+            id: 1,
+            nodeIds: [1],
+            internalEdges: 0,
+            externalEdges: 0,
+            totalWeight: 0,
+            density: 0,
+            modularityContribution: 0,
+          },
+        ],
         statistics: {
           totalClusters: 1,
           clusterSizes: [1],
@@ -225,7 +235,17 @@ describe('GraphStore', () => {
       }
 
       const secondResult: ClusteringResult = {
-        clusters: [{ id: 2, nodeIds: [2], internalEdges: 0, externalEdges: 0, totalWeight: 0, density: 0, modularityContribution: 0 }],
+        clusters: [
+          {
+            id: 2,
+            nodeIds: [2],
+            internalEdges: 0,
+            externalEdges: 0,
+            totalWeight: 0,
+            density: 0,
+            modularityContribution: 0,
+          },
+        ],
         statistics: {
           totalClusters: 1,
           clusterSizes: [1],
@@ -300,7 +320,17 @@ describe('GraphStore', () => {
 
       // Set up state
       const mockResult: ClusteringResult = {
-        clusters: [{ id: 1, nodeIds: [1], internalEdges: 0, externalEdges: 0, totalWeight: 0, density: 0, modularityContribution: 0 }],
+        clusters: [
+          {
+            id: 1,
+            nodeIds: [1],
+            internalEdges: 0,
+            externalEdges: 0,
+            totalWeight: 0,
+            density: 0,
+            modularityContribution: 0,
+          },
+        ],
         statistics: {
           totalClusters: 1,
           clusterSizes: [1],
@@ -458,7 +488,17 @@ describe('GraphStore', () => {
       const store = useGraphStore.getState()
 
       const result: ClusteringResult = {
-        clusters: [{ id: 1, nodeIds: [1], internalEdges: 0, externalEdges: 0, totalWeight: 0, density: 0, modularityContribution: 0 }],
+        clusters: [
+          {
+            id: 1,
+            nodeIds: [1],
+            internalEdges: 0,
+            externalEdges: 0,
+            totalWeight: 0,
+            density: 0,
+            modularityContribution: 0,
+          },
+        ],
         statistics: {
           totalClusters: 1,
           clusterSizes: [1],

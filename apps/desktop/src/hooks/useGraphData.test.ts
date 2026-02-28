@@ -272,13 +272,10 @@ describe('useGraphData', () => {
         data: mockGraphData,
       })
 
-      const { result, rerender } = renderHook(
-        ({ filters }) => useGraphData(filters),
-        {
-          wrapper,
-          initialProps: { filters: undefined as GraphFilters | undefined },
-        }
-      )
+      const { result, rerender } = renderHook(({ filters }) => useGraphData(filters), {
+        wrapper,
+        initialProps: { filters: undefined as GraphFilters | undefined },
+      })
 
       await waitFor(() => {
         expect(result.current.isLoading).toBe(false)

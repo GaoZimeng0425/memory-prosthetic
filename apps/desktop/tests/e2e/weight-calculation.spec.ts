@@ -134,10 +134,7 @@ test.describe('Weight Calculation - Keyword Association', () => {
     const fallbackWeight = await page.locator('[data-testid="keyword-weight-fallback"]').textContent()
 
     // Fallback should be 0.7x normal
-    expect(parseFloat(fallbackWeight || '0')).toBeCloseTo(
-      parseFloat(normalWeight || '0') * 0.7,
-      1
-    )
+    expect(parseFloat(fallbackWeight || '0')).toBeCloseTo(parseFloat(normalWeight || '0') * 0.7, 1)
   })
 })
 
@@ -207,12 +204,18 @@ test.describe('Weight Calculation - Semantic Association', () => {
     // Create two semantically similar articles
     await page.goto('/articles/new')
     await page.fill('[data-testid="article-url"]', 'https://example.com/semantic-1')
-    await page.fill('[data-testid="article-content"]', 'Rust is a systems programming language focused on safety and performance')
+    await page.fill(
+      '[data-testid="article-content"]',
+      'Rust is a systems programming language focused on safety and performance'
+    )
     await page.click('button:has-text("Save")')
 
     await page.goto('/articles/new')
     await page.fill('[data-testid="article-url"]', 'https://example.com/semantic-2')
-    await page.fill('[data-testid="article-content"]', 'The Rust programming language emphasizes memory safety without garbage collection')
+    await page.fill(
+      '[data-testid="article-content"]',
+      'The Rust programming language emphasizes memory safety without garbage collection'
+    )
     await page.click('button:has-text("Save")')
 
     await page.goto('/graph')
@@ -291,9 +294,13 @@ test.describe('Weight Calculation - Combined Associations', () => {
     await expect(page.locator('[data-testid="association-weight-domain"]')).toBeVisible()
 
     // Semantic should have highest weight
-    const semanticWeight = parseFloat(await page.locator('[data-testid="association-weight-semantic"]').textContent() || '0')
-    const tagWeight = parseFloat(await page.locator('[data-testid="association-weight-tag"]').textContent() || '0')
-    const domainWeight = parseFloat(await page.locator('[data-testid="association-weight-domain"]').textContent() || '0')
+    const semanticWeight = parseFloat(
+      (await page.locator('[data-testid="association-weight-semantic"]').textContent()) || '0'
+    )
+    const tagWeight = parseFloat((await page.locator('[data-testid="association-weight-tag"]').textContent()) || '0')
+    const domainWeight = parseFloat(
+      (await page.locator('[data-testid="association-weight-domain"]').textContent()) || '0'
+    )
 
     expect(semanticWeight).toBeGreaterThanOrEqual(tagWeight)
     expect(tagWeight).toBeGreaterThanOrEqual(domainWeight)

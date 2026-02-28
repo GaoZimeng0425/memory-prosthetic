@@ -7,14 +7,9 @@
 import type { Mock } from 'vitest'
 
 declare module '@tauri-apps/api/core' {
-  export function invoke<T>(
-    cmd: string,
-    args?: Record<string, unknown>
-  ): Promise<T>
+  export function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>
 
-  export const invoke: Mock<
-    <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>
-  >
+  export const invoke: Mock<<T>(cmd: string, args?: Record<string, unknown>) => Promise<T>>
 }
 
 declare module '@tauri-apps/api/event' {
@@ -27,10 +22,7 @@ declare module '@tauri-apps/api/event' {
     (): void
   }
 
-  export function listen<T>(
-    event: string,
-    handler: (event: TauriEvent) => void
-  ): Promise<UnlistenFn>
+  export function listen<T>(event: string, handler: (event: TauriEvent) => void): Promise<UnlistenFn>
 
   export function emit(event: string, payload?: unknown): Promise<void>
 

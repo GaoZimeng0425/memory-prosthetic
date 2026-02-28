@@ -55,20 +55,15 @@ export function createHybridAdapter(options: {
   }
 
   return {
-    get: <T>(endpoint: string, params?: Record<string, unknown>) =>
-      currentAdapter.get<T>(endpoint, params),
+    get: <T>(endpoint: string, params?: Record<string, unknown>) => currentAdapter.get<T>(endpoint, params),
 
-    post: <T, D>(endpoint: string, data?: D) =>
-      currentAdapter.post<T, D>(endpoint, data),
+    post: <T, D>(endpoint: string, data?: D) => currentAdapter.post<T, D>(endpoint, data),
 
-    put: <T, D>(endpoint: string, data?: D) =>
-      currentAdapter.put<T, D>(endpoint, data),
+    put: <T, D>(endpoint: string, data?: D) => currentAdapter.put<T, D>(endpoint, data),
 
-    patch: <T, D>(endpoint: string, data?: D) =>
-      currentAdapter.patch<T, D>(endpoint, data),
+    patch: <T, D>(endpoint: string, data?: D) => currentAdapter.patch<T, D>(endpoint, data),
 
-    delete: <T>(endpoint: string, params?: Record<string, unknown>) =>
-      currentAdapter.delete<T>(endpoint, params),
+    delete: <T>(endpoint: string, params?: Record<string, unknown>) => currentAdapter.delete<T>(endpoint, params),
 
     switchAdapter: (mode: 'http' | 'tauri' | 'auto') => {
       if (mode === 'auto') {

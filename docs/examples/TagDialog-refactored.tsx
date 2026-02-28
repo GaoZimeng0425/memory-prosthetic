@@ -42,9 +42,14 @@ interface TagDialogProps {
  */
 export function TagDialog({ collectionId, open, onClose }: TagDialogProps) {
   // ✅ 只在 open 时才加载数据
-  const { tags: collectionTags, addTags, removeTag, isLoading } = useCollectionTags(
+  const {
+    tags: collectionTags,
+    addTags,
+    removeTag,
+    isLoading,
+  } = useCollectionTags(
     collectionId ?? 0,
-    { enabled: open && collectionId !== null }  // 使用 TanStack Query 的 enabled 选项
+    { enabled: open && collectionId !== null } // 使用 TanStack Query 的 enabled 选项
   )
   const { createTag } = useTags()
 

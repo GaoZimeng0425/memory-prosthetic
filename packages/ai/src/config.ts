@@ -1,9 +1,9 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createZhipu } from 'zhipu-ai-provider'
 import { invoke } from '@tauri-apps/api/core'
 import type { LanguageModel } from 'ai'
+import { createZhipu } from 'zhipu-ai-provider'
 
 export type AiProvider = 'openai' | 'anthropic' | 'custom' | 'deepseek' | 'zhipu'
 
@@ -120,12 +120,14 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
     case 'zhipu': {
       const zhipuProvider = createZhipu({
         apiKey: config.apiKey,
+        baseURL: config.baseURL,
       })
-      return zhipuProvider(config.model ?? 'glm-4.7') as LanguageModel
+      return zhipuProvider(config.model ?? 'glm-5') as LanguageModel
     }
     case 'deepseek': {
       const deepseekProvider = createDeepSeek({
         apiKey: config.apiKey,
+        baseURL: config.baseURL,
       })
       return deepseekProvider(config.model ?? 'deepseek-chat')
     }
@@ -133,6 +135,7 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
       // OpenAI SDK v3 用法 - openai 是一个 Provider 函数，可以直接调用
       const openaiProvider = createOpenAI({
         apiKey: config.apiKey,
+        baseURL: config.baseURL,
       })
       return openaiProvider(config.model ?? 'gpt-4o-mini')
     }
@@ -140,6 +143,7 @@ export const getAiModel = (config: AiConfig): LanguageModel => {
       // Anthropic SDK 用法
       const anthropicProvider = createAnthropic({
         apiKey: config.apiKey,
+        baseURL: config.baseURL,
       })
       return anthropicProvider(config.model ?? 'claude-3-haiku-20240307')
     }

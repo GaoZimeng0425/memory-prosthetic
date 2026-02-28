@@ -98,11 +98,7 @@ export function SelectFavoriteDialog({
               ))
             )}
             {/* Option to remove favorite */}
-            <Button
-              className="w-full justify-start gap-2"
-              onClick={() => handleSelect(null)}
-              variant="ghost"
-            >
+            <Button className="w-full justify-start gap-2" onClick={() => handleSelect(null)} variant="ghost">
               <Folder className="h-4 w-4 opacity-50" />
               <span className="flex-1 text-left text-muted-foreground">移除收藏夹</span>
             </Button>

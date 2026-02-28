@@ -56,7 +56,7 @@ export function createCollectionsApi(adapter: RequestAdapter) {
     getStats: () => adapter.get<CollectionStats>(ENDPOINTS.stats),
 
     /** Get a single collection by ID */
-    getById: (id: number) => adapter.get<Collection>(ENDPOINTS.collection, { id } as Record<string, unknown>),
+    getById: (id: number) => adapter.get<Collection>(`${ENDPOINTS.collections}/${id}`, undefined),
 
     /** Collect new content */
     collect: (data: CollectRequest) => adapter.post<CollectSuccessResponse['data']>(ENDPOINTS.collect, data),
@@ -66,7 +66,7 @@ export function createCollectionsApi(adapter: RequestAdapter) {
       adapter.post<CollectSuccessResponse['data']>('/api/notes', data),
 
     /** Delete a collection */
-    delete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collection}/${id}`),
+    delete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collections}/${id}`),
 
     /** Update a collection (title, content, type, etc.) */
     update: (id: number, data: { title?: string; content?: string; type?: string }) =>
@@ -74,10 +74,10 @@ export function createCollectionsApi(adapter: RequestAdapter) {
 
     /** Set collection favorite */
     setFavorite: (id: number, favoriteId: number | null) =>
-      adapter.patch<void>(`${ENDPOINTS.collection}/${id}`, { favoriteId }),
+      adapter.patch<void>(`${ENDPOINTS.collections}/${id}`, { favoriteId }),
 
     /** Toggle starred status for a collection */
-    toggleStar: (id: number) => adapter.post<boolean>(`${ENDPOINTS.collection}/toggle-star`, { id }),
+    toggleStar: (id: number) => adapter.post<boolean>(`${ENDPOINTS.collections}/toggle-star`, { id }),
 
     /** Get tags for a collection */
     getCollectionTags: (id: number) =>

@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client'
 
 import { getQueryClient, QueryProvider } from '@memory-prosthetic/shared/request'
 import { Toaster } from '@memory-prosthetic/ui/components/ui/sonner'
+import { TooltipProvider } from '@memory-prosthetic/ui/components/ui/tooltip'
 import { type Theme, ThemeProvider } from '@memory-prosthetic/ui/hooks/use-theme'
 import { ErrorPage } from '@/components/pages/ErrorPage'
 import { AppRouterProvider } from '@/lib/router'
@@ -94,17 +95,19 @@ function App() {
   // Normal app rendering
   return (
     <QueryProvider>
-      <ThemeProvider
-        defaultTheme="dark"
-        onThemeChange={handleThemeChange}
-        storageAdapter={tauriStorage}
-        storageKey="theme"
-      >
-        <AiConfigProvider>
-          <AppRouterProvider queryClient={getQueryClient()} />
-          <Toaster />
-        </AiConfigProvider>
-      </ThemeProvider>
+      <TooltipProvider delayDuration={200}>
+        <ThemeProvider
+          defaultTheme="dark"
+          onThemeChange={handleThemeChange}
+          storageAdapter={tauriStorage}
+          storageKey="theme"
+        >
+          <AiConfigProvider>
+            <AppRouterProvider queryClient={getQueryClient()} />
+            <Toaster />
+          </AiConfigProvider>
+        </ThemeProvider>
+      </TooltipProvider>
     </QueryProvider>
   )
 }

@@ -59,11 +59,30 @@ export function createHttpAdapter(baseUrl: string): RequestAdapter {
     get: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
       const url = new URL(endpoint, baseUrl)
 
-      // Add query parameters
+      // Add query parameters with special handling for arrays
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            url.searchParams.set(key, String(value))
+            // Convert plural to singular: tagIds -> tagId, favoriteIds -> favoriteId
+            let singularKey = key.endsWith('s') && key !== 'status' ? key.slice(0, -1) : key
+
+            // Map camelCase to snake_case for backend compatibility
+            const paramKeyMap: Record<string, string> = {
+              favoriteId: 'favorite_id',
+              tagId: 'tag_id',
+            }
+            const paramKey = paramKeyMap[singularKey] || singularKey
+
+            if (Array.isArray(value)) {
+              // Handle array parameters: tagIds=[1,2] -> tag_id=1&tag_id=2
+              value.forEach((item) => {
+                if (item !== undefined && item !== null) {
+                  url.searchParams.append(paramKey, String(item))
+                }
+              })
+            } else {
+              url.searchParams.set(paramKey, String(value))
+            }
           }
         })
       }
@@ -143,10 +162,30 @@ export function createHttpAdapter(baseUrl: string): RequestAdapter {
     delete: async <T>(endpoint: string, params?: Record<string, unknown>): Promise<T> => {
       const url = new URL(endpoint, baseUrl)
 
+      // Add query parameters with special handling for arrays
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
-            url.searchParams.set(key, String(value))
+            // Convert plural to singular: tagIds -> tagId, favoriteIds -> favoriteId
+            let singularKey = key.endsWith('s') && key !== 'status' ? key.slice(0, -1) : key
+
+            // Map camelCase to snake_case for backend compatibility
+            const paramKeyMap: Record<string, string> = {
+              favoriteId: 'favorite_id',
+              tagId: 'tag_id',
+            }
+            const paramKey = paramKeyMap[singularKey] || singularKey
+
+            if (Array.isArray(value)) {
+              // Handle array parameters: tagIds=[1,2] -> tag_id=1&tag_id=2
+              value.forEach((item) => {
+                if (item !== undefined && item !== null) {
+                  url.searchParams.append(paramKey, String(item))
+                }
+              })
+            } else {
+              url.searchParams.set(paramKey, String(value))
+            }
           }
         })
       }

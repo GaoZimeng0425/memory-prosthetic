@@ -326,7 +326,7 @@ pub struct GetCollectionsQuery {
     #[serde(default)]
     pub favorite_id: Option<i64>,
     #[serde(default)]
-    pub tag_id: Option<i64>,
+    pub tag_ids: Option<Vec<i64>>,
     #[serde(default)]
     pub status: Option<String>,
     #[serde(default)]
@@ -352,7 +352,8 @@ pub async fn get_collections(
         params.favorite_id
     };
 
-    let tag_ids = params.tag_id.map(|id| vec![id]);
+    // tag_ids is already Option<Vec<i64>>, pass directly as slice
+    let tag_ids_ref = params.tag_ids.as_deref();
     let status = params
         .status
         .as_deref()
@@ -364,7 +365,7 @@ pub async fn get_collections(
         })
         .or(Some(CollectionStatus::Active));
 
-    match repo.list(limit, offset, favorite_id_filter, is_uncategorized, tag_ids.as_deref(), status) {
+    match repo.list(limit, offset, favorite_id_filter, is_uncategorized, tag_ids_ref, status) {
         Ok(collections) => Ok(Json(ApiResponse {
             success: true,
             data: collections,

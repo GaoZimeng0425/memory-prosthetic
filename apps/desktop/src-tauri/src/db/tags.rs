@@ -184,33 +184,20 @@ impl<'a> TagRepository<'a> {
                 .unwrap_or(TagSortOrder::NameAsc)
                 .to_sql();
 
-            let sql = match sort_order {
-                Some(TagSortOrder::UsageDesc) => {
-                    format!(
-                        r#"
-                        SELECT t.id, t.name, t.color, ct.usage_count as count, t.created_at, t.updated_at
-                        FROM tags t
-                        LEFT JOIN (
-                            SELECT tag_id, COUNT(*) as usage_count
-                            FROM collection_tags
-                            GROUP BY tag_id
-                        ) ct ON t.id = ct.tag_id
-                        ORDER BY {}
-                        "#,
-                        order
-                    )
-                }
-                _ => {
-                    format!(
-                        r#"
-                        SELECT t.id, t.name, t.color, 0 as count, t.created_at, t.updated_at
-                        FROM tags t
-                        ORDER BY {}
-                        "#,
-                        order
-                    )
-                }
-            };
+            // Always include count via LEFT JOIN for all sort orders
+            let sql = format!(
+                r#"
+                SELECT t.id, t.name, t.color, ct.usage_count as count, t.created_at, t.updated_at
+                FROM tags t
+                LEFT JOIN (
+                    SELECT tag_id, COUNT(*) as usage_count
+                    FROM collection_tags
+                    GROUP BY tag_id
+                ) ct ON t.id = ct.tag_id
+                ORDER BY {}
+                "#,
+                order
+            );
 
             let mut stmt = conn.prepare(&sql)?;
             let rows = stmt.query_map([], |row| Self::row_to_tag(row))?;

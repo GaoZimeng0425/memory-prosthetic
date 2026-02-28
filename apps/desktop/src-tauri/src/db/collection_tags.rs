@@ -75,6 +75,7 @@ impl<'a> CollectionTagRepository<'a> {
                     id: row.get(0)?,
                     name: row.get(1)?,
                     color: row.get(2)?,
+                    count: None,
                     created_at: row.get(3)?,
                     updated_at: row.get(4)?,
                 })

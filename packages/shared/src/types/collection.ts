@@ -122,6 +122,7 @@ export type Tag = {
   id: number
   name: string
   color?: string
+  count?: number
   createdAt: string
   updatedAt: string
 }

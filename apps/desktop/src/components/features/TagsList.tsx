@@ -37,7 +37,6 @@ import {
 } from '@memory-prosthetic/ui/components/ui/dropdown-menu'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
 import { EditTagDialog } from '@/components/features/EditTagDialog'
-import { useCollections } from '@/hooks/use-collections'
 import { useTags } from '@/hooks/use-tags'
 
 interface TagsListProps {
@@ -194,12 +193,11 @@ interface TagItemWithCountProps {
 }
 
 function TagItemWithCount({ tag, active, onTagChange }: TagItemWithCountProps) {
-  const { collections } = useCollections({ tagIds: [tag.id], status: 'active' })
   const { deleteTag } = useTags()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const count = collections.length
+  const count = tag.count ?? 0
 
   const handleDeleteClick = () => {
     setIsDeleteDialogOpen(true)

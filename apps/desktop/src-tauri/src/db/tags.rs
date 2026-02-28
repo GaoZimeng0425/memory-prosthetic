@@ -14,6 +14,7 @@ pub struct Tag {
     pub id: i64,
     pub name: String,
     pub color: Option<String>,
+    pub count: Option<i64>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -187,7 +188,7 @@ impl<'a> TagRepository<'a> {
                 Some(TagSortOrder::UsageDesc) => {
                     format!(
                         r#"
-                        SELECT t.id, t.name, t.color, t.created_at, t.updated_at
+                        SELECT t.id, t.name, t.color, ct.usage_count as count, t.created_at, t.updated_at
                         FROM tags t
                         LEFT JOIN (
                             SELECT tag_id, COUNT(*) as usage_count
@@ -202,8 +203,8 @@ impl<'a> TagRepository<'a> {
                 _ => {
                     format!(
                         r#"
-                        SELECT id, name, color, created_at, updated_at
-                        FROM tags
+                        SELECT t.id, t.name, t.color, 0 as count, t.created_at, t.updated_at
+                        FROM tags t
                         ORDER BY {}
                         "#,
                         order
@@ -243,8 +244,9 @@ impl<'a> TagRepository<'a> {
             id: row.get(0)?,
             name: row.get(1)?,
             color: row.get(2)?,
-            created_at: row.get(3)?,
-            updated_at: row.get(4)?,
+            count: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
         })
     }
 }

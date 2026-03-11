@@ -31,12 +31,17 @@ pub fn create_router(state: Arc<AppState>, uploads_dir: PathBuf) -> Router {
         .route("/api/sync/stream", get(handlers::sync_stream))
         // Collections
         .route("/api/collections", get(handlers::get_collections))
+        .route("/api/collections/stats", get(handlers::get_collection_stats))
         .route("/api/collections", post(handlers::create_collection))
         .route("/api/collections/{id}", get(handlers::get_collection))
         .route("/api/collections/{id}", put(handlers::update_collection))
         .route("/api/collections/{id}", delete(handlers::delete_collection))
         .route("/api/collections/{id}/archive", post(handlers::archive_collection))
         .route("/api/collections/{id}/restore", post(handlers::restore_collection))
+        // Collection Tags
+        .route("/api/collection/tags", get(handlers::get_collection_tags))
+        .route("/api/collection/tags", post(handlers::add_collection_tags))
+        .route("/api/collection/tag", delete(handlers::remove_collection_tag))
         // Favorites
         .route("/api/favorites", get(handlers::get_favorites))
         .route("/api/favorites", post(handlers::create_favorite))

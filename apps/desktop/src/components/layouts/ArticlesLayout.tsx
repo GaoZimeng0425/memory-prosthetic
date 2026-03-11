@@ -73,6 +73,7 @@ export function ArticlesLayout({
         isLoading={isLoading}
         onArchive={onArchive}
         onDelete={onDelete}
+        onPermanentDelete={onPermanentDelete}
         onOpenUrl={onOpenUrl}
         onSelect={onSelect}
         onToggleStar={onToggleStar}

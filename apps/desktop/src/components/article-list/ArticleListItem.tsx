@@ -1,4 +1,4 @@
-import { Archive, ExternalLink, Folder, Hash, Star, Trash2 } from 'lucide-react'
+import { Archive, ExternalLink, Folder, Hash, Star } from 'lucide-react'
 
 import type { Tag } from '@memory-prosthetic/shared'
 import { Button } from '@memory-prosthetic/ui/components/ui/button'
@@ -9,8 +9,11 @@ import {
   ContextMenuTrigger,
 } from '@memory-prosthetic/ui/components/ui/context-menu'
 import { cn } from '@memory-prosthetic/ui/utils/tw'
+import { PermanentDeleteButton } from '@/components/features/PermanentDeleteButton'
+import { SoftDeleteButton } from '@/components/features/SoftDeleteButton'
 import { TagBadge } from '@/components/features/TagBadge'
 import { useFavorites } from '@/hooks/use-favorites'
+import { useAppNavigation } from '@/hooks/use-app-navigation'
 import type { CollectionListItem } from '@/types/api'
 import { formatTime, getDomain } from './utils'
 
@@ -19,6 +22,7 @@ interface ArticleListItemProps {
   isSelected: boolean
   onSelect: (id: number) => void
   onDelete: (id: number) => void
+  onPermanentDelete?: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
   onArchive?: (id: number) => void
@@ -33,6 +37,7 @@ export function ArticleListItem({
   isSelected,
   onSelect,
   onDelete,
+  onPermanentDelete,
   onOpenUrl,
   onToggleStar,
   onArchive,
@@ -42,6 +47,8 @@ export function ArticleListItem({
   thumbnailUrl,
 }: ArticleListItemProps) {
   const { favorites } = useFavorites()
+  const { getActiveNav } = useAppNavigation()
+  const activeNav = getActiveNav()
   const favorite = item.favoriteId ? favorites.find((f) => f.id === item.favoriteId) : null
   return (
     <ContextMenu>
@@ -154,10 +161,8 @@ export function ArticleListItem({
             打开原文
           </ContextMenuItem>
         )}
-        <ContextMenuItem className="text-destructive" onClick={() => onDelete(item.id)}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          删除
-        </ContextMenuItem>
+        {activeNav !== 'deleted' && <SoftDeleteButton articleId={item.id} onDelete={onDelete} />}
+        {onPermanentDelete && <PermanentDeleteButton articleId={item.id} onPermanentDelete={onPermanentDelete} />}
       </ContextMenuContent>
     </ContextMenu>
   )

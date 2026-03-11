@@ -98,7 +98,7 @@ export function createCollectionsApi(adapter: RequestAdapter) {
     restore: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/restore`, { id }),
 
     /** Permanently delete a collection */
-    permanentlyDelete: (id: number) => adapter.post<void>(`${ENDPOINTS.collection}/permanently-delete`, { id }),
+    permanentlyDelete: (id: number) => adapter.delete<void>(`${ENDPOINTS.collections}/${id}`, { permanent: true }),
   }
 
   const queries = {

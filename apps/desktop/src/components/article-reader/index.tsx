@@ -49,6 +49,7 @@ export const ArticleReader = ({
   onSetFavorite,
   onArchive,
   onRestore,
+  onPermanentDelete,
   onOpenTagDialog,
   onOpenFavoriteDialog,
   onOpenSettingsDialog,
@@ -207,6 +208,7 @@ export const ArticleReader = ({
               <ArticleActionsMenu
                 article={article}
                 onDelete={onDelete}
+                onPermanentDelete={onPermanentDelete}
                 onOpenFavoriteDialog={onOpenFavoriteDialog}
                 onOpenTagDialog={onOpenTagDialog}
                 onOpenUrl={onOpenUrl}

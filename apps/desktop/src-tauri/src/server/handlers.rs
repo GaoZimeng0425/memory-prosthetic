@@ -419,6 +419,31 @@ pub async fn get_collection(
     }
 }
 
+/// GET /api/collections/stats - Get collection statistics
+pub async fn get_collection_stats(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<crate::db::CollectionStats>>, (StatusCode, Json<ApiError>)> {
+    info!("Get collection stats request received");
+
+    let repo = CollectionRepository::new(&state.db);
+    match repo.get_stats() {
+        Ok(stats) => Ok(Json(ApiResponse {
+            success: true,
+            data: stats,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
 /// POST /api/collections - Create a new collection
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1356,6 +1381,108 @@ pub async fn delete_tag(
         Ok(deleted) => Ok(Json(ApiResponse {
             success: true,
             data: deleted,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+// ============================================
+// Collection Tags Handlers
+// ============================================
+
+/// GET /api/collection/tags - Get tags for a collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetCollectionTagsQuery {
+    pub collection_id: i64,
+}
+
+pub async fn get_collection_tags(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<GetCollectionTagsQuery>,
+) -> Result<Json<ApiResponse<Vec<crate::db::Tag>>>, (StatusCode, Json<ApiError>)> {
+    info!("Get collection tags request received: collection_id={}", params.collection_id);
+
+    let repo = crate::db::CollectionTagRepository::new(&state.db);
+    match repo.get_tags_by_collection(params.collection_id) {
+        Ok(tags) => Ok(Json(ApiResponse {
+            success: true,
+            data: tags,
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// POST /api/collection/tags - Add tags to a collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddCollectionTagsRequest {
+    pub collection_id: i64,
+    pub tag_ids: Vec<i64>,
+}
+
+pub async fn add_collection_tags(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<AddCollectionTagsRequest>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiError>)> {
+    info!("Add collection tags request received: collection_id={}, tag_ids={:?}", payload.collection_id, payload.tag_ids);
+
+    let repo = crate::db::CollectionTagRepository::new(&state.db);
+    match repo.add_tags(payload.collection_id, &payload.tag_ids) {
+        Ok(()) => Ok(Json(ApiResponse {
+            success: true,
+            data: (),
+        })),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                success: false,
+                error: ApiErrorDetail {
+                    code: "DB_ERROR".to_string(),
+                    message: e.to_string(),
+                },
+            }),
+        )),
+    }
+}
+
+/// DELETE /api/collection/tag - Remove a tag from a collection
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoveCollectionTagQuery {
+    pub collection_id: i64,
+    pub tag_id: i64,
+}
+
+pub async fn remove_collection_tag(
+    State(state): State<Arc<AppState>>,
+    Query(params): Query<RemoveCollectionTagQuery>,
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiError>)> {
+    info!("Remove collection tag request received: collection_id={}, tag_id={}", params.collection_id, params.tag_id);
+
+    let repo = crate::db::CollectionTagRepository::new(&state.db);
+    match repo.remove_tag(params.collection_id, params.tag_id) {
+        Ok(()) => Ok(Json(ApiResponse {
+            success: true,
+            data: (),
         })),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,

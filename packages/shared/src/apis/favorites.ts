@@ -11,7 +11,6 @@ import type { Favorite } from '../types/collection'
 
 const ENDPOINTS = {
   favorites: '/api/favorites',
-  favorite: '/api/favorite',
 } as const
 
 const KEYS = {
@@ -38,16 +37,16 @@ export function createFavoritesApi(adapter: RequestAdapter) {
     getList: () => adapter.get<Favorite[]>(ENDPOINTS.favorites),
 
     /** Get a single favorite by ID */
-    getById: (id: number) => adapter.get<Favorite>(ENDPOINTS.favorite, { id } as Record<string, unknown>),
+    getById: (id: number) => adapter.get<Favorite>(`${ENDPOINTS.favorites}/${id}`),
 
     /** Create a new favorite */
     create: (data: CreateFavoriteInput) => adapter.post<number>(ENDPOINTS.favorites, data),
 
     /** Update a favorite */
-    update: (id: number, data: UpdateFavoriteInput) => adapter.patch<void>(`${ENDPOINTS.favorite}/${id}`, data),
+    update: (id: number, data: UpdateFavoriteInput) => adapter.patch<void>(`${ENDPOINTS.favorites}/${id}`, data),
 
     /** Delete a favorite */
-    delete: (id: number) => adapter.delete<boolean>(`${ENDPOINTS.favorite}/${id}`),
+    delete: (id: number) => adapter.delete<boolean>(`${ENDPOINTS.favorites}/${id}`),
   }
 
   const queries = {

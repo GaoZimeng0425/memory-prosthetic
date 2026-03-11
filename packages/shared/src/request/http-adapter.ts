@@ -71,11 +71,11 @@ export function createHttpAdapter(baseUrl: string): RequestAdapter {
             const paramKey = paramKeyMap[key] || key
 
             if (Array.isArray(value)) {
-              // Serialize arrays using bracket notation: tag_ids[]=1&tag_ids[]=2
-              // This is the standard format supported by serde_qs
+              // Serialize arrays using repeated parameter names: tag_ids=1&tag_ids=2
+              // This is the standard format supported by serde_urlencoded (Axum default)
               value.forEach((item) => {
                 if (item !== undefined && item !== null) {
-                  url.searchParams.append(`${paramKey}[]`, String(item))
+                  url.searchParams.append(paramKey, String(item))
                 }
               })
             } else {

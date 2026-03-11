@@ -11,6 +11,7 @@ interface ArticleGroupSectionProps {
   selectedId: number | null
   onSelect: (id: number) => void
   onDelete: (id: number) => void
+  onPermanentDelete: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
   onArchive?: (id: number) => void
@@ -21,6 +22,7 @@ export function ArticleGroupSection({
   selectedId,
   onSelect,
   onDelete,
+  onPermanentDelete,
   onOpenUrl,
   onToggleStar,
   onArchive,
@@ -58,6 +60,7 @@ export function ArticleGroupSection({
               key={item.id}
               onArchive={onArchive}
               onDelete={onDelete}
+              onPermanentDelete={onPermanentDelete}
               onOpenUrl={onOpenUrl}
               onSelect={onSelect}
               onToggleStar={onToggleStar}

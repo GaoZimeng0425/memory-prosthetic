@@ -1,0 +1,3586 @@
+---
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+inputDocuments:
+  - docs/analysis/product-brief-tauri-app-2025-12-21.md
+  - docs/analysis/product-brief-tauri-app-2025-12-16.md
+  - docs/index.md
+  - docs/project-overview.md
+  - docs/architecture.md
+  - docs/development-guide.md
+  - docs/source-tree-analysis.md
+  - docs/component-inventory.md
+documentCounts:
+  briefs: 2
+  research: 0
+  brainstorming: 0
+  projectDocs: 6
+workflowType: 'prd'
+lastStep: 11
+revision: 11
+revisionDate: '2025-02-28'
+project_name: 'Memory Prosthetic'
+user_name: 'Gao'
+date: '2025-12-21'
+---
+
+# Product Requirements Document - Memory Prosthetic
+
+**Author:** Gao
+**Date:** 2025-12-21
+
+---
+
+## Executive Summary
+
+**Memory Prosthetic** 是一款 **「记忆外挂」** 桌面应用 —— 让模糊的记忆变成精确的检索。
+
+### 产品愿景
+
+**Memory Prosthetic** 的终极愿景是打造一个 **「数字孪生 (Digital Twin)」**。它不仅在保留基础的网页文章存储与高效检索功能之上提供记忆外挂，更是一个基于你所看、所听、所想的一切内容，通过**自动分析并提取你的兴趣特征、专业知识与行为习惯**，生成的 **具备决策能力的独属于你的 Agent**。
+
+这个 Agent 不仅供所有 AI 助手（如 Claude, ChatGPT, Cursor 等）原生使用，通过 MCP 协议无缝接入你的知识产权和记忆体系，更能模仿你的思考逻辑和偏好进行智能决策。
+
+**应用终极形态目标：**
+
+* **Obsidian 的开放能力**：插件化、高度可定制、本地优先，支持开发者扩展 Agent 技能。
+* **Notion 的书写体验**：优雅的排版、块级操作、沉浸式编辑。
+* **Cubox 的收集流程**：多端一键收集、内容自动清洗、实现 Cubox 级的高效过滤。
+* **IMA 的文字关联能力**：强大的知识图谱、语义关联、实现 IMA 级的文字深度关联与知识问答。
+
+**核心定位：数字孪生，原生 Agent，懂你即决策。**
+
+### 核心问题
+
+现代知识工作者每天接触海量信息——技术文章、产品灵感、学术论文、新闻观点。然而：
+
+* **收藏即遗忘**：信息被存入 Notion、书签夹后再也不会被看到
+* **搜索靠记忆**：必须记住精确关键词才能找到内容
+* **知识成孤岛**：收集的内容之间没有关联，无法形成体系
+* **访问成本高**：打开应用、翻找层级，阻力太大
+
+**痛点本质**："我确定看过这个，但不记得在哪看的，也不记得具体说了什么。"
+
+### What Makes This Special
+
+| 差异化维度 | 我们的优势 |
+|------------|------------|
+| **核心价值** | **数字孪生：保存内容 -> 提取特征 -> 决策 Agent** |
+| **搜索方式** | **语义搜索 + 智能 Agent 问答 + 个性化上下文推荐** |
+| **AI 原生** | **从 Day 1 以 AI 为核心设计，原生支持 MCP 协议** |
+| **本地优先** | 数据在本地，隐私有保障 |
+| **开源哲学** | 做给自己用，顺便分享给需要的人 |
+| **个性化** | **自动提取用户身份画像，根据用户偏好进行决策支持** |
+| **开放生态** | **像 Obsidian 一样开放能力，支持插件扩展，供所有 Agent 调用** |
+
+与 Cubox、Notion、Readwise 等工具不同，本产品以 **「数字孪生」** 和 **「Agent 能力」** 为核心价值——它是你的数字分身，能够基于你的个人特征进行决策，并随时通过 MCP 为你或你的 AI 助手提供极其个性化的技术或知识支持。
+
+## Project Classification
+
+| 维度 | 分类 |
+|------|------|
+| **技术类型** | `desktop_app` + `browser_extension` (Monorepo) |
+| **领域** | `general` (个人生产力工具) |
+| **复杂度** | `medium` |
+| **项目上下文** | 棕地 — 基于现有 Tauri 模板扩展 |
+
+### 技术栈
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| **桌面框架** | Tauri 2.x | Rust 原生，轻量高效 |
+| **前端** | React 19 + TypeScript 5.9 | 现代 UI 开发 |
+| **UI 组件** | shadcn/ui | 53 个可访问组件 |
+| **构建工具** | Vite 7.x | 快速 HMR |
+| **浏览器插件** | WXT + React + TypeScript | 内容收集 |
+| **HTTP Server** | Axum (Rust) | 本地 HTTP Server，集成 MCP 端点 |
+| **MCP SDK** | rmcp (Rust) | 官方 MCP Rust SDK，实现 MCP 协议 |
+| **仓库结构** | Monorepo (Bun Workspaces) | 应用分离，代码共享 |
+
+### 架构决策
+
+项目采用 **Monorepo 架构**，分离桌面应用和浏览器插件：
+
+```
+memory-prosthetic/
+├── apps/
+│   ├── desktop/           # Tauri 桌面应用
+│   └── browser-extension/ # Chrome 浏览器插件
+├── packages/
+│   └── shared/            # 共享类型和工具
+└── pnpm-workspace.yaml
+```
+
+**架构优势**：代码复用、独立开发、版本一致性、CI/CD 灵活性。
+
+---
+
+## Success Criteria
+
+### User Success
+
+**核心成功定义**
+
+> **产品成功 = 一键收集顺畅 + 模糊搜索有效**
+
+**"Aha!" 验证时刻**
+
+> 输入"后台管理"，出现之前收藏的 React Admin 文章 —— 这一刻，产品就成功了。
+
+**用户成功指标 (Dog-fooding)**
+
+| 指标 | 定义 | 目标 |
+|------|------|------|
+| **收集顺畅度** | 浏览器插件一键 → 内容出现在应用 | < 2 秒完成同步 |
+| **搜索有效性** | 输入模糊关键词 → 找到目标文章 | 80% 搜索成功率 |
+| **日常使用** | 每天主动使用搜索功能 | ≥ 3 次/天 |
+| **习惯形成** | 连续使用不中断 | 连续 14 天使用 |
+
+### Business Success
+
+**项目定位：开源个人工具，非商业产品**
+
+| 维度 | 目标 |
+|------|------|
+| **商业化** | 无计划，纯开源 |
+| **收入** | 不追求 |
+| **用户增长** | 随缘 |
+| **核心价值** | 解决自己的问题 + 技术实践 + 开源贡献 |
+
+**开源成功指标（可选追踪）**
+
+| 指标 | 说明 | 目标（佛系） |
+|------|------|-------------|
+| **GitHub Stars** | 社区认可度 | 有就开心，没有也行 |
+| **Issues/PR** | 社区参与度 | 有人提 Issue 说明有人用 |
+| **Fork 数** | 二次开发兴趣 | 说明技术方案有价值 |
+
+**开源哲学**
+
+> 做给自己用，顺便分享给需要的人。不追求增长，但追求质量。
+
+### Technical Success
+
+**MVP 阶段 KPI（2 周内验证）**
+
+| KPI | 定义 | 目标值 | 测量方式 |
+|-----|------|--------|----------|
+| **搜索成功率** | 模糊搜索找到目标内容的比例 | ≥ 80% | 自己记录 10 次搜索 |
+| **搜索延迟** | 从按下回车到结果展示 | < 500ms | 体感 + 实测 |
+| **收集成功率** | 插件点击后内容同步成功 | 100% | 功能正常工作 |
+| **唤起速度** | 从快捷键到搜索框出现 | < 300ms | 体感 + 实测 |
+
+**长期健康指标**
+
+| 指标 | 说明 |
+|------|------|
+| **周活跃天数** | 每周使用产品的天数 ≥ 5 天 |
+| **内容累积** | 3 个月后内容库 ≥ 200 条 |
+| **无搜索失败焦虑** | 不再有"我找不到那篇文章"的挫败感 |
+
+### Measurable Outcomes
+
+**关键转化节点**
+
+| 阶段 | 关键行为 | 成功指标 |
+|------|----------|----------|
+| **激活** | 首次成功搜索到内容 | Day 1 搜索成功率 > 80% |
+| **留存** | 连续 3 天使用搜索 | Day 3 留存 > 50% |
+| **习惯** | 形成"看到 → 收集 → 搜索"循环 | Week 2 日均搜索 3+ 次 |
+| **传播** | 推荐给技术同事 | NPS > 40 |
+
+---
+
+## Product Scope
+
+### MVP - Minimum Viable Product
+
+**2 周验证核心假设的最小功能集**
+
+| 功能 | 说明 | 优先级 |
+|------|------|--------|
+| **全局快捷键唤起** | Cmd/Ctrl + 自定义键，0.3s 内弹出搜索框 | P0 |
+| **语义搜索** | 基于 embedding 的模糊搜索，支持中英文 | P0 |
+| **Chrome 浏览器插件** | 一键收集当前网页到应用 | P0 |
+| **内容存储** | URL + 标题 + 正文内容本地存储 | P0 |
+| **MCP 原生支持** | 提供 `/mcp` 端点，允许外部 Agent 访问知识库 | P0 |
+| **Agent 生成** | 基于用户内容生成独属于用户的 Agent | P1 |
+| **搜索结果展示** | 显示匹配的文章列表，点击可跳转原文 | P0 |
+
+**MVP 核心循环**
+
+```
+看到好文章 → Chrome 插件一键收集 → 内容同步到应用
+     ↓
+需要时 → 快捷键唤起 → 输入模糊关键词 → 找到文章 → 点击跳转
+```
+
+**MVP 成功门槛**
+
+| 维度 | 验证标准 |
+|------|----------|
+| **功能完整** | 收集 → 搜索 → 找到 全流程可用 |
+| **搜索有效** | 80% 模糊搜索成功率 |
+| **速度达标** | 唤起 < 0.3s，搜索 < 0.5s |
+| **日常可用** | 连续 7 天每天使用 |
+
+### Growth Features (Post-MVP)
+
+**Alpha 阶段（1 月）**
+
+| 功能 | 原因 |
+|------|------|
+| **收藏夹和标签系统** | 内容组织是知识管理的基础功能 |
+| **归档和删除功能** | 完善内容生命周期管理 |
+| **AI 自动摘要/标签** | 先验证搜索核心价值 |
+| **内容高亮** | 提升搜索准确率 |
+| **数据导入导出** | 先跑通核心，再考虑迁移 |
+| **MCP 集成** | ✅ 已完成 - MCP 功能已集成到桌面应用 HTTP Server 中，通过 `/mcp` 端点提供服务，支持 AI 助手通过自然语言调用搜索功能 |
+
+**Beta 阶段（3 月）**
+
+| 功能 | 原因 |
+|------|------|
+| **知识图谱可视化** | 需要足够内容积累后才有意义 |
+| **多设备同步** | 复杂度高，先专注单机体验 |
+| **Safari/Firefox 插件** | Chrome 覆盖主流用户 |
+| **标签排序和筛选增强** | 内容积累后需要更强大的组织能力 |
+
+### Vision (Future)
+
+**1-2 年愿景：从「记忆外挂」到「学习革命」**
+
+| 阶段 | 定位 | 核心价值 |
+|------|------|----------|
+| **当前** | 记忆外挂 | 想到即找到 |
+| **中期** | 知识管理 | 信息变知识 |
+| **远期** | 学习助手 | 重新定义学习 |
+
+**梦想功能**
+
+* 🤖 **AI 教学** — 基于你收集的内容，AI 帮你梳理学习路径
+
+* 🧠 **知识巩固** — 间隔重复，主动推送"你可能忘记了这个"
+* 🗺️ **思维导图生成** — AI 自动将知识结构可视化
+* 📚 **学习报告** — 追踪你的知识积累和成长轨迹
+* 🎓 **AI 问答** — 基于你的知识库回答问题，引用你收藏的内容
+
+**愿景宣言**
+
+> 打造一个懂你决策的数字孪生，让你的每一份数字记忆都能通过标准的 MCP 协议深度赋能所有的 AI 助手，实现跨工具的个性化智能协作。
+
+---
+
+## User Journeys
+
+### Journey 1: 高（Gao）—— 终于找到了那篇文章
+
+高是一名全栈架构师，正在为公司的新项目做技术选型。他记得上周看过一篇很好的文章，对比了几个 React 状态管理方案，但现在完全想不起来在哪看的。
+
+打开 Notion，搜索"React 状态管理"，出来 30 多条笔记，大部分是无关的代码片段和会议记录。换到浏览器书签，翻了三页也没找到。打开 Google 重新搜索，花了 15 分钟才找到那篇文章——还好他记得作者的名字。
+
+**这就是他决定试试「记忆外挂」的原因。**
+
+那天晚上，高看到一篇关于 Zustand vs Jotai 的深度对比文章。他按下浏览器插件的快捷键，弹出一个简洁的收集确认，1 秒后提示"已收集"。他继续阅读，又收集了两篇相关文章。
+
+三天后，在技术评审会上，同事问起状态管理的选择。高按下 `Cmd+Space`，搜索框 0.2 秒内弹出。他输入"zustand jotai 对比"，瞬间出现那三篇文章的摘要和链接。他点击第一篇，直接跳转到原文，给同事展示了关键对比表格。
+
+> **"这就是我要的感觉！"** 高心想，**"终于不用再花 15 分钟找一篇明明看过的文章了。"**
+
+一个月后，高已经积累了 80 多篇文章。每天使用搜索 4-5 次，搜索成功率接近 90%。他开始向团队的其他开发者推荐这个工具。
+
+---
+
+### Journey 2: 小明 —— 从收藏焦虑到知识自信
+
+小明是一个有知识焦虑的中级开发者。他的微信收藏夹有 500 多篇文章，浏览器书签塞满了各种技术链接，但他从来不会回去看。每次需要某个知识点，都要重新搜索，感觉之前的积累全白费了。
+
+**"我每天都在学习，但感觉什么都没记住。"**
+
+一天，小明在技术群里看到有人分享了一个叫「记忆外挂」的工具。"想到即找到，看过不再忘"——这句话戳中了他。他下载了应用，安装了浏览器插件，花了 5 分钟完成设置。
+
+第一天，他刻意收集了 10 篇正在看的文章。每次看到有价值的内容，就按下插件快捷键，一键收集。这个动作比"添加到阅读列表"还简单，没有任何阻力。
+
+第三天，小明在写代码时遇到了一个 React Hooks 的问题。他隐约记得之前看过相关的文章，但不记得具体是哪篇。他唤起搜索框，输入"useEffect 闭包问题"。
+
+**0.3 秒后，搜索结果出现了。**
+
+第一条就是两天前收集的那篇文章，标题是《深入理解 useEffect 的陷阱》。小明点击跳转，找到了他需要的解决方案。
+
+> **"太神奇了！"** 小明感叹道，**"我只是模糊地记得有这么个东西，它就帮我找到了。"**
+
+两周后，小明的内容库已经有 50 多篇文章。他发现自己不再焦虑地收藏东西了——因为他知道，只要收集了，就一定能找到。收藏不再是"死库存"，而是随时可以调用的知识资产。
+
+---
+
+### Journey 3: 高（Gao）—— 当搜索没有找到
+
+高正在调试一个复杂的性能问题，他记得之前看过一篇关于 React 虚拟列表优化的文章。他唤起搜索框，输入"虚拟列表 性能"。
+
+**搜索结果：0 条匹配。**
+
+高愣了一下，然后意识到那篇文章可能用的是英文术语。他重新输入"virtual list react"。
+
+这次出现了两条结果，但都不是他想要的那篇。他尝试换个关键词"virtualization windowing"，还是没有。
+
+高想了想，那篇文章的标题好像提到了"tanstack"。他输入"tanstack virtual"——
+
+**找到了！**《TanStack Virtual: The Ultimate Guide to Virtualizing Large Lists》
+
+> 高学到了一个教训：**语义搜索虽然强大，但关键术语还是很重要的。** 如果第一次没找到，换几个同义词试试。
+
+他决定以后收集文章时，如果标题不够描述性，就手动加个备注。这样下次搜索时会更容易找到。
+
+---
+
+### Journey 4: 高（Gao）—— 数字孪生的诞生
+
+高使用 Memory Prosthetic 已经三个月了，知识库积累了 300 多篇文章。某天，他收到了应用推送："你的 Agent 已准备就绪"。
+
+**"这是什么？"** 高好奇地点开了通知。
+
+应用打开了 Agent 配置面板，高惊讶地发现系统已经自动分析出了他的特征：
+
+**用户画像摘要：**
+- **专业领域**：前端架构（85%）、Rust 编程（72%）、系统设计（65%）
+- **兴趣偏好**：性能优化、TypeScript 高级技巧、Tauri 跨平台开发
+- **技术栈**：React、TypeScript、Rust、Tauri、Zustand
+- **决策风格**：数据驱动、注重性能、偏好简洁方案
+- **知识盲区**：WebAssembly、GPU 计算
+
+> **"它真的了解我！"** 高感叹道，**"这些分类和分析都很准确。"**
+
+高点击"生成 Agent"按钮，30 秒后，他的第一个数字孪生——"工作 Agent"诞生了。
+
+---
+
+### Journey 5: 高（Gao）—— Agent 的第一次推荐
+
+高正在使用 Cursor 编写代码，遇到了一个复杂的状态同步问题。他想起了刚生成的 Agent，于是向 Cursor 发送指令：
+
+```
+用户：让 MP 帮我看看 Zustand 的持久化方案
+
+Cursor (通过 MCP)：正在调用 Memory Prosthetic Agent...
+```
+
+几秒后，Agent 返回了回答：
+
+```
+Agent: 基于你的知识库和技术栈，我推荐以下方案：
+
+1. zustand-persist (推荐 ⭐⭐⭐⭐⭐)
+   - 原因：符合你的技术栈偏好（React + Zustand）
+   - 你收藏过 3 篇相关文章，其中《Zustand 最佳实践》提到这是最优解
+   - 参考：[你 2024-01-15 收藏的文章]
+
+2. localStorage + 自定义序列化
+   - 备选方案，适合需要细粒度控制的场景
+   - 参考：[你 2024-02-03 收藏的《深入理解 Web Storage》]
+
+决策建议：选择 zustand-persist，因为：
+✅ 符合你的简洁偏好
+✅ 性能开销最小
+✅ 与现有项目兼容性好
+```
+
+> **"太神奇了！"** 高心想，**"它不仅给出了答案，还引用了我自己收藏的文章，推荐的方案确实符合我的风格。"**
+
+高按照 Agent 的建议实现了方案，效果很好。他开始越来越依赖这个"数字孪生"。
+
+---
+
+### Journey 6: 小明 —— Agent 学习助手
+
+小明正在学习 Rust，但感觉进展缓慢。某天，他想起了 Memory Prosthetic 的 Agent，决定试试看。
+
+他打开了 Agent 对话界面：
+
+```
+小明：我想学 Rust，但不知道从哪里开始
+
+Agent: 基于你的学习路径和兴趣，我建议：
+
+📚 推荐学习顺序：
+1. 所有权和借用 (基础)
+   - 你收藏过《Rust 所有权系统详解》
+   - 这是 Rust 的核心概念
+
+2. Trait 系统 (进阶)
+   - 你对 TypeScript 类型系统很熟悉，这个概念应该容易理解
+
+3. 异步编程 (实战)
+   - 你收藏过 3 篇相关文章，可以边学边实践
+
+🎯 你的知识盲区：
+- 零成本抽象
+- Unsafe Rust
+- FFI 交互
+
+💡 学习建议：
+根据你的学习习惯（喜欢实战项目），建议：
+1. 先完成《Rust by Example》的前 10 章
+2. 用 Rust 重写一个你之前用 TypeScript 写的小工具
+3. 遇到问题时，先搜你的知识库，里面有 12 篇 Rust 文章
+
+```
+
+> **"这就像有一个了解我的私人导师！"** 小明兴奋地想。
+
+按照 Agent 的建议，小明在一个月内完成了 Rust 的基础学习，并且用 Rust 重写了一个小工具。Agent 的建议确实很有效。
+
+---
+
+### Journey 7: 高（Gao）—— Agent 的进化
+
+高使用 Agent 已经两个月了。某天，他打开 Agent 性能报告，惊讶地发现：
+
+**Agent 进化记录：**
+- **初始版本**：准确率 68%，满意度 3.2/5
+- **当前版本**：准确率 87%，满意度 4.5/5
+
+**主要改进：**
+- ✅ 学会了高更喜欢简洁方案而非复杂方案
+- ✅ 识别出高在做技术选型时更看重性能而非开发速度
+- ✅ 发现高最近对 WebAssembly 感兴趣，主动推荐了相关资源
+
+**用户反馈循环：**
+- 高修正了 8 次推荐结果
+- Agent 从每次修正中学习
+- 推荐风格越来越符合高的偏好
+
+> **"它真的在进化，"** 高想，**"现在的回答比刚生成时好太多了。"**
+
+---
+
+### Journey 8: 小明 —— Agent 插件生态
+
+小明听说 Memory Prosthetic 支持插件，于是打开插件市场看看有什么新东西。
+
+他发现了几个有趣的插件：
+
+**1. GitHub PR Reviewer 插件**
+- 功能：分析你的 PR Review 历史，学习你的评审风格
+- 小明安装后，Agent 开始帮他预审 PR，指出他可能会关注的代码问题
+
+**2. 会议纪要助手插件**
+- 功能：基于你收藏的会议纪要模板，自动生成会议总结
+- 小明试了一下，Agent 生成的纪要格式和他常用的几乎一样
+
+**3. 技术博客推荐插件**
+- 功能：基于你的兴趣偏好，从 GitHub Trending 和 Hacker News 筛选文章
+- 小明每天都能收到精准的推荐，节省了很多浏览时间
+
+> **"这就是 Obsidian 级的开放性！"** 小明感叹，**"Agent 的能力可以无限扩展。"**
+
+---
+
+### Journey 9: 高（Gao）—— Agent 与 AI 助手的协作
+
+高正在使用 Claude Desktop 思考一个架构问题。他习惯性地问 Claude：
+
+```
+高：帮我设计一个高性能的 React 组件状态管理方案
+
+Claude: 有几个选择...
+
+高: 等等，让我的 Agent 先看看我的知识库
+
+(通过 MCP 调用 Memory Prosthetic Agent)
+
+Agent: 你的知识库中有 7 篇相关文章，推荐方案...
+
+Claude: 很好，你的 Agent 给出了很好的背景信息。基于这些，我建议...
+```
+
+> **"这就是我想要的！"** 高意识到，**"Agent + Claude = 知识 + 智能。"**
+
+Agent 提供了上下文和个性化建议，Claude 提供了强大的推理能力。两者结合，产生了 1+1 > 2 的效果。
+
+---
+
+### Journey Requirements Summary
+
+这些旅程揭示了以下能力需求：
+
+| 旅程 | 揭示的能力需求 |
+|------|---------------|
+| **Gao 核心体验** | 浏览器插件一键收集、全局快捷键唤起、语义搜索、结果展示、原文跳转 |
+| **小明上手体验** | 简单安装流程、零阻力收集、搜索成功反馈、内容积累可视化 |
+| **搜索失败恢复** | 空结果提示、搜索建议、支持多次尝试、备注/标签功能（后续） |
+| **Gao Agent 生成** | 自动用户画像提取、Agent 配置面板、一键生成、画像可视化 |
+| **Gao Agent 推荐** | 个性化决策建议、引用知识库内容、推荐理由解释、MCP 集成 |
+| **小明 Agent 学习助手** | 学习路径规划、知识盲区识别、个性化学习建议、学习资源推荐 |
+| **Gao Agent 进化** | Agent 性能追踪、反馈循环、自动学习、进化记录可视化 |
+| **小明 Agent 插件生态** | 插件 API、插件市场、插件安装/管理、沙箱执行 |
+| **Gao Agent 协作** | 多 AI 助手集成、上下文共享、协作工作流 |
+
+**核心功能映射**
+
+| 功能模块 | 来源旅程 | 优先级 |
+|----------|----------|--------|
+| 浏览器插件 - 一键收集 | Journey 1, 2 | P0 |
+| 桌面应用 - 全局快捷键唤起 | Journey 1, 2, 3 | P0 |
+| 搜索引擎 - 语义搜索 | Journey 1, 2, 3 | P0 |
+| 结果展示 - 摘要 + 跳转 | Journey 1, 2 | P0 |
+| 空结果处理 - 搜索建议 | Journey 3 | P1 |
+| 内容备注 - 手动标签 | Journey 3 | P1 |
+| 用户画像提取 | Journey 4 | P0 (Alpha) |
+| Agent 生成 | Journey 4 | P0 (Alpha) |
+| Agent 配置面板 | Journey 4 | P1 (Alpha) |
+| 个性化决策推荐 | Journey 5 | P0 (Alpha) |
+| 知识库引用 | Journey 5 | P0 (Alpha) |
+| 学习路径规划 | Journey 6 | P1 (Alpha) |
+| 知识盲区识别 | Journey 6 | P1 (Alpha) |
+| Agent 性能追踪 | Journey 7 | P1 (Beta) |
+| 反馈循环 | Journey 7 | P1 (Beta) |
+| 插件系统 | Journey 8 | P2 (Beta) |
+| 插件市场 | Journey 8 | P2 (Beta) |
+| MCP 集成 | Journey 9 | P0 (已完成) |
+| 多 AI 协作 | Journey 9 | P1 (Beta) |
+
+---
+
+## Desktop App + Browser Extension 技术需求
+
+### 项目类型概述
+
+**Memory Prosthetic** 是一个混合项目，由两个主要组件组成：
+
+| 组件 | 技术栈 | 职责 |
+|------|--------|------|
+| **桌面应用** | Tauri 2.x + React 19 | 主应用、搜索界面、内容存储、AI 推理、MCP 服务器 |
+| **浏览器插件** | WXT + React + TypeScript | 内容收集、一键保存 |
+
+通信方式：
+
+* 浏览器插件通过 **本地 HTTP Server** 与桌面应用同步数据
+* AI 助手通过 **MCP 协议**（集成在 HTTP Server 中）调用搜索功能
+
+### 平台支持
+
+| 平台 | 支持状态 | 说明 |
+|------|----------|------|
+| **macOS** | ✓ 主要平台 | 开发和日常使用环境 |
+| **Windows** | 🔮 未来考虑 | Tauri 原生支持，后续可扩展 |
+| **Linux** | 🔮 未来考虑 | Tauri 原生支持，后续可扩展 |
+
+**MVP 聚焦**：仅 macOS，简化开发和测试复杂度。
+
+### 系统集成需求
+
+#### 全局快捷键
+
+| 需求 | 规格 |
+|------|------|
+| **快捷键** | 可自定义（默认 `Cmd+Shift+Space` 或类似） |
+| **响应时间** | < 300ms 从按键到搜索框显示 |
+| **行为** | 任意应用前台时可唤起，焦点切换到搜索框 |
+| **实现** | Tauri 全局快捷键 API |
+
+#### 系统托盘
+
+| 需求 | 规格 |
+|------|------|
+| **图标** | 应用图标，状态指示（正常/同步中/错误） |
+| **右键菜单** | 打开主窗口、设置、退出 |
+| **左键行为** | 唤起搜索框（与快捷键相同） |
+
+#### 开机自启
+
+| 需求 | 规格 |
+|------|------|
+| **默认行为** | 安装时询问，可在设置中切换 |
+| **启动模式** | 后台运行（托盘模式），不显示主窗口 |
+| **实现** | macOS Login Items API |
+
+### 插件与应用通信架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     Chrome Browser                              │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │              WXT Browser Extension                         │ │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐  │ │
+│  │  │   Popup     │  │   Content    │  │   Background    │  │ │
+│  │  │   (React)   │  │   Script     │  │   (Service      │  │ │
+│  │  │             │  │   (提取内容) │  │    Worker)      │  │ │
+│  │  └─────────────┘  └──────┬───────┘  └────────┬────────┘  │ │
+│  │                          │                    │           │ │
+│  └──────────────────────────┼────────────────────┼───────────┘ │
+└─────────────────────────────┼────────────────────┼─────────────┘
+                              │                    │
+                              ▼                    ▼
+                    ┌─────────────────────────────────────┐
+                    │     HTTP Request (localhost:PORT)   │
+                    │     POST /api/collect               │
+                    │     { url, title, content, ... }    │
+                    └──────────────────┬──────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Tauri Desktop App                           │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │              Rust Backend                                  │ │
+│  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐  │ │
+│  │  │   HTTP      │  │   Content    │  │   Embedding     │  │ │
+│  │  │   Server    │──│   Storage    │──│   Engine        │  │ │
+│  │  │ (localhost) │  │   (SQLite)   │  │   (AI)          │  │ │
+│  │  └─────────────┘  └──────────────┘  └─────────────────┘  │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 本地 HTTP Server 规格
+
+| 需求 | 规格 |
+|------|------|
+| **端口** | 可配置，默认 `localhost:21890`（或其他不常用端口） |
+| **协议** | HTTP（本地通信，无需 HTTPS） |
+| **认证** | 可选 token 验证（防止其他本地应用滥用） |
+| **CORS** | 允许来自 Chrome Extension 的请求 |
+
+#### API 端点设计
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `POST /api/collect` | POST | 收集新内容 |
+| `GET /api/health` | GET | 检查应用是否运行 |
+| `POST /api/search` | POST | 执行语义搜索（供浏览器插件和 MCP 客户端调用） |
+| `POST /mcp` | POST | MCP 协议端点（Streamable HTTP），供 AI 助手连接 |
+
+### 离线能力
+
+| 需求 | 规格 |
+|------|------|
+| **数据存储** | 完全本地（SQLite + 文件系统） |
+| **AI 推理** | 本地 Embedding 模型（如 all-MiniLM-L6-v2） |
+| **网络依赖** | 仅用于可选的云同步（未来功能） |
+| **离线搜索** | 100% 可用，无网络时所有核心功能正常 |
+
+### MCP 集成需求 (MCP Protocol Integration)
+
+#### 架构概述
+
+MCP（Model Context Protocol）功能已集成到桌面应用的 Rust HTTP Server 中，作为后端 HTTP Server 的一部分，无需独立的 Node.js 项目。
+
+**架构优势：**
+
+* **统一架构** - MCP 功能与现有 HTTP Server 统一管理
+* **简化部署** - 无需单独部署和维护 Node.js 项目
+* **减少依赖** - 消除对 Node.js 运行时的依赖
+* **性能优化** - Rust 实现的性能优势
+* **配置简化** - 用户只需配置 URL，无需管理本地文件
+
+#### 技术栈选择
+
+| 技术 | 说明 |
+|------|------|
+| **协议** | [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) - AI 助手与外部工具交互的标准协议 |
+| **实现** | Rust + [rmcp SDK](https://github.com/modelcontextprotocol/rust-sdk) - 官方 MCP Rust SDK |
+| **传输方式** | Streamable HTTP（MCP 协议标准） |
+| **集成位置** | 桌面应用 HTTP Server（Axum）中的 `/mcp` 端点 |
+| **通信** | MCP 端点直接调用桌面应用的 `/api/search` 接口 |
+
+#### MCP 选择优势
+
+| 优势 | 说明 |
+|------|------|
+| **标准化** | MCP 是开放协议，支持多种 AI 助手（Claude Desktop、Cursor 等） |
+| **自然语言** | 用户可以通过自然语言指令调用搜索功能 |
+| **扩展性** | 未来可以扩展更多功能（如内容收集、标签管理等） |
+| **配置简化** | AI 助手只需配置 URL `http://127.0.0.1:21890/mcp`，无需下载或管理本地文件 |
+| **零配置** | 桌面应用启动后，MCP 端点自动可用 |
+
+#### MCP 实现结构
+
+```
+apps/desktop/src-tauri/src/
+├── server/
+│   ├── routes.rs          # 添加 /mcp 路由
+│   ├── handlers.rs        # 现有 API handlers
+│   └── mcp/               # MCP 模块
+│       ├── mod.rs          # MCP 模块入口
+│       ├── service.rs      # MCP Service 实现（使用 rmcp SDK）
+│       ├── tools.rs        # 工具实现（search）
+│       └── transport.rs    # HTTP 传输适配
+```
+
+#### MCP 功能
+
+| 功能 | 说明 | 优先级 |
+|------|------|--------|
+| **MCP 协议端点** | 实现 `/mcp` 端点，支持 Streamable HTTP 传输 | P0 |
+| **搜索工具** | 实现 MCP `search` 工具，调用 `/api/search` 接口 | P0 |
+| **自然语言解析** | 解析用户指令（如"使用 MP 搜索 React 文章"），提取搜索关键词 | P0 |
+| **错误处理** | 检测桌面应用状态，未运行时返回友好提示 | P0 |
+| **协议初始化** | 处理 MCP 客户端初始化请求 | P0 |
+| **工具列表** | 返回可用工具列表（当前：`search`） | P0 |
+
+#### MCP 配置方式
+
+**AI 助手配置示例（Claude Desktop / Cursor）：**
+
+```json
+{
+  "memory-prosthetic": {
+    "url": "http://127.0.0.1:21890/mcp"
+  }
+}
+```
+
+**配置优势：**
+
+* ✅ **无需本地文件** - 用户不再需要下载 JavaScript 文件
+* ✅ **无需文件路径** - 用户不再需要在配置文件中指定本地文件路径
+* ✅ **自动可用** - 桌面应用启动后，MCP 端点自动可用
+* ✅ **统一端口** - 所有功能（浏览器扩展、MCP）通过同一 HTTP Server 访问
+
+#### MCP 使用场景
+
+**场景 1：AI 助手搜索**
+
+用户在与 AI 助手对话时：
+
+* 用户："使用 MP 搜索 React 文章"
+* AI 助手通过 MCP 协议连接到 `http://127.0.0.1:21890/mcp`
+* MCP 端点接收请求，解析指令，提取"React"作为搜索关键词
+* MCP 端点调用桌面应用的 `/api/search` 接口
+* 返回格式化的搜索结果给 AI 助手
+* AI 助手将结果呈现给用户
+
+**场景 2：内容查询**
+
+用户询问已收集的内容：
+
+* 用户："我之前收集过关于 TypeScript 的文章吗？"
+* AI 助手通过 MCP 协议搜索"TypeScript"
+* MCP 端点返回匹配的文章列表
+
+### 浏览器插件需求 (WXT)
+
+#### 技术栈选择
+
+| 技术 | 说明 |
+|------|------|
+| **框架** | [WXT](https://wxt.dev/) - 现代浏览器插件开发框架 |
+| **UI** | React + TypeScript（与桌面应用一致） |
+| **构建** | Vite（WXT 内置） |
+| **Manifest** | V3（WXT 自动生成） |
+
+#### WXT 选择优势
+
+| 优势 | 说明 |
+|------|------|
+| **热更新** | 开发时自动重载，提升效率 |
+| **TypeScript** | 类型安全，与 Monorepo 共享类型 |
+| **跨浏览器** | 一套代码支持 Chrome/Firefox/Safari |
+| **React 支持** | 原生支持 React，与桌面应用技术栈一致 |
+| **自动 Manifest** | 根据代码自动生成 manifest.json |
+
+#### WXT 项目结构
+
+```
+apps/browser-extension/
+├── wxt.config.ts              # WXT 配置
+├── entrypoints/
+│   ├── popup/                 # 弹窗 UI
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── index.html
+│   ├── background.ts          # Service Worker
+│   └── content.ts             # 内容脚本（提取页面内容）
+├── components/                # 共享组件
+├── utils/                     # 工具函数
+│   └── api.ts                 # 与桌面应用通信
+├── public/
+│   └── icon/                  # 插件图标
+├── package.json
+└── tsconfig.json
+```
+
+#### 插件功能
+
+| 功能 | 说明 | 优先级 |
+|------|------|--------|
+| **一键收集** | 点击插件图标或快捷键，收集当前页面 | P0 |
+| **收集确认** | 显示"已收集"通知 | P0 |
+| **应用状态** | 检测桌面应用是否运行 | P1 |
+| **内容预览** | 显示将要收集的内容摘要 | P2 |
+
+### Monorepo 结构（最终）
+
+```
+memory-prosthetic/
+├── apps/
+│   ├── desktop/                    # Tauri 桌面应用
+│   │   ├── src/                    # React 前端
+│   │   ├── src-tauri/              # Rust 后端
+│   │   │   └── src/
+│   │   │       └── server/
+│   │   │           ├── routes.rs   # HTTP 路由（包含 /mcp）
+│   │   │           ├── handlers.rs # API handlers
+│   │   │           └── mcp/        # MCP 模块（集成在 HTTP Server 中）
+│   │   └── package.json
+│   └── browser-extension/          # WXT 浏览器插件
+│       ├── entrypoints/            # WXT 入口点
+│       ├── wxt.config.ts
+│       └── package.json
+├── packages/
+│   └── shared/                     # 共享代码
+│       ├── types/                  # 共享类型（API 接口定义）
+│       ├── utils/                  # 共享工具函数
+│       └── package.json
+├── package.json                    # Workspace 根配置
+└── bun.lockb
+```
+
+**注意：** MCP 功能已集成到桌面应用的 Rust HTTP Server 中，不再需要独立的 `apps/mcp/` 项目。
+
+### 实现考量
+
+#### 技术风险
+
+| 风险 | 缓解措施 |
+|------|----------|
+| **端口冲突** | 支持配置端口，检测并提示冲突 |
+| **应用未运行** | 插件检测应用状态，提示启动应用 |
+| **内容提取失败** | 优雅降级，至少保存 URL 和标题 |
+| **WXT 学习曲线** | 框架成熟，文档完善，类似 Nuxt/Next 开发体验 |
+| **rmcp SDK 集成复杂度** | 使用官方 SDK，参考示例代码，分步实现 |
+| **MCP HTTP 传输实现** | 参考 MCP 协议规范和 SDK 文档，使用 Streamable HTTP |
+
+#### 开发优先级
+
+| 阶段 | 任务 |
+|------|------|
+| **MVP Week 1** | HTTP Server 骨架、基础收集 API、WXT 插件 MVP |
+| **MVP Week 2** | 全局快捷键、搜索 UI、Embedding 集成 |
+| **Alpha** | 系统托盘、开机自启、插件增强 |
+| **MCP 重构** | ✅ 已完成 - MCP 功能从独立 Node.js 项目重构为集成在 Rust HTTP Server 中的后端实现 |
+
+---
+
+## 内容编辑器技术架构 (Editor Architecture - Notion-like Experience)
+
+**目标**: 设计可扩展、高性能的块级编辑器，支持 Notion 级的沉浸式编辑体验。
+
+### 架构概述
+
+内容编辑器采用**块级架构（Block-based Architecture）**，将所有内容元素抽象为独立的块，实现高度的灵活性和可扩展性。
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   用户界面层 (UI Layer)                         │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ 编辑器视图    │  │ 命令菜单     │  │ 侧边栏       │          │
+│  │ Editor View  │  │ Slash Menu   │  │ Sidebar      │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   编辑器核心层 (Editor Core)                     │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Slate.js     │  │ React        │  │ Zustand      │          │
+│  │ /ProseMirror │  │ Components   │  │ State        │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   块处理层 (Block Processing Layer)              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ 块类型       │  │ 块操作       │  │ 块渲染       │          │
+│  │ Block Types  │  │ Operations   │  │ Rendering    │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   数据存储层 (Data Storage Layer)                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ SQLite       │  │ 版本历史     │  │ 自动保存     │          │
+│  │ Database     │  │ History      │  │ Auto-save    │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 技术栈选型
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| **编辑器核心** | Slate.js / ProseMirror | 成熟的块级编辑器框架 |
+| **前端框架** | React 19 | 与现有技术栈一致 |
+| **状态管理** | Zustand | 与全局状态管理一致 |
+| **样式系统** | TailwindCSS 4.x | 与现有样式系统一致 |
+| **数据存储** | SQLite | 本地存储，与现有数据层一致 |
+| **富文本** | 居家 / 自定义渲染 | 支持复杂富文本需求 |
+
+### 核心模块设计
+
+#### 模块 1: 块类型系统 (Block Type System)
+
+**块抽象接口**:
+
+```typescript
+type Block = {
+  id: string                    // 唯一标识
+  type: BlockType               // 块类型
+  content: BlockContent          // 块内容
+  style: BlockStyle             // 块样式
+  metadata: BlockMetadata       // 块元数据
+  children?: Block[]            // 子块（支持嵌套）
+  parentId?: string             // 父块 ID
+  position: number             // 在兄弟节点中的位置
+}
+
+type BlockType =
+  | 'paragraph'     // 纯文本
+  | 'heading'        // 标题 (h1-h6)
+  | 'quote'          // 引用
+  | 'code'           // 代码块
+  | 'bullet-list'    // 无序列表
+  | 'numbered-list'  // 有序列表
+  | 'to-do'         // 任务列表
+  | 'divider'        // 分隔线
+  | 'callout'        // 调用块
+  | 'toggle'         // 切换块
+  | 'image'          // 图片
+  | 'video'          // 视频
+  | 'file'           // 文件
+  | 'table'          // 表格
+  | 'column'         // 分栏
+  | 'equation'       // 公式
+```
+
+**块渲染组件**:
+
+```typescript
+// 每种块类型对应一个 React 组件
+const BlockComponents: Record<BlockType, React.ComponentType<BlockProps>> = {
+  'paragraph': ParagraphBlock,
+  'heading': HeadingBlock,
+  'quote': QuoteBlock,
+  'code': CodeBlock,
+  // ... 其他块类型
+}
+```
+
+#### 模块 2: 命令菜单系统 (Command Menu System)
+
+**命令菜单触发**:
+
+```
+用户输入 "/" → 检测触发 → 显示命令菜单 → 模糊搜索 → 选择命令 → 插入块
+```
+
+**命令菜单数据结构**:
+
+```typescript
+type Command = {
+  id: string                   // 命令 ID
+  name: string                 // 显示名称
+  keywords: string[]          // 搜索关键词
+  blockType: BlockType        // 对应的块类型
+  icon: string                // 图标
+  shortcut?: string           // 快捷键提示
+  category: CommandCategory   // 命令分类
+}
+
+type CommandCategory =
+  | 'basic'      // 基础块
+  | 'media'      // 媒体块
+  | 'structure'  // 结构块
+  | 'advanced'   // 高级块
+```
+
+**模糊搜索算法**:
+
+- 使用 Fuse.js 进行模糊搜索
+- 优先显示最近使用的命令
+- 支持快捷键快速选择（↑↓ 选择，Enter 确认，Esc 取消）
+
+#### 模块 3: 块操作引擎 (Block Operation Engine)
+
+**核心操作**:
+
+```typescript
+type BlockOperation =
+  | { type: 'insert'; block: Block; position: number }
+  | { type: 'delete'; blockId: string }
+  | { type: 'update'; blockId: string; updates: Partial<Block> }
+  | { type: 'move'; blockId: string; newPosition: number }
+  | { type: 'reorder'; blockIds: string[]; newPosition: number }
+  | { type: 'indent'; blockId: string }
+  | { type: 'outdent'; blockId: string }
+  | { type: 'merge'; blockIds: string[] }
+  | { type: 'split'; blockId: string; position: number }
+```
+
+**操作执行流程**:
+
+```
+用户操作 → 操作队列 → 乐观更新 → 执行操作 → 保存到数据库 → 更新 UI
+                ↓
+           撤销/重做栈
+```
+
+**撤销/重做系统**:
+
+- 使用 Immmer 实现不可变数据结构
+- 支持无限历史记录
+- 支持分支撤销（可选择撤销到某个历史状态）
+
+#### 模块 4: 性能优化策略 (Performance Optimization)
+
+**虚拟滚动**:
+
+```typescript
+// 只渲染可见区域的块
+const visibleBlocks = useMemo(() => {
+  const { scrollTop, viewportHeight } = viewportState
+  const startIndex = Math.floor(scrollTop / BLOCK_HEIGHT)
+  const endIndex = Math.ceil((scrollTop + viewportHeight) / BLOCK_HEIGHT)
+  return blocks.slice(startIndex, endIndex + 1)
+}, [blocks, viewportState])
+```
+
+**增量渲染**:
+
+```typescript
+// 使用 React.memo 避免不必要的重渲染
+const Block = React.memo(({ block, onUpdate, onDelete }) => {
+  // 块渲染逻辑
+}, (prevProps, nextProps) => {
+  return prevProps.block.id === nextProps.block.id &&
+         prevProps.block.content === nextProps.block.content
+})
+```
+
+**自动保存策略**:
+
+```typescript
+// 防抖自动保存
+const autoSave = useMemo(
+  () => debounce((blocks: Block[]) => {
+    saveToDatabase(blocks)
+  }, 1000), // 1 秒防抖
+  []
+)
+```
+
+**懒加载媒体**:
+
+```typescript
+// 图片和视频懒加载
+const MediaBlock = ({ src, type }) => {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+
+  const ref = useRef()
+  const observer = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) {
+      setIsInView(true)
+      observer.disconnect()
+    }
+  })
+
+  useEffect(() => {
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return isInView ? <Media src={src} onLoad={() => setIsLoaded(true)} /> : <Placeholder />
+}
+```
+
+### 数据存储设计
+
+#### 页面表 (pages)
+
+```sql
+CREATE TABLE pages (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL DEFAULT 'Untitled',
+  icon TEXT,                      -- 图标（emoji 或 icon name）
+  cover_image TEXT,               -- 封面图片 URL
+  parent_id TEXT,                 -- 父页面 ID（支持层级）
+  position INTEGER NOT NULL,      -- 在兄弟节点中的位置
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  is_deleted INTEGER DEFAULT 0,   -- 软删除
+  template_id TEXT,               -- 基于哪个模板创建
+
+  FOREIGN KEY (parent_id) REFERENCES pages(id) ON DELETE SET NULL
+);
+
+-- 索引
+CREATE INDEX idx_pages_parent_id ON pages(parent_id);
+CREATE INDEX idx_pages_updated_at ON pages(updated_at DESC);
+```
+
+#### 块表 (blocks)
+
+```sql
+CREATE TABLE blocks (
+  id TEXT PRIMARY KEY,
+  page_id TEXT NOT NULL,
+  type TEXT NOT NULL,             -- 块类型
+  content TEXT,                   -- 块内容（JSON）
+  style TEXT,                     -- 块样式（JSON）
+  metadata TEXT,                  -- 块元数据（JSON）
+  parent_block_id TEXT,           -- 父块 ID（支持嵌套）
+  position INTEGER NOT NULL,      -- 在兄弟节点中的位置
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+
+  FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_block_id) REFERENCES blocks(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_blocks_page_id ON blocks(page_id);
+CREATE INDEX idx_blocks_parent_block_id ON blocks(parent_block_id);
+CREATE INDEX idx_blocks_position ON blocks(page_id, position);
+```
+
+#### 版本历史表 (block_versions)
+
+```sql
+CREATE TABLE block_versions (
+  id TEXT PRIMARY KEY,
+  block_id TEXT NOT NULL,
+  page_id TEXT NOT NULL,
+  content TEXT NOT NULL,          -- 块内容快照（JSON）
+  style TEXT NOT NULL,            -- 块样式快照（JSON）
+  created_at INTEGER NOT NULL,
+  change_type TEXT NOT NULL,      -- create/update/delete/move
+
+  FOREIGN KEY (block_id) REFERENCES blocks(id) ON DELETE CASCADE,
+  FOREIGN KEY (page_id) REFERENCES pages(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_block_versions_block_id ON block_versions(block_id);
+CREATE INDEX idx_block_versions_created_at ON block_versions(created_at DESC);
+```
+
+### 编辑器性能优化
+
+#### 渲染优化
+
+| 技术 | 目标 | 实现 |
+|------|------|------|
+| **虚拟滚动** | 10000+ 块流畅 | 仅渲染可见块 |
+| **React.memo** | 减少重渲染 | 块级记忆化 |
+| **增量渲染** | 避免阻塞 | 使用 requestIdleCallback |
+| **懒加载** | 按需加载 | 媒体懒加载 |
+
+#### 数据优化
+
+| 技术 | 目标 | 实现 |
+|------|------|------|
+| **防抖保存** | 减少 I/O | 1 秒防抖 |
+| **批量操作** | 提升性能 | 批量数据库操作 |
+| **索引优化** | 快速查询 | page_id + position 复合索引 |
+| **缓存策略** | 减少查询 | 内存缓存热数据 |
+
+### 编辑器扩展性
+
+#### 插件 API 设计
+
+```typescript
+type EditorPlugin = {
+  name: string
+  version: string
+
+  // 自定义块类型
+  blockTypes?: BlockTypeDefinition[]
+
+  // 自定义命令
+  commands?: Command[]
+
+  // 自定义样式
+  styles?: StyleDefinition[]
+
+  // 生命周期钩子
+  hooks?: {
+    onBlockCreate?: (block: Block) => void
+    onBlockUpdate?: (block: Block) => void
+    onBlockDelete?: (blockId: string) => void
+  }
+}
+```
+
+#### 自定义块类型示例
+
+```typescript
+// 用户可以创建自定义块类型
+const CustomBlockTypes = {
+  'kanban': {
+    component: KanbanBlock,
+    content: {
+      columns: Array<{ id: string; title: string; cards: string[] }>
+    }
+  },
+  'calendar': {
+    component: CalendarBlock,
+    content: {
+      events: Array<{ date: string; title: string }>
+    }
+  }
+}
+```
+
+### 实施路线图
+
+**Alpha 阶段** (基础编辑能力):
+
+- 基础块类型（文本、标题、列表、引用、代码）
+- 命令菜单
+- 基础快捷键
+- 块操作（插入、删除、移动、缩进）
+- 页面管理
+
+**Beta 阶段** (增强体验):
+
+- 媒体块（图片、视频、文件）
+- 结构块（表格、分栏、公式）
+- 富文本格式
+- 沉浸式编辑（全屏、专注模式）
+- 导入导出
+
+**Vision 阶段** (高级功能):
+
+- 模板系统
+- 版本历史
+- 协作功能
+- 自定义块类型
+- 插件生态
+
+---
+
+## Agent 生成技术架构 (Agent Generation Architecture)
+
+**目标**: 设计可扩展、高性能的 Agent 生成系统，支持从用户知识库到个性化 Agent 的完整流程。
+
+### 架构概述
+
+Agent 生成系统采用**分层架构**，包含 5 个核心层次：
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     AI 助手接入层 (MCP Layer)                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Claude       │  │ Cursor       │  │ ChatGPT      │          │
+│  │ Desktop      │  │              │  │              │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │ MCP Protocol
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Agent 服务层 (Agent Service Layer)             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Agent        │  │ RAG Engine   │  │ Plugin       │          │
+│  │ Manager      │  │              │  │ Manager      │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  个性化引擎层 (Personalization Layer)            │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ User Profile │  │ Decision     │  │ Context      │          │
+│  │ Extractor    │  │ Style Engine │  │ Manager      │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   知识处理层 (Knowledge Processing Layer)        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ Semantic     │  │ Knowledge    │  │ Vector Store │          │
+│  │ Search       │  │ Graph        │  │ (sqlite-vec) │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└──────────────────────────────┬──────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     数据存储层 (Data Storage Layer)              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ SQLite       │  │ File System  │  │ Vector DB     │          │
+│  │ Database     │  │ (Content)    │  │ (Embeddings)  │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 技术栈选型
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| **MCP 协议** | Rust + rmcp SDK | 官方 MCP Rust SDK，实现标准化接口 |
+| **Agent 运行时** | Rust (异步) | 高性能、内存安全、支持并发 |
+| **向量检索** | sqlite-vec | 本地向量数据库，零依赖 |
+| **知识图谱** | @antv/g6 (前端) + SQLite (后端) | 图可视化 + 图数据存储 |
+| **文本嵌入** | all-MiniLM-L6-v2 (ONNX) | 本地 Embedding 模型 |
+| **AI 推理** | 可配置 LLM API | 支持 Claude、OpenAI 等（可选） |
+| **插件系统** | WASM (未来) | 安全沙箱执行 |
+
+### 模块 1: 用户画像提取器 (User Profile Extractor)
+
+**职责**: 从用户知识库中自动提取多维度身份特征。
+
+#### 数据提取流程
+
+```
+用户知识库内容
+      │
+      ▼
+┌─────────────────┐
+│ 内容预处理      │  → 清洗、分词、实体识别
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 特征提取管道    │
+│  ├─ 关键词提取  │  → TF-IDF / TextRank
+│  ├─ 主题识别    │  → Embedding 聚类
+│  ├─ 技术栈识别  │  → 预定义词典匹配
+│  ├─ 领域分类    │  → 分类模型
+│  └─ 观点分析    │  → 情感分析
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 画像聚合        │  → 统计、加权、归一化
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 用户画像 JSON   │
+└─────────────────┘
+```
+
+#### 用户画像数据结构
+
+```typescript
+type UserProfile = {
+  // 基础信息
+  id: string
+  version: number
+  updatedAt: string
+  contentCount: number
+
+  // 专业领域 (按权重排序)
+  professionalDomains: Array<{
+    domain: string           // 如："前端开发"
+    confidence: number       // 0-1
+    evidenceCount: number    // 支持证据数量
+  }>
+
+  // 兴趣偏好
+  interests: Array<{
+    topic: string
+    score: number            // 兴趣强度
+    lastUpdated: string
+  }>
+
+  // 技术栈偏好
+  techStack: Array<{
+    technology: string       // 如："React"
+    proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert'
+    frequency: number        // 使用频率
+  }>
+
+  // 决策风格
+  decisionStyle: {
+    riskTolerance: 'conservative' | 'moderate' | 'aggressive'
+    analyticalDepth: 'intuitive' | 'analytical' | 'data-driven'
+    communicationStyle: 'concise' | 'detailed' | 'balanced'
+  }
+
+  // 知识盲区
+  knowledgeGaps: Array<{
+    topic: string
+    reason: string           // 如："频繁搜索但缺乏深度收藏"
+    suggestedResources: string[]
+  }>
+
+  // 学习路径
+  learningPath: Array<{
+    topic: string
+    timeline: string         // 如："2024-01 → 2024-06"
+    depth: 'overview' | 'intermediate' | 'deep'
+  }>
+
+  // 价值偏好
+  valuePreferences: Array<{
+    dimension: string        // 如："性能 vs 简洁"
+    preference: string
+    confidence: number
+  }>
+}
+```
+
+#### 实现技术
+
+| 组件 | 技术 | 说明 |
+|------|------|------|
+| **关键词提取** | TF-IDF / TextRank | 传统 NLP 算法，本地执行 |
+| **主题识别** | Embedding + K-Means | 向量聚类，自动发现主题 |
+| **技术栈识别** | 预定义词典 + 规则 | 匹配常见技术关键词 |
+| **领域分类** | 规则 + 统计 | 基于内容分布推断 |
+| **决策风格** | 内容分析 | 分析收集内容中的决策案例 |
+
+### 模块 2: RAG 引擎 (RAG Engine)
+
+**职责**: 实现检索增强生成，将用户知识库集成到 Agent 回答中。
+
+#### RAG 工作流
+
+```
+用户提问
+      │
+      ▼
+┌─────────────────┐
+│ 意图识别        │  → 识别问题类型（查询/分析/决策）
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 查询重写        │  → 基于用户画像扩展查询
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 多路检索        │
+│  ├─ 语义检索    │  → Embedding 相似度
+│  ├─ 关键词检索  │  → BM25 / 全文搜索
+│  ├─ 图谱检索    │  → 知识图谱关联
+│  └─ 混合检索    │  → 综合排序
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 上下文构建      │  → 选择最相关的 Top-K 内容
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 生成回答        │  → 结合检索内容生成回答
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 引用标注        │  → 标注引用来源
+└─────────────────┘
+```
+
+#### 检索策略
+
+| 策略 | 使用场景 | 技术实现 |
+|------|----------|----------|
+| **语义检索** | 模糊概念查询 | Embedding 余弦相似度 |
+| **关键词检索** | 精确术语查询 | BM25 算法 |
+| **图谱检索** | 关联内容发现 | 图遍历 + PageRank |
+| **混合检索** | 复杂查询 | 综合排序 (Learning to Rank) |
+
+#### 上下文管理
+
+```typescript
+type RetrievalContext = {
+  query: string
+  queryExpansion: string[]     // 基于用户画像扩展的查询
+  retrievedDocs: Array<{
+    id: string
+    title: string
+    content: string
+    relevanceScore: number
+    citation: string           // 引用格式
+  }>
+  userProfile: UserProfile    // 用户画像
+  contextWindow: number        // 上下文窗口大小
+  maxTokens: number            // 最大 token 数
+}
+```
+
+### 模块 3: 决策风格引擎 (Decision Style Engine)
+
+**职责**: 模拟用户决策风格，提供个性化建议。
+
+#### 决策风格建模
+
+```typescript
+type DecisionStyle = {
+  // 风险偏好
+  riskPreference: {
+    conservative: number       // 0-1
+    moderate: number
+    aggressive: number
+  }
+
+  // 分析深度
+  analyticalDepth: {
+    intuitive: number          // 直觉驱动
+    analytical: number         // 分析驱动
+    dataDriven: number         // 数据驱动
+  }
+
+  // 决策速度
+  decisionSpeed: {
+    fast: number               // 快速决策
+    moderate: number
+    thorough: number           // 深度分析
+  }
+
+  // 信息需求
+  informationNeed: {
+    minimal: number            // 最少信息
+    moderate: number
+    comprehensive: number      // 全面信息
+  }
+
+  // 权衡偏好
+  tradeoffPreference: {
+    performance: number        // 性能优先
+    simplicity: number         // 简洁优先
+    maintainability: number    // 可维护性优先
+    cost: number               // 成本优先
+  }
+}
+```
+
+#### 决策模拟流程
+
+```
+决策任务
+      │
+      ▼
+┌─────────────────┐
+│ 任务分析        │  → 识别决策类型
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 风�格匹配        │  → 基于用户决策风格
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 方案生成        │  → 生成多个可行方案
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 风格评分        │  → 按用户偏好为方案打分
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 排序推荐        │  → 返回最符合用户风格的方案
+└─────────────────┘
+```
+
+### 模块 4: Agent 管理器 (Agent Manager)
+
+**职责**: 管理 Agent 生命周期、版本、配置。
+
+#### Agent 数据结构
+
+```typescript
+type Agent = {
+  // 基础信息
+  id: string
+  name: string
+  description: string
+  version: string
+  createdAt: string
+  updatedAt: string
+
+  // 配置
+  config: {
+    userProfileId: string      // 关联的用户画像 ID
+    knowledgeScope: string[]   // 知识范围（收藏夹 ID 列表）
+    permissions: string[]      // 权限列表
+    specialization: string     // 专注领域（如："工作"、"学习"）
+  }
+
+  // 能力
+  capabilities: {
+    tools: string[]            // 可用工具列表
+    plugins: string[]          // 已安装插件
+    maxContextSize: number     // 最大上下文大小
+  }
+
+  // 性能指标
+  metrics: {
+    totalCalls: number
+    avgResponseTime: number
+    satisfactionScore: number
+    lastUsedAt: string
+  }
+
+  // 状态
+  status: 'active' | 'paused' | 'archived'
+}
+```
+
+#### Agent 生命周期
+
+```
+创建 Agent
+      │
+      ▼
+┌─────────────────┐
+│ 初始化          │  → 生成初始配置
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 激活            │  → 加载到内存
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 使用            │  → 响应 MCP 请求
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 更新            │  → 增量学习
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 版本管理        │  → 创建快照
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 归档/删除       │
+└─────────────────┘
+```
+
+### 模块 5: 插件管理器 (Plugin Manager)
+
+**职责**: 管理 Agent 插件的生命周期和安全执行。
+
+#### 插件 API 设计
+
+```typescript
+type Plugin = {
+  // 基础信息
+  id: string
+  name: string
+  version: string
+  author: string
+  description: string
+
+  // 能力声明
+  capabilities: {
+    tools: Tool[]             // 提供的工具
+    dataSources: DataSource[]  // 访问的数据源
+    permissions: Permission[]  // 需要的权限
+  }
+
+  // 执行环境
+  runtime: 'wasm' | 'native' | 'sandbox'
+
+  // 状态
+  enabled: boolean
+  installDate: string
+}
+
+type Tool = {
+  name: string
+  description: string
+  parameters: Record<string, ParameterSchema>
+  handler: (params: any) => Promise<any>
+}
+
+type DataSource = {
+  name: string
+  type: 'http' | 'file' | 'database'
+  config: Record<string, any>
+  fetch: (query: any) => Promise<any>
+}
+```
+
+#### 插件安全沙箱
+
+```
+插件请求
+      │
+      ▼
+┌─────────────────┐
+│ 权限检查        │  → 验证插件权限
+└────────┬────────┘
+         │
+      通过?
+         │
+         ▼
+┌─────────────────┐
+│ 资源限制        │  → CPU、内存、网络限制
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 沙箱执行        │  → WASM 或隔离进程
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 结果验证        │  → 验证返回值格式
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ 返回结果        │
+└─────────────────┘
+```
+
+### 性能优化策略
+
+| 组件 | 优化策略 | 目标 |
+|------|----------|------|
+| **向量检索** | HNSW 索引 + 批量查询 | < 100ms (Top-10) |
+| **画像提取** | 增量更新 + 缓存 | < 5s (1000 条新内容) |
+| **RAG 检索** | 混合检索 + 查询缓存 | < 200ms |
+| **Agent 推理** | 流式响应 + 上下文压缩 | < 1s 首字响应 |
+| **插件执行** | WASM + 懒加载 | < 50ms 工具调用 |
+
+### 数据存储架构
+
+| 数据类型 | 存储方案 | 索引策略 |
+|---------|----------|----------|
+| **用户画像** | SQLite JSON 字段 | GIN 索引 |
+| **向量嵌入** | sqlite-vec | HNSW 索引 |
+| **知识图谱** | SQLite (边表) | source, target 复合索引 |
+| **Agent 配置** | SQLite 关系表 | id 主键 |
+| **对话历史** | SQLite + 文件 | 时间范围索引 |
+| **插件数据** | 文件系统 | 目录结构 |
+
+### MCP 协议扩展
+
+#### MCP 工具定义
+
+```typescript
+// Agent 工具
+const agentTools = {
+  ask_agent: {
+    name: 'ask_agent',
+    description: '向用户 Agent 提问，获取基于用户知识库的个性化回答',
+    parameters: {
+      type: 'object',
+      properties: {
+        question: { type: 'string' },
+        context: { type: 'string', optional: true },
+        agentId: { type: 'string', optional: true }
+      }
+    }
+  },
+
+  get_user_profile: {
+    name: 'get_user_profile',
+    description: '获取用户画像信息（专业领域、兴趣、技术栈等）',
+    parameters: {}
+  },
+
+  search_knowledge: {
+    name: 'search_knowledge',
+    description: '在用户知识库中搜索相关内容',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        limit: { type: 'number', default: 10 }
+      }
+    }
+  }
+}
+```
+
+### 实施路线图
+
+| 阶段 | 模块 | 里程碑 |
+|------|------|--------|
+| **Alpha Phase 1** | 用户画像提取器 | 基础特征提取（专业、兴趣、技术栈）|
+| **Alpha Phase 2** | RAG 引擎 | 语义检索 + 上下文构建 |
+| **Alpha Phase 3** | Agent 管理器 | Agent 创建、配置、版本管理 |
+| **Alpha Phase 4** | 决策风格引擎 | 基础决策风格模拟 |
+| **Beta Phase 1** | 插件管理器 | 插件 API + 沙箱执行 |
+| **Beta Phase 2** | 性能优化 | 缓存、索引、批量处理 |
+| **Beta Phase 3** | 评估系统 | A/B 测试、反馈循环 |
+
+---
+
+## Functional Requirements
+
+### 内容收集 (Content Collection)
+
+* **FR1**: 用户可以通过浏览器插件一键收集当前网页
+* **FR2**: 用户可以在收集时看到确认反馈（已收集提示）
+* **FR3**: 系统可以自动提取网页的 URL、标题和正文内容
+* **FR4**: 系统可以在桌面应用未运行时提示用户启动应用
+* **FR5**: 用户可以查看收集内容的预览摘要（P2）
+
+* **FR349**: 系统原生支持多端一键收集（Cubox 级流程），实现内容自动清洗和高效过滤。
+
+### 内容搜索与问答 (Search & Q&A)
+
+* **FR6**: 用户可以通过全局快捷键唤起搜索界面
+* **FR7**: 用户可以输入模糊关键词进行语义搜索
+* **FR8**: 系统可以基于语义相似度返回匹配的内容列表
+* **FR9**: 系统可以支持中英文混合搜索
+* **FR10**: 用户可以在搜索结果中看到内容摘要
+* **FR11**: 用户可以点击搜索结果跳转到原文链接
+* **FR12**: 系统可以在无匹配结果时显示空结果提示
+* **FR350**: 系统支持基于知识库的智能 Agent 问答，实现文字间的高度关联（IMA 级能力）。
+
+### 内容编辑与创作 (Content Editing & Creation - Notion-like Experience)
+
+**核心理念**: Memory Prosthetic 应提供 Notion 级的沉浸式编辑体验，让用户不仅可以收集内容，更可以创作内容，形成完整的知识管理体系。
+
+#### 基础编辑能力 (Basic Editing)
+
+* **FR431**: 用户可以创建、编辑、删除笔记（Note）
+* **FR432**: 系统支持块级编辑（Block-based editing）架构，每个内容元素都是独立的块
+* **FR433**: 用户可以通过 `/` 命令菜单快速插入不同类型的块（文本、标题、列表、代码块、引用等）
+* **FR434**: 系统支持块的重排序，用户可以拖拽块调整位置
+* **FR435**: 系统支持块的缩进和层级结构，支持无限层级嵌套
+* **FR436**: 用户可以合并多个块或拆分一个块
+* **FR437**: 系统支持块的复制、剪切、粘贴操作
+* **FR438**: 系统支持多级撤销（Undo）和重做（Redo），无历史记录限制
+* **FR439**: 系统支持块的选择和批量操作（选择多个块进行删除、移动等）
+* **FR440**: 系统支持块的样式自定义（字体、颜色、背景等）
+
+#### 块类型 (Block Types)
+
+**文本块**:
+
+* **FR441**: 系统支持纯文本块（Paragraph），默认块类型
+* **FR442**: 系统支持多级标题块（Heading 1-6），支持自动大纲结构
+* **FR443**: 系统支持引用块（Quote），带有视觉区分的引用样式
+* **FR444**: 系统支持代码块（Code），支持语法高亮和语言标识
+* **FR445**: 系统支持分隔线块（Divider），用于内容分隔
+* **FR446**: 系统支持调用块（Callout），支持图标和背景色
+* **FR447**: 系统支持切换（Toggle）块，支持展开/折叠内容
+* **FR448**: 系统支持高亮块（Highlight），用于重要内容标记
+
+**列表块**:
+
+* **FR449**: 系统支持无序列表（Bulleted List），支持多级嵌套
+* **FR450**: 系统支持有序列表（Numbered List），支持自定义编号格式
+* **FR451**: 系统支持任务列表（To-do List），支持勾选框和完成状态
+* **FR452**: 系统支持列表项的拖拽重排和缩进调整
+* **FR453**: 系统支持将列表项转换为其他块类型（如转换为标题）
+
+**媒体块**:
+
+* **FR454**: 系统支持图片块（Image），支持本地图片和 URL 图片
+* **FR455**: 系统支持视频块（Video），支持本地视频和嵌入视频（如 YouTube）
+* **FR456**: 系统支持文件块（File），支持文件上传和预览
+* **FR457**: 系统支持音频块（Audio），支持音频播放
+* **FR458**: 系统支持 PDF 文档嵌入，支持预览和页面导航
+* **FR459**: 系统支持网页书签（Bookmark），显示 URL 预览和元数据
+
+**结构块**:
+
+* **FR460**: 系统支持表格块（Table），支持行列操作和样式自定义
+* **FR461**: 系统支持分栏块（Column），支持 2-3 列布局
+* **FR462**: 系统支持目录块（Table of Contents），自动从标题生成目录
+* **FR463**: 系统支持公式块（Equation），支持 LaTeX 数学公式渲染
+* **FR464**: 系统支持代码片段块（Code Snippet），支持语法高亮和复制
+
+**智能块**:
+
+* **FR465**: 系统支持日期块（Date），支持日期选择和日历视图
+* **FR466**: 系统支持提醒块（Reminder），支持设置提醒时间
+* **FR467**: 系统支持标签块（Tag），支持为笔记添加标签
+* **FR468**: 系统支持关联块（Link to Page），支持页面间链接
+* **FR469**: 系统支持引用知识库块（Reference），引用已收集的内容
+
+#### 命令菜单 (Command Menu)
+
+* **FR470**: 用户可以通过输入 `/` 唤起命令菜单
+* **FR471**: 命令菜单支持模糊搜索块类型和命令
+* **FR472**: 命令菜单支持快捷键提示（如使用 ↑↓ 选择，Enter 确认）
+* **FR473**: 命令菜单支持最近使用的块类型优先显示
+* **FR474**: 用户可以通过 `/` + 文本直接创建带样式的块（如 `/h1` 创建一级标题）
+* **FR475**: 系统支持块内命令菜单，用于格式化选中文本（如加粗、斜体）
+* **FR476**: 命令菜单支持分组的命令（基础块、媒体块、结构块、智能块）
+* **FR477**: 系统支持自定义命令菜单，用户可以添加常用块类型
+
+#### 快捷键支持 (Keyboard Shortcuts)
+
+* **FR478**: 系统支持完整的键盘快捷键，所有操作都可以通过键盘完成
+* **FR479**: 系统支持 Markdown 语法快捷输入（如 `# ` 创建标题，`- ` 创建列表）
+* **FR480**: 系统支持文本格式化快捷键（Cmd/Ctrl + B 加粗，I 斜体，U 下划线）
+* **FR481**: 系统支持块操作快捷键（Enter 创建新块，Backspace 删除空块）
+* **FR482**: 系统支持块导航快捷键（↑↓ 在块间移动，Tab 缩进，Shift+Tab 取消缩进）
+* **FR483**: 系统支持多光标编辑（Cmd/Ctrl + 点击创建多个光标）
+* **FR484**: 系统支持文本选择快捷键（Shift + ←→ 选择字符，Cmd/Ctrl + Shift + ←→ 选择整行）
+* **FR485**: 系统支持快捷键提示面板，显示所有可用快捷键
+
+#### 富文本格式 (Rich Text Formatting)
+
+* **FR486**: 系统支持文本加粗、斜体、下划线、删除线等基础格式
+* **FR487**: 系统支持文本颜色和高亮颜色自定义
+* **FR488**: 系统支持字体大小调整（小、正常、大、特大）
+* **FR489**: 系统支持字体家族选择（系统字体、等宽字体等）
+* **FR490**: 系统支持行内代码（Inline Code）格式
+* **FR491**: 系统支持链接格式，支持自动识别 URL 并转换为可点击链接
+* **FR492**: 系统支持行内数学公式（Inline Equation），使用 LaTeX 语法
+* **FR493**: 系统支持上标和下标（用于数学公式、化学式等）
+* **FR494**: 系统支持清除格式功能，一键清除所有格式
+
+#### 沉浸式编辑 (Immersive Editing)
+
+* **FR495**: 系统支持全屏编辑模式，隐藏所有 UI 元素，只显示编辑内容
+* **FR496**: 系统支持专注模式（Focus Mode），高亮当前编辑的块，其他块变暗
+* **FR497**: 系统支持打字机模式（Typewriter Mode），当前行始终居中
+* **FR498**: 系统支持暗色模式编辑器，保护眼睛
+* **FR499**: 系统支持无干扰模式，隐藏所有辅助线和提示
+* **FR500**: 系统支持自动保存，无需手动保存，实时保存所有更改
+* **FR501**: 系统支持编辑器宽度调整（窄、中、宽、全宽）
+* **FR502**: 系统支持字体大小缩放，满足不同视力和偏好
+
+#### 页面管理 (Page Management)
+
+* **FR503**: 用户可以创建多个页面（Page），每个页面包含多个块
+* **FR504**: 系统支持页面重命名，页面标题作为文件名
+* **FR505**: 系统支持页面图标和封面图自定义
+* **FR506**: 系统支持页面层级结构，支持创建子页面
+* **FR507**: 系统支持侧边栏页面列表，显示所有页面和层级结构
+* **FR508**: 系统支持页面搜索，快速查找页面
+* **FR509**: 系统支持页面收藏，将常用页面固定到侧边栏顶部
+* **FR510**: 系统支持页面颜色标签，用于分类和视觉区分
+* **FR511**: 系统支持页面模板，基于模板快速创建新页面
+* **FR512**: 系统支持页面导出（Markdown、PDF、HTML）
+
+#### 内容协作 (Content Collaboration - 未来)
+
+* **FR513**: 系统支持页面分享（未来功能，生成分享链接或导出文件）
+* **FR514**: 系统支持版本历史，查看页面历史版本和恢复
+* **FR515**: 系统支持页面评论，在特定块上添加评论
+* **FR516**: 系统支持页面锁定，防止意外编辑（未来功能）
+
+#### 模板系统 (Template System)
+
+* **FR517**: 系统提供内置模板（如：会议纪要、项目计划、学习笔记、OKR 等）
+* **FR518**: 用户可以创建自定义模板，保存当前页面为模板
+* **FR519**: 系统支持模板变量（如：{{date}}、{{title}}），创建页面时自动填充
+* **FR520**: 系统支持模板市场（概念），社区共享模板（未来功能）
+* **FR521**: 系统支持模板预览，应用前预览模板效果
+
+#### 导入导出 (Import/Export)
+
+* **FR522**: 系统支持导入 Markdown 文件，保留格式和结构
+* **FR523**: 系统支持导入 Notion 导出文件（未来功能）
+* **FR524**: 系统支持导出为 Markdown，保持格式和层级
+* **FR525**: 系统支持导出为 PDF，保留样式和格式
+* **FR526**: 系统支持导出为 HTML，保留样式和交互
+* **FR527**: 系统支持导出为纯文本，去除所有格式
+* **FR528**: 系统支持批量导出，一次性导出多个页面
+
+#### 编辑器性能 (Editor Performance)
+
+* **FR529**: 编辑器响应时间 < 16ms（60fps），无卡顿感
+* **FR530**: 页面加载时间 < 500ms（1000 个块以内）
+* **FR531**: 命令菜单唤起时间 < 100ms
+* **FR532**: 拖拽块重排响应时间 < 50ms
+* **FR533**: 自动保存延迟 < 1s，编辑后 1 秒内自动保存
+* **FR534**: 系统支持大型页面（10000+ 块）流畅编辑
+* **FR535**: 系统支持虚拟滚动，优化大页面性能
+
+#### 编辑器可访问性 (Editor Accessibility)
+
+* **FR536**: 编辑器支持键盘导航，无需鼠标即可完成所有操作
+* **FR537**: 编辑器支持屏幕阅读器，符合 WCAG 2.1 AA 标准
+* **FR538**: 编辑器支持高对比度模式，视觉辅助
+* **FR539**: 编辑器支持字体缩放，适应不同视力需求
+* **FR540**: 编辑器支持快捷键自定义，适应用户习惯
+
+#### 编辑器技术实现 (Editor Implementation)
+
+**技术选型**:
+
+* **FR541**: 编辑器基于 Slate.js 或 ProseMirror 构建，支持块级架构
+* **FR542**: 编辑器使用 React 组件化渲染，每个块类型对应一个组件
+* **FR543**: 编辑器使用 Immutable 数据结构，优化性能和撤销/重做
+* **FR544**: 编辑器状态管理使用 Zustand，与全局状态管理一致
+* **FR545**: 编辑器支持插件系统，允许扩展自定义块类型
+
+**数据存储**:
+
+* **FR546**: 块数据以 JSON 格式存储在 SQLite 中
+* **FR547**: 每个块包含唯一 ID、类型、内容、样式、元数据
+* **FR548**: 块支持版本控制，记录块的创建和修改历史
+* **FR549**: 块支持引用关系，可以引用其他页面或块
+
+#### 编辑器优先级
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | FR431-FR440（基础编辑） | 核心编辑能力，必须实现 |
+| **P0** | FR441-FR453（文本块和列表块） | 常用块类型，必须实现 |
+| **P0** | FR470-FF477（命令菜单） | 快速插入块，必须实现 |
+| **P0** | FR478-FR485（快捷键支持） | 提升编辑效率，必须实现 |
+| **P0** | FR529-FR535（编辑器性能） | 保证体验，必须实现 |
+| **P1** | FR454-FF469（媒体块和结构块） | 增强体验，重要功能 |
+| **P1** | FR486-FR494（富文本格式） | 格式化需求，重要功能 |
+| **P1** | FR495-FR502（沉浸式编辑） | 提升专注度，重要功能 |
+| **P1** | FR503-FF512（页面管理） | 多页面支持，重要功能 |
+| **P1** | FR522-FR528（导入导出） | 数据迁移，重要功能 |
+| **P2** | FR513-FR516（内容协作） | 未来功能，团队使用 |
+| **P2** | FR517-FR521（模板系统） | 提升效率，未来功能 |
+| **P2** | FR536-FR540（可访问性） | 包容性设计，未来功能 |
+| **P2** | FR541-FR549（技术实现） | 架构决策，开发参考 |
+
+### 数字孪生与 Agent 生成 (Digital Twin & Agent Generation)
+
+**核心理念**: Memory Prosthetic 的终极愿景是打造一个「数字孪生 (Digital Twin)」——基于用户的所看、所听、所想，生成具备决策能力的个性化 Agent，通过 MCP 协议为所有 AI 助手提供智能支持。
+
+#### 基础能力 (Foundation)
+
+* **FR351**: 系统原生支持 MCP (Model Context Protocol) 协议，开放所有能力供外部 Agent 调用
+* **FR352**: 系统可以基于用户收集、听到、想到的所有内容，生成独属于该用户的本地 Agent
+* **FR353**: 生成的 Agent 可被所有主流 AI 助手（Claude, Cursor, ChatGPT 等）原生调用
+* **FR354**: 系统提供沉浸式书写与编辑体验（Notion 级体验），支持块级操作
+* **FR355**: 系统支持高度可定制的插件化能力（Obsidian 级开放性），允许开发者扩展 Agent 技能
+* **FR359**: 用户的身份画像和个人特征应完全保留在本地，仅在需要时通过 MCP 提供给 AI
+
+#### 模块 1: 用户画像与身份提取 (User Identity Extraction)
+
+**目标**: 从用户的知识库中自动提取多维度身份特征，构建完整的用户画像。
+
+* **FR360**: 系统应定期（每日/每周）从已存储的文章和笔记中自动提取用户的个人背景、兴趣、专业技能与价值偏好
+* **FR361**: 系统可以识别用户的**专业领域**（如：前端开发、Rust 编程、系统架构），基于内容主题分布和关键词频率
+* **FR362**: 系统可以识别用户的**兴趣偏好**（如：AI/ML、性能优化、开源贡献），基于收藏模式和阅读主题
+* **FR363**: 系统可以识别用户的**技术栈偏好**（如：React、TypeScript、Tauri），基于内容中的技术关键词
+* **FR364**: 系统可以识别用户的**内容类型偏好**（如：教程、文档、博客、论文），基于收集内容分布
+* **FR365**: 系统可以识别用户的**知识盲区**，基于用户频繁搜索但缺乏深度收藏的主题
+* **FR366**: 系统可以识别用户的**学习路径**，基于内容收集的时间顺序和主题演化
+* **FR367**: 系统可以提取用户的**价值偏好**（如：性能优先、代码质量、用户体验），基于内容中的观点和评价
+* **FR368**: 系统可以识别用户的**决策风格特征**（如：保守型/激进型、数据驱动/直觉驱动），基于收集内容中的决策案例
+* **FR369**: 系统可以将提取的用户画像以结构化格式存储（JSON），便于 Agent 访问和使用
+* **FR370**: 系统可以提供用户画像的可视化界面，让用户查看和修正提取结果
+* **FR371**: 系统支持增量更新用户画像，当有新内容加入时自动调整画像特征
+
+#### 模块 2: Agent 生成与训练 (Agent Generation & Training)
+
+**目标**: 基于用户画像和知识库生成个性化 Agent，并支持持续学习和优化。
+
+* **FR372**: 系统可以基于用户画像和知识库内容初始化生成个性化 Agent
+* **FR373**: Agent 的初始化应包括：用户身份信息、专业知识库、兴趣偏好、决策风格
+* **FR374**: 系统可以使用 RAG (Retrieval-Augmented Generation) 技术，将用户知识库作为 Agent 的检索源
+* **FR375**: 系统可以支持 Agent 的增量学习，当用户添加新内容时自动更新 Agent 知识
+* **FR376**: 系统可以支持 Agent 版本管理，允许用户回滚到之前的 Agent 版本
+* **FR377**: 系统可以提供 Agent 重新训练功能，当用户画像发生重大变化时完全重建 Agent
+* **FR378**: 系统可以在训练过程中显示进度和状态（如："分析知识库中..."、"提取特征中..."、"生成 Agent 中..."）
+* **FR379**: 系统可以支持多个 Agent 并存（如：工作 Agent、学习 Agent、生活 Agent），每个 Agent 专注不同领域
+* **FR380**: 系统可以为每个 Agent 分配独立的权限和访问范围（如：工作 Agent 只能访问工作相关收藏夹）
+* **FR381**: 系统可以支持 Agent 导入/导出，允许用户备份或分享 Agent 配置（不包含知识库内容）
+
+#### 模块 3: 个性化决策能力 (Personalized Decision Making)
+
+**目标**: Agent 能够模拟用户的决策风格和偏好，提供符合用户习惯的个性化建议。
+
+* **FR382**: Agent 在回答问题时，必须能够结合提取出的用户身份信息，提供更具针对性、更个性化的响应
+* **FR383**: Agent 可以模拟用户的决策风格（保守型/激进型），在给出建议时保持一致性
+* **FR384**: Agent 可以基于用户的价值偏好（如：性能优先 vs 代码简洁）调整建议优先级
+* **FR385**: Agent 可以基于用户的技术栈偏好，优先推荐符合用户习惯的技术方案
+* **FR386**: Agent 可以识别用户的知识水平（初级/中级/专家），调整回答的深度和术语使用
+* **FR387**: Agent 可以基于用户的历史决策案例，提供符合用户习惯的决策建议
+* **FR388**: Agent 可以在多个可行方案中，基于用户偏好进行排序和推荐
+* **FR389**: Agent 可以解释推荐理由，引用用户知识库中的相关内容作为依据
+* **FR390**: Agent 可以识别用户的知识盲区，主动提供学习建议和资源推荐
+* **FR391**: Agent 可以模拟用户的沟通风格（简洁/详细、正式/随意），调整回答语气
+
+#### 模块 4: Agent 知识库集成 (Agent Knowledge Integration)
+
+**目标**: Agent 能够深度集成用户的知识库，实现精准的上下文理解和内容检索。
+
+* **FR392**: Agent 可以通过语义搜索从用户知识库中检索相关内容
+* **FR393**: Agent 可以在回答问题时引用用户知识库中的具体文章和笔记
+* **FR394**: Agent 可以提供引用链接，允许用户跳转到原始内容
+* **FR395**: Agent 可以理解知识库中的内容关联（基于知识图谱），提供更深入的上下文
+* **FR396**: Agent 可以识别知识库中的内容时效性，优先推荐较新的内容
+* **FR397**: Agent 可以基于用户的阅读历史，识别用户熟悉和不熟悉的主题
+* **FR398**: Agent 可以在知识库中存在矛盾观点时，提醒用户并展示不同观点
+* **FR399**: Agent 可以支持多轮对话，保持上下文记忆，引用之前的对话内容
+* **FR400**: Agent 可以识别知识库中的内容类型（教程/文档/博客），根据场景推荐合适的内容
+* **FR401**: Agent 可以在检索失败时，明确告知用户知识库中缺失的内容类型
+
+#### 模块 5: Agent 插件系统 (Agent Plugin System)
+
+**目标**: 提供开放插件 API，允许开发者扩展 Agent 能力（Obsidian 级开放性）。
+
+* **FR402**: 系统应提供 Agent 插件 API，允许开发者注册自定义 Agent 技能
+* **FR403**: 插件 API 应支持工具注册（Tools），允许 Agent 调用外部功能
+* **FR404**: 插件 API 应支持数据源扩展，允许 Agent 访问额外的数据源（如：GitHub、Notion）
+* **FR405**: 插件 API 应支持技能扩展，允许 Agent 学习新的专业领域知识
+* **FR406**: 系统应提供插件沙箱，确保插件执行不会影响主应用稳定性
+* **FR407**: 系统应提供插件管理界面，允许用户启用/禁用/配置插件
+* **FR408**: 系统应提供插件开发文档和示例代码（优先级：P2）
+* **FR409**: 系统应支持插件热加载，开发者可以在不重启应用的情况下测试插件
+* **FR410**: 系统应提供插件权限管理，明确声明插件需要的权限（网络访问、文件读写等）
+* **FR411**: 系统应支持插件市场（概念），允许用户发现和安装社区插件（优先级：P2）
+
+#### 模块 6: Agent 管理界面 (Agent Management UI)
+
+**目标**: 提供直观的 Agent 配置、监控和调试界面。
+
+* **FR412**: 系统应提供 Agent 配置面板，允许用户查看和修改 Agent 设置
+* **FR413**: Agent 配置面板应显示用户画像摘要（专业领域、兴趣偏好、决策风格）
+* **FR414**: Agent 配置面板应允许用户手动调整画像特征（如：修正专业领域、调整偏好权重）
+* **FR415**: 系统应提供 Agent 监控仪表板，显示 Agent 的使用统计（调用次数、响应时间、满意度）
+* **FR416**: 系统应提供 Agent 调试工具，允许用户查看 Agent 的推理过程和检索依据
+* **FR417**: 系统应提供对话历史界面，允许用户查看和搜索与 Agent 的历史对话
+* **FR418**: 系统应支持对话导出，允许用户保存重要对话内容
+* **FR419**: 系统应提供 Agent 性能指标（如：响应时间、检索准确率、推荐相关性）
+* **FR420**: 系统应允许用户切换不同的 Agent（如：工作 Agent、学习 Agent）
+* **FR421**: 系统应允许用户创建自定义 Agent，指定其知识范围和专注领域
+
+#### 模块 7: Agent 评估与优化 (Agent Evaluation & Optimization)
+
+**目标**: 建立持续优化机制，提升 Agent 的能力和个性化程度。
+
+* **FR422**: 系统应提供 Agent 能力评估功能，定期测试 Agent 的知识覆盖和回答质量
+* **FR423**: 系统应支持 A/B 测试，允许用户对比不同 Agent 配置的效果
+* **FR424**: 系统应收集用户反馈（如：点赞/点踩、手动修正），用于优化 Agent 表现
+* **FR425**: 系统应支持用户反馈循环，当用户修正 Agent 回答时，学习用户的偏好
+* **FR426**: 系统应提供 Agent 性能报告，显示改进趋势和待优化项
+* **FR427**: 系统应识别 Agent 的弱点（如：某领域回答质量差），主动提示用户补充相关内容
+* **FR428**: 系统应支持 Agent 自动优化，基于反馈数据调整检索策略和回答风格
+* **FR429**: 系统应提供 Agent 对比功能，允许用户对比不同时间点的 Agent 表现
+* **FR430**: 系统应支持 Agent 导出为标准格式（如：OpenAI Functions），便于在其他平台使用
+
+#### Agent 优先级与里程碑
+
+| 优先级 | 功能模块 | 里程碑 |
+|--------|----------|--------|
+| **P0** | FR360-FR371 (用户画像提取) | Alpha - 基础画像能力 |
+| **P0** | FR372-FR381 (Agent 生成) | Alpha - 基础 Agent 生成 |
+| **P0** | FR382-FR391 (个性化决策) | Alpha - 基础个性化 |
+| **P0** | FR392-FR401 (知识库集成) | Alpha - RAG 集成 |
+| **P1** | FR412-FR421 (管理界面) | Alpha - 配置和监控 |
+| **P1** | FR422-FR430 (评估优化) | Beta - 持续优化 |
+| **P2** | FR402-FR411 (插件系统) | Beta - 开放生态 |
+
+### 内容存储 (Content Storage)
+
+* **FR13**: 系统可以将收集的内容存储在本地数据库
+* **FR14**: 系统可以为每篇内容生成语义向量（Embedding）
+* **FR15**: 系统可以在完全离线状态下正常工作
+* **FR16**: 用户可以查看已收集的内容列表
+
+### 系统集成 (System Integration)
+
+* **FR17**: 用户可以通过系统托盘图标访问应用
+* **FR18**: 用户可以通过托盘图标右键菜单打开主窗口、设置或退出
+* **FR19**: 用户可以选择应用是否开机自启
+* **FR20**: 用户可以自定义全局唤起快捷键
+
+### 应用通信 (App Communication)
+
+* **FR21**: 浏览器插件可以通过本地 HTTP Server 与桌面应用同步数据
+* **FR22**: 浏览器插件可以检测桌面应用是否正在运行
+* **FR23**: 系统可以提供健康检查端点供插件验证连接状态
+
+### MCP 集成 (MCP Integration)
+
+MCP (Model Context Protocol) 集成允许 AI 助手通过 MCP 协议调用应用的搜索功能，实现自然语言交互。MCP 功能已集成到桌面应用的 Rust HTTP Server 中，作为 `/mcp` 端点提供。
+
+* **FR317**: 系统可以在 Rust HTTP Server 中实现 `/mcp` 端点，支持 MCP 协议标准接口
+* **FR318**: MCP 端点可以接收自然语言搜索指令（如"使用 MP 搜索 React 文章"）
+* **FR319**: MCP 端点可以解析搜索指令，提取搜索关键词
+* **FR320**: MCP 端点可以调用桌面应用的 `/api/search` 接口执行搜索
+* **FR321**: MCP 端点可以将搜索结果格式化为 MCP 协议响应返回给 AI 助手
+* **FR322**: MCP 端点可以检测桌面应用运行状态，未运行时返回友好错误提示
+* **FR323**: MCP 端点支持 Streamable HTTP 传输方式（MCP 协议标准）
+* **FR324**: MCP 端点可以支持错误处理和降级策略（应用未运行时优雅提示）
+* **FR325**: MCP 端点使用官方 rmcp SDK 实现协议标准接口
+* **FR326**: MCP 端点与现有 HTTP Server 集成，使用同一端口和路由系统
+* **FR327**: AI 助手可以通过 URL `http://127.0.0.1:21890/mcp` 连接，无需本地文件配置
+
+#### MCP 工具扩展 (MCP Tools Extension)
+
+MCP 工具扩展允许 AI 助手通过自然语言调用应用的更多功能，实现完整的知识库管理能力。
+
+##### 核心功能工具 (P0)
+
+* **FR328**: MCP 端点可以实现 `collect_content` 工具，允许 AI 助手通过 URL 或直接内容收集网页到知识库
+* **FR329**: MCP 端点可以实现 `list_collections` 工具，允许 AI 助手列出已收集的内容，支持按收藏夹、标签、状态筛选
+* **FR330**: MCP 端点可以实现 `get_collection` 工具，允许 AI 助手获取特定内容的详细信息（标题、内容、标签等）
+* **FR331**: MCP 端点可以支持自然语言指令解析，将用户指令转换为工具参数（如"搜索 react 收藏夹" → `{ query: "react", favorite_name: "react" }`）
+* **FR332**: MCP 端点可以在 `collect_content` 工具中支持指定目标收藏夹和标签
+* **FR333**: MCP 端点可以在 `collect_content` 工具中支持 URL 自动提取和直接内容两种方式
+
+##### 管理功能工具 (P1)
+
+* **FR334**: MCP 端点可以实现 `list_tags` 工具，允许 AI 助手列出所有标签
+* **FR335**: MCP 端点可以实现 `create_tag` 工具，允许 AI 助手创建新标签
+* **FR336**: MCP 端点可以实现 `add_tags_to_collection` 工具，允许 AI 助手为内容添加标签
+* **FR337**: MCP 端点可以实现 `remove_tag_from_collection` 工具，允许 AI 助手从内容移除标签
+* **FR338**: MCP 端点可以实现 `list_favorites` 工具，允许 AI 助手列出所有收藏夹
+* **FR339**: MCP 端点可以实现 `create_favorite` 工具，允许 AI 助手创建新收藏夹
+* **FR340**: MCP 端点可以实现 `move_collection_to_favorite` 工具，允许 AI 助手将内容移动到指定收藏夹
+* **FR341**: MCP 端点可以实现 `update_collection` 工具，允许 AI 助手更新已收集的内容（修改标题、添加备注等）
+* **FR342**: MCP 端点可以实现 `archive_collection` 工具，允许 AI 助手归档内容
+* **FR343**: MCP 端点可以实现 `restore_collection` 工具，允许 AI 助手恢复归档内容
+
+##### 高级功能工具 (P2)
+
+* **FR344**: MCP 端点可以实现 `query_knowledge_graph` 工具，允许 AI 助手查询知识图谱，发现内容之间的关联（需要知识图谱功能已实现）
+* **FR345**: MCP 端点可以实现 `get_statistics` 工具，允许 AI 助手获取知识库的统计信息（总文章数、收藏夹数、标签数等）
+* **FR346**: MCP 端点可以实现 `analyze_content` 工具，允许 AI 助手触发 AI 内容分析（生成摘要、标签、分类等，需要 AI 分类功能已实现）
+* **FR347**: MCP 端点可以支持工具的统一错误处理，返回友好的错误信息（应用未运行、无效输入、未找到等）
+* **FR348**: MCP 端点可以在工具执行时记录操作日志，便于调试和审计
+
+#### MCP 工具实现优先级
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | FR328-FR333（核心工具） | 搜索、收集、查询、详情 - 让 AI 助手能够基本使用知识库 |
+| **P1** | FR334-FR343（管理工具） | 标签管理、收藏夹管理、内容更新 - 让 AI 助手能够帮助组织知识库 |
+| **P2** | FR344-FR348（高级工具） | 知识图谱查询、统计分析、AI 分析 - 增强 AI 助手的能力 |
+
+### 用户设置 (User Settings)
+
+* **FR24**: 用户可以配置本地 HTTP Server 端口
+* **FR25**: 用户可以查看已收集内容的数量统计
+* **FR26**: 用户可以管理（查看/删除）已收集的内容（已扩展为FR49-FR52）
+
+### 内容组织 (Content Organization)
+
+#### 收藏夹管理 (Favorites Management)
+
+* **FR31**: 用户可以创建、重命名和删除收藏夹（文件夹）
+* **FR32**: 用户可以将收集的内容添加到收藏夹中
+* **FR33**: 用户可以将内容从收藏夹中移除
+* **FR34**: 用户可以查看每个收藏夹中的内容数量和列表
+* **FR35**: 用户可以查看"未分类"收藏夹（默认收藏夹，包含所有未分配到其他收藏夹的内容）
+* **FR36**: 用户可以在侧边栏中折叠/展开收藏夹列表
+* **FR37**: 用户可以在收集内容时选择目标收藏夹（P1）
+
+#### 标签管理 (Tags Management)
+
+* **FR38**: 用户可以创建、重命名和删除标签
+* **FR39**: 用户可以为收集的内容添加一个或多个标签
+* **FR40**: 用户可以移除内容上的标签
+* **FR41**: 用户可以查看"无标签"分类（包含所有未添加标签的内容）
+* **FR42**: 用户可以按标签筛选和查看内容
+* **FR43**: 用户可以在侧边栏中查看所有标签列表
+* **FR44**: 用户可以对标签进行排序（P1）
+* **FR45**: 系统可以为收集的内容自动生成标签（Alpha，与FR29合并）
+
+#### 归档和删除 (Archive & Delete)
+
+* **FR46**: 用户可以将内容归档（移动到归档状态，不显示在正常列表中）
+* **FR47**: 用户可以查看"已归档"分类中的所有归档内容
+* **FR48**: 用户可以将归档的内容恢复（取消归档）
+* **FR49**: 用户可以删除内容（移动到"最近删除"）
+* **FR50**: 用户可以查看"最近删除"分类中的所有已删除内容
+* **FR51**: 用户可以永久删除内容（从"最近删除"中彻底删除）
+* **FR52**: 系统可以自动清理"最近删除"中超过30天的内容（可选，P2）
+* **FR53**: 归档和删除功能统一放置在"其他"分类下（UI组织）
+
+### 搜索增强 (Search Enhancement) - 后续版本
+
+* **FR27**: 用户可以为收集的内容添加手动备注/标签（Alpha，已整合到FR39）
+* **FR28**: 系统可以为收集的内容自动生成摘要（Alpha）
+* **FR29**: 系统可以为收集的内容自动生成标签（Alpha，已整合到FR45）
+* **FR30**: 系统可以在搜索时提供搜索建议（Beta）
+
+### AI 分类与理解 (AI Classification & Understanding) - Alpha 阶段
+
+AI 分类与理解功能通过本地 AI 模型自动分析收集的内容，生成摘要、标签、分类和关键词，帮助用户快速理解内容并提升搜索和组织效率。
+
+#### AI 自动摘要生成 (Auto Summary Generation)
+
+* **FR118**: 系统可以为收集的内容自动生成摘要（100-200 字）
+* **FR119**: 系统可以在内容保存后，后台异步生成摘要，不阻塞用户操作
+* **FR120**: 系统可以在摘要生成过程中显示"摘要生成中..."占位符
+* **FR121**: 系统可以在搜索结果中显示自动生成的摘要（替代简单截断）
+* **FR122**: 系统可以在内容详情页显示完整摘要
+* **FR123**: 用户可以手动编辑和修改自动生成的摘要
+* **FR124**: 系统可以区分自动摘要和手动摘要（UI 标识）
+* **FR125**: 系统可以在摘要生成失败时，使用提取式摘要作为降级方案（首段 + 关键句）
+* **FR126**: 系统可以支持多种摘要风格：简洁型、详细型、要点型（用户可选）
+
+#### AI 自动标签生成 (Auto Tag Generation)
+
+**架构说明：** 当前版本使用云端 AI 生成标签，传统算法（Embedding 聚类、TF-IDF/TextRank）为未来规划。
+
+* **FR127**: 系统可以为收集的内容自动生成 2-5 个相关标签 ✅ **使用云端 AI 生成**
+* ~~**FR128**: 系统可以基于内容语义（Embedding 聚类）生成标签~~ ⏳ **未来版本，当前使用 AI 生成**
+* ~~**FR129**: 系统可以基于关键词提取（TF-IDF/TextRank）生成标签~~ ⏳ **未来版本，当前使用 AI 生成**
+* **FR130**: 系统可以基于预定义分类体系匹配生成标签（技术栈、领域、类型等）✅ **AI 生成时会考虑这些分类**
+* **FR131**: 系统可以自动生成的标签以不同样式显示（与手动标签区分，如灰色背景）
+* **FR132**: 系统可以在自动标签上显示"自动"标识或图标
+* **FR133**: 用户可以删除不认可的自动标签
+* **FR134**: 系统可以学习用户删除行为，调整后续标签生成策略（可选，Beta）
+* **FR135**: 系统可以支持标签置信度显示（高/中/低置信度）
+* **FR136**: 系统可以在标签生成时考虑用户已有的标签体系，保持一致性
+
+#### AI 内容分类 (Content Classification)
+
+* **FR137**: 系统可以自动识别内容类型：技术文章、教程、文档、新闻、博客、论文等
+* **FR138**: 系统可以自动识别技术领域：前端、后端、全栈、移动端、DevOps、AI/ML 等
+* **FR139**: 系统可以自动识别技术栈：React、Vue、Python、Rust、TypeScript 等
+* **FR140**: 系统可以自动识别内容难度：入门、中级、高级、专家级
+* **FR141**: 系统可以自动识别内容语言：中文、英文、中英混合
+* **FR142**: 系统可以基于分类结果，自动建议收藏夹归属
+* **FR143**: 系统可以在内容列表和详情中显示分类信息（类型、领域、技术栈）
+* **FR144**: 用户可以按内容类型、领域、技术栈筛选和浏览内容
+* **FR145**: 系统可以支持多级分类体系（如：技术 > 前端 > React > Hooks）
+
+#### AI 关键词提取 (Keyword Extraction)
+
+**架构说明：** 当前版本使用云端 AI 提取关键词，传统算法（TF-IDF/TextRank）为未来规划。
+
+* **FR146**: 系统可以自动提取内容的关键词（5-10 个）✅ **使用云端 AI 提取**
+* ~~**FR147**: 系统可以基于 TF-IDF 算法提取关键词~~ ⏳ **未来版本，当前使用 AI 提取**
+* ~~**FR148**: 系统可以基于 TextRank 算法提取关键词~~ ⏳ **未来版本，当前使用 AI 提取**
+* **FR149**: 系统可以区分核心关键词和次要关键词（权重显示）
+* **FR150**: 系统可以在搜索时优先匹配关键词，提升搜索准确率
+* **FR151**: 系统可以在内容详情页显示提取的关键词列表
+* **FR152**: 用户可以点击关键词快速搜索相关内容
+
+#### AI 主题识别 (Topic Identification)
+
+**架构说明：** 当前版本使用云端 AI 识别主题，传统算法（Embedding 聚类、LDA）为未来规划。
+
+* **FR153**: 系统可以自动识别内容的主要主题（1-3 个）✅ **使用云端 AI 识别**
+* ~~**FR154**: 系统可以基于 Embedding 聚类识别主题~~ ⏳ **未来版本，当前使用 AI 识别**
+* ~~**FR155**: 系统可以基于 LDA（潜在狄利克雷分配）识别主题~~ ⏳ **未来版本，当前使用 AI 识别**
+* **FR156**: 系统可以显示主题置信度
+* **FR157**: 系统可以基于主题自动创建或建议收藏夹
+* **FR158**: 用户可以按主题浏览和筛选内容
+* **FR159**: 系统可以识别主题演化趋势（Beta，需要足够内容积累）
+
+#### AI 内容理解增强 (Enhanced Content Understanding)
+
+* **FR160**: 系统可以识别内容的情感倾向：正面、中性、负面（可选，Beta）
+* **FR161**: 系统可以识别内容的时效性：常青内容、时效性内容、已过时（可选，Beta）
+* **FR162**: 系统可以识别内容的完整性：完整文章、摘要、片段、链接（可选）
+* **FR163**: 系统可以识别内容的质量指标：长度、结构完整性、可读性（可选，Beta）
+* **FR164**: 系统可以提取内容中的代码语言类型（如：JavaScript、Python、Rust）
+* **FR165**: 系统可以识别内容中的外部链接和引用
+* **FR166**: 系统可以提取内容中的日期、时间、版本号等结构化信息
+
+#### AI 模型选择与管理 (Model Selection & Management)
+
+**架构说明：** 当前版本仅支持云端 AI API，不实现本地模型。Embedding 模型（用于搜索和图谱语义相似度）仍使用本地模型。
+
+* **FR167**: 系统可以支持本地 Embedding 模型（如 all-MiniLM-L6-v2，23MB）✅ **用于搜索和图谱语义相似度**
+* **FR168**: 系统可以支持中文优化模型（如 bge-small-zh，可选）⏳ 未来版本
+* ~~**FR169**: 系统可以支持本地摘要生成模型（如 Phi-2，可选）~~ ❌ **已取消，当前版本不实现本地 AI 推理模型**
+* **FR170**: 系统可以支持可选云端 API（用户自带 API Key，如 OpenAI、Anthropic）✅
+* **FR171**: 用户可以在设置中选择 AI 提供商：OpenAI、Anthropic、自定义 API 端点 ✅ **当前仅支持云端 API**
+* **FR172**: 系统可以在使用云端 API 时，明确提示用户数据会发送到外部服务 ✅
+* **FR173**: 系统可以在云端 API 不可用时，自动降级到提取式方法 ✅
+* **FR174**: 系统可以显示 AI 处理性能：处理时间、API 调用次数 ✅
+* **FR175**: 系统可以支持模型切换（不影响已有数据）✅
+
+#### 用户控制与偏好 (User Control & Preferences)
+
+* **FR176**: 用户可以在设置中启用/禁用 AI 自动摘要生成
+* **FR177**: 用户可以在设置中启用/禁用 AI 自动标签生成
+* **FR178**: 用户可以在设置中启用/禁用 AI 自动分类
+* **FR179**: 用户可以在设置中调整 AI 处理优先级：实时处理、后台处理、手动触发
+* **FR180**: 用户可以在收集内容时选择是否立即生成 AI 元数据
+* **FR181**: 用户可以批量重新生成已收集内容的 AI 元数据
+* **FR182**: 用户可以查看 AI 处理历史：处理时间、使用的模型、处理结果
+* **FR183**: 用户可以导出 AI 生成的元数据（摘要、标签、分类等）
+
+#### 性能与优化 (Performance & Optimization)
+
+**架构说明：** 当前版本不强制要求 AI 处理速度，优先保证处理质量和用户体验。
+
+* **FR184**: 系统可以在内容收集后开始 AI 处理（后台异步，不阻塞用户）✅
+* ~~**FR185**: 系统可以单篇内容的 AI 处理时间 < 3 秒（本地模型）~~ ❌ **已取消，不要求生成速度**
+* **FR186**: 系统可以支持批量处理，避免阻塞用户界面 ✅
+* **FR187**: 系统可以在 AI 处理时显示进度指示器 ✅
+* **FR188**: 系统可以缓存 AI 处理结果，避免重复计算 ✅
+* **FR189**: 系统可以在系统资源不足时，暂停或延迟 AI 处理 ✅
+* **FR190**: 系统可以支持增量处理：仅处理新增或修改的内容 ✅
+
+#### 错误处理与降级 (Error Handling & Fallback)
+
+* **FR191**: 系统可以在云端 API 调用失败时，使用提取式方法作为降级 ✅
+* **FR192**: 系统可以在 AI 处理超时时，使用简化算法或跳过处理 ✅
+* **FR193**: 系统可以在 AI 处理失败时，记录错误日志但不影响内容保存 ✅
+* **FR194**: 系统可以在 AI 处理结果质量不佳时，允许用户手动修正 ✅
+* **FR195**: 系统可以支持 AI 处理重试机制（最多 3 次）✅
+* ~~**FR196**: 系统可以在网络 API 调用失败时，自动切换到本地模型~~ ❌ **已取消，当前版本不实现本地模型**
+
+#### 数据模型扩展 (Data Model Extensions)
+
+AI 分类功能需要扩展的数据结构：
+
+```
+内容表扩展字段:
+  - summary: TEXT (自动生成的摘要)
+  - summary_type: TEXT (auto/manual，摘要类型)
+  - content_type: TEXT (article/tutorial/docs/news/blog/paper，内容类型)
+  - domain: TEXT (frontend/backend/fullstack/mobile/devops/ai，技术领域)
+  - difficulty: TEXT (beginner/intermediate/advanced/expert，难度)
+  - language: TEXT (zh/en/mixed，语言)
+  - quality_score: REAL (0-1，质量评分，可选)
+  - processed_at: INTEGER (AI 处理时间戳)
+
+关键词表:
+  - id: TEXT PRIMARY KEY
+  - collection_id: TEXT (关联内容 ID)
+  - keyword: TEXT (关键词)
+  - weight: REAL (0-1，权重)
+  - extraction_method: TEXT (ai/tfidf/textrank，提取方法)
+  - **注意：** 当前版本仅支持 'ai'，'tfidf' 和 'textrank' 为未来规划
+  - created_at: INTEGER
+
+主题表:
+  - id: TEXT PRIMARY KEY
+  - collection_id: TEXT (关联内容 ID)
+  - topic: TEXT (主题名称)
+  - confidence: REAL (0-1，置信度)
+  - created_at: INTEGER
+
+AI 处理日志表:
+  - id: TEXT PRIMARY KEY
+  - collection_id: TEXT (关联内容 ID)
+  - task_type: TEXT (summary/tag/classification，任务类型)
+  - model_name: TEXT (使用的模型)
+  - status: TEXT (success/failed/timeout，处理状态)
+  - processing_time: INTEGER (处理耗时，毫秒)
+  - error_message: TEXT (错误信息，可选)
+  - created_at: INTEGER
+```
+
+#### 实现优先级
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | FR118-FR126（自动摘要基础） | 核心功能，必须先实现（使用云端 AI） |
+| **P0** | FR127-FR136（自动标签基础） | 核心功能，必须先实现（使用云端 AI） |
+| **P1** | FR137-FR145（内容分类） | 增强组织能力（使用云端 AI） |
+| **P1** | FR146-FR152（关键词提取） | 提升搜索质量（使用云端 AI） |
+| **P1** | FR170-FR175（云端 API 管理） | 支持多种云端 API 提供商 |
+| **P2** | FR128-FR129（传统标签算法） | 未来版本，当前使用 AI 生成 |
+| **P2** | FR147-FR148（传统关键词算法） | 未来版本，当前使用 AI 提取 |
+| **P2** | FR154-FR155（传统主题算法） | 未来版本，当前使用 AI 识别 |
+| **P1** | FR176-FR183（用户控制） | 用户偏好设置 |
+| **P1** | FR184-FR190（性能优化） | 后台异步处理，不要求生成速度 |
+| **P2** | FR153-FR159（主题识别） | 高级功能 |
+| **P2** | FR160-FR166（内容理解增强） | 可选功能 |
+| **P0** | FR191-FR196（错误处理） | 必须保证稳定性 |
+
+#### 技术实现建议
+
+**摘要生成方案：**
+
+1. ~~**本地模型**：Phi-2（1.3B，适合摘要生成）~~ ❌ **已取消，当前版本不实现本地 AI 推理模型**
+2. **提取式摘要**：首段 + 关键句提取（降级方案）✅
+3. **云端 API**：OpenAI GPT-3.5/4、Anthropic Claude（用户可选）✅ **当前版本使用此方案**
+
+**标签生成方案：**
+
+1. ~~**Embedding 聚类**：基于内容向量聚类，生成类别标签~~ ⏳ **未来版本，当前使用 AI 生成**
+2. ~~**关键词提取**：TF-IDF 或 TextRank 提取重要词汇~~ ⏳ **未来版本，当前使用 AI 生成**
+3. **预定义分类**：技术栈、领域、类型等结构化分类 ✅ **AI 生成时会考虑这些分类**
+4. **云端 AI 生成**：使用 OpenAI/Anthropic 生成标签 ✅ **当前版本使用此方案**
+
+**分类方案：**
+
+1. **规则匹配**：基于关键词和模式匹配
+2. **Embedding 相似度**：与预定义类别向量比较
+3. **轻量级分类模型**：针对特定分类任务微调的小模型
+
+### 知识图谱 (Knowledge Graph) - Beta 阶段
+
+知识图谱功能帮助用户发现内容之间的关联，将孤立的信息转化为相互连接的知识网络。
+
+#### 图谱构建 (Graph Construction)
+
+* **FR54**: 系统可以自动构建知识图谱，将收集的内容作为节点（Node）
+* **FR55**: 系统可以基于语义相似度自动创建内容之间的关联边（Edge）
+* **FR56**: 系统可以基于共享标签创建内容之间的关联边
+* **FR57**: 系统可以基于收藏夹关系创建内容之间的关联边
+* **FR58**: 系统可以基于时间序列（相近时间收集）创建弱关联边（可选）
+* **FR59**: 系统可以基于 URL 域名创建内容之间的关联边（同站点内容）
+* **FR60**: 系统可以为关联边分配权重（0-1），权重反映关联强度
+* **FR61**: 系统可以支持多种关联类型：语义相似、标签共享、收藏夹共享、时间邻近、域名相同
+* **FR62**: 系统可以在后台异步构建和更新知识图谱，不阻塞主界面
+* **FR63**: 系统可以增量更新图谱（仅处理新增内容），避免全量重建
+
+#### 关系关联详细规范 (Relationship & Association Specifications)
+
+关系关联是知识图谱的核心，定义了内容之间的连接方式和强度。本节详细说明各种关联类型的计算方式、权重算法、发现机制和质量评估。
+
+##### 关联类型定义 (Association Type Definitions)
+
+* **FR197**: 系统可以支持语义相似关联（semantic），基于内容 Embedding 向量相似度
+* **FR198**: 系统可以支持标签共享关联（tag），基于内容共享的标签数量
+* **FR199**: 系统可以支持收藏夹共享关联（folder），基于内容属于同一收藏夹
+* **FR200**: 系统可以支持时间邻近关联（time），基于内容收集时间的接近程度
+* **FR201**: 系统可以支持域名相同关联（domain），基于内容 URL 的域名相同
+* **FR202**: 系统可以支持关键词重叠关联（keyword），基于内容关键词的重叠度
+* **FR203**: 系统可以支持主题相同关联（topic），基于内容主题的匹配
+* **FR204**: 系统可以支持引用关联（reference），基于内容之间的显式引用关系（可选，Beta）
+* **FR205**: 系统可以支持作者相同关联（author），基于内容作者信息（可选，Beta）
+* **FR206**: 系统可以为每条关联边标记关联类型，支持多类型组合（一条边可以有多个类型）
+
+##### 语义相似关联 (Semantic Similarity Association)
+
+* **FR207**: 系统可以计算两篇内容的 Embedding 向量余弦相似度（0-1）
+* **FR208**: 系统可以设置语义相似度阈值（默认 0.7），仅创建相似度 ≥ 阈值的关联
+* **FR209**: 系统可以支持动态阈值调整：根据内容库大小自动调整阈值（内容越多，阈值越高）
+* **FR210**: 系统可以在计算语义相似度时，考虑内容的标题、摘要和正文的加权组合
+* **FR211**: 系统可以支持语义相似度的置信度评估：高置信度（> 0.85）、中置信度（0.7-0.85）、低置信度（< 0.7）
+* **FR212**: 系统可以缓存语义相似度计算结果，避免重复计算
+* **FR213**: 系统可以在内容更新时，重新计算受影响的语义关联
+* **FR214**: 系统可以支持批量语义相似度计算，优化性能（使用向量数据库或近似最近邻算法）
+
+##### 标签共享关联 (Tag Sharing Association)
+
+* **FR215**: 系统可以计算两篇内容共享的标签数量
+* **FR216**: 系统可以基于共享标签数量计算关联权重：权重 = min(共享标签数 / 5, 1.0)
+* **FR217**: 系统可以区分自动标签和手动标签，手动标签共享的权重更高（权重 × 1.2）
+* **FR218**: 系统可以仅在两篇内容共享 ≥ 1 个标签时创建关联
+* **FR219**: 系统可以在标签更新时，自动更新相关的标签共享关联
+* **FR220**: 系统可以支持标签权重：某些标签（如技术栈标签）的共享权重更高
+* **FR221**: 系统可以识别标签层级关系：父标签和子标签的共享也计入关联
+
+##### 收藏夹共享关联 (Folder Sharing Association)
+
+* **FR222**: 系统可以识别两篇内容属于同一收藏夹
+* **FR223**: 系统可以为收藏夹共享关联分配固定权重（默认 0.6）
+* **FR224**: 系统可以支持多收藏夹共享：两篇内容共享多个收藏夹时，权重累加（上限 1.0）
+* **FR225**: 系统可以在内容移动到其他收藏夹时，自动更新收藏夹共享关联
+* **FR226**: 系统可以区分系统收藏夹（如"未分类"）和用户收藏夹，用户收藏夹共享权重更高
+
+##### 时间邻近关联 (Temporal Proximity Association)
+
+* **FR227**: 系统可以计算两篇内容收集时间的间隔（天数）
+* **FR228**: 系统可以基于时间间隔计算关联权重：权重 = max(0, 1 - 间隔天数 / 30)，30 天内权重递减
+* **FR229**: 系统可以设置时间邻近关联的最大时间窗口（默认 30 天），超过窗口不创建关联
+* **FR230**: 系统可以识别时间簇：同一时间段（如 1 小时内）收集的内容，权重更高（× 1.5）
+* **FR231**: 系统可以支持时间邻近关联的衰减：随着时间推移，权重逐渐降低（可选，Beta）
+* **FR232**: 系统可以区分主动收集和批量导入，主动收集的时间关联权重更高
+
+##### 域名相同关联 (Domain Sharing Association)
+
+* **FR233**: 系统可以提取内容 URL 的域名（如 github.com、medium.com）
+* **FR234**: 系统可以识别两篇内容来自同一域名
+* **FR235**: 系统可以为域名相同关联分配固定权重（默认 0.4）
+* **FR236**: 系统可以支持域名层级：同一主域名下的子域名也计入关联（如 blog.example.com 和 docs.example.com）
+* **FR237**: 系统可以识别知名站点：来自知名技术站点（如 GitHub、Stack Overflow）的关联权重更高（× 1.3）
+
+##### 关键词重叠关联 (Keyword Overlap Association)
+
+* **FR238**: 系统可以提取两篇内容的关键词列表
+* **FR239**: 系统可以计算关键词重叠度：重叠关键词数 / 总关键词数
+* **FR240**: 系统可以基于关键词重叠度计算关联权重：权重 = 重叠度 × 0.8
+* **FR241**: 系统可以区分核心关键词和次要关键词，核心关键词重叠权重更高（× 1.5）
+* **FR242**: 系统可以仅在两篇内容关键词重叠度 ≥ 0.3 时创建关联
+* **FR243**: 系统可以在关键词更新时，自动更新相关的关键词重叠关联
+
+##### 主题相同关联 (Topic Matching Association)
+
+* **FR244**: 系统可以识别两篇内容的主要主题
+* **FR245**: 系统可以计算主题匹配度：完全匹配（权重 0.8）、部分匹配（权重 0.5）
+* **FR246**: 系统可以支持多主题匹配：两篇内容有多个共同主题时，权重累加（上限 1.0）
+* **FR247**: 系统可以基于主题置信度调整关联权重：高置信度主题的匹配权重更高
+* **FR248**: 系统可以在主题更新时，自动更新相关的主题匹配关联
+
+##### 关联权重计算算法 (Association Weight Calculation)
+
+* **FR249**: 系统可以支持多种权重计算模式：单一类型权重、多类型加权平均、多类型最大值
+* **FR250**: 系统可以默认使用多类型加权平均：总权重 = Σ(类型权重 × 类型系数) / 类型数量
+* **FR251**: 系统可以为不同关联类型设置权重系数：
+  * 语义相似：1.0（最高优先级）
+  * 标签共享：0.8
+  * 收藏夹共享：0.6
+  * 主题匹配：0.7
+  * 关键词重叠：0.5
+  * 时间邻近：0.3
+  * 域名相同：0.4
+* **FR252**: 系统可以支持用户自定义权重系数，调整不同类型关联的重要性
+* **FR253**: 系统可以支持权重归一化：确保最终权重在 0-1 范围内
+* **FR254**: 系统可以支持权重衰减：随着时间推移，某些关联类型的权重逐渐降低
+* **FR255**: 系统可以计算关联的置信度：基于关联类型的可靠性和数据质量
+
+##### 关联发现机制 (Association Discovery Mechanism)
+
+* **FR256**: 系统可以在新内容收集后，自动发现与现有内容的关联
+* **FR257**: 系统可以支持全量关联发现：定期（如每周）重新扫描所有内容对，发现新关联
+* **FR258**: 系统可以支持增量关联发现：仅对新内容和最近更新的内容进行关联发现
+* **FR259**: 系统可以设置关联发现的范围：仅与最近 N 篇内容（如最近 100 篇）进行关联发现
+* **FR260**: 系统可以支持关联发现的优先级队列：优先处理重要内容的关联
+* **FR261**: 系统可以在关联发现时，避免重复计算：缓存已计算的内容对
+* **FR262**: 系统可以支持关联发现的批处理：批量处理多个内容对，提升性能
+* **FR263**: 系统可以在关联发现过程中显示进度指示器
+
+##### 关联更新机制 (Association Update Mechanism)
+
+* **FR264**: 系统可以在内容更新时，自动重新计算相关的关联
+* **FR265**: 系统可以识别需要更新的关联：仅更新受内容变更影响的关联类型
+* **FR266**: 系统可以支持关联的增量更新：仅更新变化的关联，不重建整个图谱
+* **FR267**: 系统可以在关联更新时，保持关联的创建时间（不改变 createdAt）
+* **FR268**: 系统可以记录关联的更新时间（updatedAt），追踪关联的演化
+* **FR269**: 系统可以支持关联的版本历史：记录关联权重的变化历史（可选，Beta）
+* **FR270**: 系统可以在关联更新失败时，回退到之前的关联状态
+
+##### 关联质量评估 (Association Quality Assessment)
+
+* **FR271**: 系统可以评估关联的质量：高质量（权重 > 0.7）、中等质量（0.4-0.7）、低质量（< 0.4）
+* **FR272**: 系统可以基于关联类型的数量评估质量：多类型关联通常质量更高
+* **FR273**: 系统可以基于关联的稳定性评估质量：长期稳定的关联质量更高
+* **FR274**: 系统可以识别可疑关联：权重异常高或异常低的关联，标记为可疑
+* **FR275**: 系统可以支持用户反馈：用户删除或确认关联，用于评估关联质量
+* **FR276**: 系统可以基于用户反馈调整关联权重：用户确认的关联权重提升，删除的关联权重降低
+* **FR277**: 系统可以计算关联的置信度分数：综合考虑权重、类型、稳定性等因素
+
+##### 关联过滤与筛选 (Association Filtering & Filtering)
+
+* **FR278**: 系统可以按关联类型筛选：仅显示特定类型的关联
+* **FR279**: 系统可以按关联权重筛选：仅显示权重 ≥ 阈值的关联
+* **FR280**: 系统可以按关联质量筛选：仅显示高质量关联
+* **FR281**: 系统可以按关联时间筛选：仅显示最近创建的关联
+* **FR282**: 系统可以支持关联的组合筛选：同时应用多个筛选条件
+* **FR283**: 系统可以支持关联的排除规则：排除特定类型的关联（如排除时间邻近关联）
+* **FR284**: 系统可以支持关联的动态过滤：根据图谱视图的缩放级别自动调整显示的关联
+
+##### 关联合并与去重 (Association Merging & Deduplication)
+
+* **FR285**: 系统可以识别重复关联：同一对内容之间的多条关联边
+* **FR286**: 系统可以合并重复关联：将多条关联边合并为一条，权重取最大值或加权平均
+* **FR287**: 系统可以在合并关联时，保留所有关联类型：合并后的关联包含所有原始类型
+* **FR288**: 系统可以支持关联的去重策略：用户可选择保留权重最高的关联或合并所有关联
+* **FR289**: 系统可以在关联合并时，更新关联的元数据（创建时间、更新时间等）
+* **FR290**: 系统可以记录关联合并历史：追踪哪些关联被合并（可选，Beta）
+
+##### 关联时效性管理 (Association Temporal Management)
+
+* **FR291**: 系统可以识别过时关联：长期未更新的关联可能已失效
+* **FR292**: 系统可以支持关联的自动过期：超过一定时间（如 1 年）未更新的关联自动标记为过期
+* **FR293**: 系统可以支持关联的权重衰减：随着时间推移，某些关联类型的权重逐渐降低
+* **FR294**: 系统可以支持关联的重新验证：定期重新计算关联权重，确保关联仍然有效
+* **FR295**: 系统可以支持关联的删除：用户或系统可以删除无效或过时的关联
+* **FR296**: 系统可以在删除关联时，记录删除原因（用户删除、自动过期、权重过低等）
+
+##### 关联方向性与层次 (Association Directionality & Hierarchy)
+
+* **FR297**: 系统可以支持有向关联：某些关联类型具有方向性（如引用关联）
+* **FR298**: 系统可以支持无向关联：大多数关联类型是无向的（如语义相似）
+* **FR299**: 系统可以支持关联的层次：某些关联可以形成层次结构（如主题层级）
+* **FR300**: 系统可以识别关联的传递性：某些关联类型具有传递性（如收藏夹共享）
+* **FR301**: 系统可以支持关联的对称性：某些关联是对称的（如语义相似），某些是非对称的（如引用）
+
+##### 关联元数据 (Association Metadata)
+
+* **FR302**: 系统可以为每条关联存储创建时间（createdAt）
+* **FR303**: 系统可以为每条关联存储更新时间（updatedAt）
+* **FR304**: 系统可以为每条关联存储创建原因（reason）：自动发现、用户创建、系统推荐等
+* **FR305**: 系统可以为每条关联存储置信度（confidence）：0-1，反映关联的可靠性
+* **FR306**: 系统可以为每条关联存储质量分数（qualityScore）：0-1，综合评估关联质量
+* **FR307**: 系统可以为每条关联存储用户反馈（userFeedback）：确认、删除、忽略等
+* **FR308**: 系统可以记录关联的访问次数（accessCount）：用户查看该关联的次数
+* **FR309**: 系统可以记录关联的最后访问时间（lastAccessedAt）
+
+##### 关联性能优化 (Association Performance Optimization)
+
+* **FR310**: 系统可以支持关联的索引：为关联查询创建索引，提升查询性能
+* **FR311**: 系统可以支持关联的缓存：缓存常用的关联查询结果
+* **FR312**: 系统可以支持关联的预计算：在后台预计算可能的关联，减少实时计算
+* **FR313**: 系统可以支持关联的批量处理：批量创建、更新、删除关联，提升性能
+* **FR314**: 系统可以支持关联的异步处理：关联发现和更新在后台异步执行，不阻塞 UI
+* **FR315**: 系统可以支持关联的增量计算：仅计算变化的关联，避免全量重建
+
+#### 图谱可视化 (Graph Visualization)
+
+* **FR64**: 用户可以在主应用中打开知识图谱视图
+* **FR65**: 系统可以以力导向图（Force-Directed Graph）方式展示知识图谱
+* **FR66**: 用户可以通过鼠标拖拽移动节点位置
+* **FR67**: 用户可以通过滚轮缩放图谱视图（支持 0.1x - 5x 缩放）
+* **FR68**: 用户可以通过拖拽画布平移视图
+* **FR69**: 系统可以显示节点的标题（可配置显示/隐藏）
+* **FR70**: 系统可以根据节点的关联度（度中心性）调整节点大小
+* **FR71**: 系统可以根据关联边的权重调整边的粗细和透明度
+* **FR72**: 系统可以为不同类型的关联边使用不同颜色区分
+* **FR73**: 系统可以在节点悬停时显示内容摘要预览
+* **FR74**: 用户可以通过点击节点查看内容详情
+* **FR75**: 用户可以通过双击节点跳转到原文链接
+* **FR76**: 系统可以支持显示/隐藏弱关联边（权重 < 阈值）
+* **FR77**: 系统可以在图谱中高亮显示搜索结果相关的节点和路径
+
+#### 图谱探索 (Graph Exploration)
+
+* **FR78**: 用户可以从某个节点开始，探索其直接关联的内容（1度邻居）
+* **FR79**: 用户可以选择节点，查看其所有关联的内容列表
+* **FR80**: 系统可以显示两个节点之间的最短路径（如果存在）
+* **FR81**: 系统可以高亮显示从节点 A 到节点 B 的关联路径
+* **FR82**: 用户可以通过搜索框在图谱中定位并高亮相关节点
+* **FR83**: 系统可以支持"聚焦模式"：选中节点后，仅显示其直接关联节点
+* **FR84**: 用户可以通过标签筛选，仅显示包含特定标签的节点
+* **FR85**: 用户可以通过收藏夹筛选，仅显示特定收藏夹中的节点
+* **FR86**: 系统可以支持时间范围筛选，仅显示特定时间段收集的内容节点
+* **FR87**: 用户可以通过节点度（关联数量）筛选，仅显示高度关联的核心节点
+* **FR88**: 系统可以自动识别并高亮显示"知识簇"（紧密关联的节点群组）
+
+#### 图谱布局与算法 (Layout & Algorithm)
+
+* **FR89**: 系统可以使用力导向布局算法（如 D3.js force simulation）自动排列节点
+* **FR90**: 系统可以支持多种布局模式：力导向、圆形、层次化、网格（用户可选）
+* **FR91**: 系统可以在布局计算时考虑节点权重，重要节点更靠近中心
+* **FR92**: 系统可以在用户手动调整节点位置后，保存布局偏好（本地存储）
+* **FR93**: 系统可以在图谱节点数量 > 100 时，自动启用性能优化（减少渲染节点）
+* **FR94**: 系统可以支持"懒加载"：仅渲染可见区域的节点和边
+* **FR95**: 系统可以在图谱更新时平滑过渡，避免突兀的布局变化
+
+#### 图谱统计与分析 (Statistics & Analysis)
+
+* **FR96**: 系统可以显示图谱统计信息：总节点数、总边数、平均关联度
+* **FR97**: 系统可以识别并标记"核心节点"（度中心性最高的节点）
+* **FR98**: 系统可以识别并标记"孤立节点"（无关联的内容）
+* **FR99**: 系统可以显示"知识簇"的数量和大小分布
+* **FR100**: 系统可以显示关联类型分布（语义/标签/收藏夹等各占比例）
+* **FR101**: 系统可以生成图谱健康度指标（关联密度、孤立节点比例等）
+
+#### 用户交互增强 (Enhanced Interactions)
+
+* **FR102**: 用户可以通过右键菜单对节点进行操作：查看详情、跳转原文、添加到收藏夹、添加标签
+* **FR103**: 用户可以通过右键菜单对边进行操作：查看关联详情、隐藏/显示该类型关联
+* **FR104**: 系统可以支持键盘快捷键：`Space` 暂停/恢复布局动画，`R` 重置布局，`F` 聚焦选中节点
+* **FR105**: 用户可以通过侧边栏控制面板调整图谱显示参数：节点大小、边粗细、关联阈值
+* **FR106**: 系统可以支持图谱视图的导出（PNG/SVG 格式）
+* **FR107**: 用户可以将图谱视图添加到收藏，快速访问特定视角
+
+#### 性能与优化 (Performance & Optimization)
+
+* **FR108**: 系统可以在图谱节点数量 < 50 时，实时渲染所有节点和边
+* **FR109**: 系统可以在图谱节点数量 50-200 时，使用 LOD（细节层次）优化渲染
+* **FR110**: 系统可以在图谱节点数量 > 200 时，默认仅显示核心节点和强关联边
+* **FR111**: 系统可以支持图谱数据的增量加载，按需加载关联节点
+* **FR112**: 系统可以在图谱视图切换时，保持 < 500ms 的响应时间
+* **FR113**: 系统可以在后台预计算图谱布局，避免首次打开时的长时间等待
+
+#### 触发条件与建议 (Trigger Conditions & Suggestions)
+
+* **FR114**: 系统可以在用户收集内容数量 ≥ 20 时，提示用户查看知识图谱
+* **FR115**: 系统可以在检测到新的知识簇形成时，主动通知用户
+* **FR116**: 系统可以在发现孤立节点（长期无关联）时，建议用户添加标签或移动到收藏夹
+* **FR117**: 系统可以基于图谱结构，推荐可能相关但尚未关联的内容
+
+#### 数据模型 (Data Model)
+
+知识图谱的数据结构：
+
+```
+节点 (Node):
+  - id: 内容 ID
+  - title: 内容标题
+  - url: 原文链接
+  - summary: 内容摘要
+  - embedding: 语义向量
+  - tags: 标签列表
+  - folder: 收藏夹
+  - collectedAt: 收集时间
+  - degree: 关联度（度中心性）
+
+边 (Edge) - 基础字段:
+  - id: 关联 ID（唯一标识）
+  - source: 源节点 ID
+  - target: 目标节点 ID
+  - type: 关联类型（semantic/tag/folder/time/domain/keyword/topic/reference/author）
+  - types: 关联类型数组（支持多类型组合）
+  - weight: 关联权重 (0-1)
+  - createdAt: 关联创建时间
+  - updatedAt: 关联更新时间
+
+边 (Edge) - 扩展元数据:
+  - confidence: 置信度 (0-1)
+  - qualityScore: 质量分数 (0-1)
+  - reason: 创建原因（auto_discovered/user_created/system_recommended）
+  - userFeedback: 用户反馈（confirmed/deleted/ignored/null）
+  - accessCount: 访问次数
+  - lastAccessedAt: 最后访问时间
+  - isExpired: 是否过期（boolean）
+  - isDirectional: 是否有向（boolean）
+  - direction: 方向（forward/backward/bidirectional，仅当 isDirectional=true）
+
+边 (Edge) - 类型特定字段:
+  - semanticSimilarity: 语义相似度值（仅 type=semantic）
+  - sharedTags: 共享标签列表（仅 type=tag）
+  - sharedFolders: 共享收藏夹列表（仅 type=folder）
+  - timeInterval: 时间间隔（天数，仅 type=time）
+  - domain: 共享域名（仅 type=domain）
+  - keywordOverlap: 关键词重叠度（仅 type=keyword）
+  - topicMatch: 主题匹配度（仅 type=topic）
+
+关联类型权重系数配置:
+  - semanticWeight: 1.0（语义相似）
+  - tagWeight: 0.8（标签共享）
+  - folderWeight: 0.6（收藏夹共享）
+  - topicWeight: 0.7（主题匹配）
+  - keywordWeight: 0.5（关键词重叠）
+  - timeWeight: 0.3（时间邻近）
+  - domainWeight: 0.4（域名相同）
+
+关联发现配置:
+  - semanticThreshold: 0.7（语义相似度阈值）
+  - keywordOverlapThreshold: 0.3（关键词重叠度阈值）
+  - timeWindow: 30（时间邻近窗口，天数）
+  - maxAssociationsPerNode: 50（每个节点的最大关联数）
+  - minWeightThreshold: 0.2（最小权重阈值，低于此值的关联不创建）
+```
+
+#### 实现优先级
+
+| 优先级 | 功能 | 说明 |
+|--------|------|------|
+| **P0** | FR54-FR63（图谱构建基础） | 核心功能，必须先实现 |
+| **P0** | FR197-FR206（关联类型定义） | 核心功能，定义所有关联类型 |
+| **P0** | FR207-FR214（语义相似关联） | 核心关联类型，必须实现 |
+| **P0** | FR215-FR221（标签共享关联） | 核心关联类型，必须实现 |
+| **P0** | FR249-FR255（关联权重计算） | 核心算法，必须实现 |
+| **P0** | FR256-FR263（关联发现机制） | 核心功能，必须实现 |
+| **P0** | FR64-FR77（基础可视化） | 用户必须能看到图谱 |
+| **P0** | FR108-FR113（性能优化） | 必须保证性能 |
+| **P1** | FR222-FR226（收藏夹共享关联） | 重要关联类型 |
+| **P1** | FR227-FR232（时间邻近关联） | 重要关联类型 |
+| **P1** | FR233-FR237（域名相同关联） | 重要关联类型 |
+| **P1** | FR238-FR243（关键词重叠关联） | 重要关联类型 |
+| **P1** | FR244-FR248（主题相同关联） | 重要关联类型 |
+| **P1** | FR264-FR270（关联更新机制） | 重要功能，保持关联最新 |
+| **P1** | FR271-FR277（关联质量评估） | 提升关联质量 |
+| **P1** | FR278-FR284（关联过滤筛选） | 增强用户体验 |
+| **P1** | FR78-FR88（探索功能） | 增强用户体验 |
+| **P1** | FR89-FR95（布局算法） | 提升可视化质量 |
+| **P1** | FR114-FR117（智能建议） | 提升产品价值 |
+| **P1** | FR310-FR315（关联性能优化） | 保证性能 |
+| **P2** | FR204-FR205（引用/作者关联） | 可选关联类型 |
+| **P2** | FR285-FR290（关联合并去重） | 高级功能，后续迭代 |
+| **P2** | FR291-FR296（关联时效性管理） | 高级功能，后续迭代 |
+| **P2** | FR297-FR301（关联方向性与层次） | 高级功能，后续迭代 |
+| **P2** | FR96-FR101（统计分析） | 高级功能，后续迭代 |
+| **P2** | FR102-FR107（交互增强） | 优化体验，非必需 |
+| **P2** | FR302-FR309（关联元数据扩展） | 高级功能，后续迭代 |
+
+---
+
+## Agent 生成数据模型 (Agent Generation Data Model)
+
+**目标**: 定义 Agent 生成系统的完整数据结构，支持用户画像、Agent 配置、对话历史、插件管理。
+
+### 核心实体关系
+
+```
+用户 (User) 1 ── 1 用户画像 (UserProfile)
+                  │
+                  │ 1 ── *
+                  │
+                  ├── 多个 Agent (Agent)
+                  │    ├── 关联用户画像
+                  │    ├── 关联知识范围
+                  │    └── 使用多个插件 (Plugin)
+                  │
+                  ├── 多个对话会话 (Conversation)
+                  │    └── 包含多条消息 (Message)
+                  │
+                  └── 收藏多个内容 (Collection)
+                       └── 生成向量嵌入 (Embedding)
+```
+
+### 数据表结构
+
+#### 1. 用户画像表 (user_profiles)
+
+```sql
+CREATE TABLE user_profiles (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL DEFAULT 'default',  -- 支持多用户（未来）
+  version INTEGER NOT NULL DEFAULT 1,
+  content_count INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,  -- Unix timestamp
+
+  -- JSON 存储的画像数据
+  profile_data TEXT NOT NULL,  -- JSON 格式，包含：
+                               -- - professional_domains: 专业领域数组
+                               -- - interests: 兴趣偏好数组
+                               -- - tech_stack: 技术栈数组
+                               -- - decision_style: 决策风格对象
+                               -- - knowledge_gaps: 知识盲区数组
+                               -- - learning_path: 学习路径数组
+                               -- - value_preferences: 价值偏好数组
+
+  -- 提取元数据
+  extraction_status TEXT NOT NULL DEFAULT 'pending',  -- pending/processing/completed/failed
+  extraction_started_at INTEGER,
+  extraction_completed_at INTEGER,
+  last_content_id TEXT,  -- 最后一次提取时处理的内容 ID
+
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  FOREIGN KEY (last_content_id) REFERENCES collections(id)
+);
+
+-- 索引
+CREATE INDEX idx_user_profiles_user_id ON user_profiles(user_id);
+CREATE INDEX idx_user_profiles_updated_at ON user_profiles(updated_at DESC);
+```
+
+#### 2. Agent 配置表 (agents)
+
+```sql
+CREATE TABLE agents (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  version TEXT NOT NULL DEFAULT '1.0.0',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+
+  -- 配置
+  user_profile_id TEXT NOT NULL,
+  knowledge_scope TEXT NOT NULL,  -- JSON 数组：收藏夹 ID 列表
+  permissions TEXT NOT NULL,      -- JSON 数组：权限列表
+  specialization TEXT,            -- 专注领域（如："工作"、"学习"）
+
+  -- 能力
+  capabilities TEXT NOT NULL,     -- JSON 对象：
+                                  -- - tools: 工具列表
+                                  -- - plugins: 插件列表
+                                  -- - max_context_size: 最大上下文大小
+
+  -- 性能指标
+  metrics TEXT NOT NULL,          -- JSON 对象：
+                                  -- - total_calls: 调用次数
+                                  -- - avg_response_time: 平均响应时间
+                                  -- - satisfaction_score: 满意度分数
+                                  -- - last_used_at: 最后使用时间
+
+  -- 状态
+  status TEXT NOT NULL DEFAULT 'active',  -- active/paused/archived
+
+  FOREIGN KEY (user_profile_id) REFERENCES user_profiles(id)
+);
+
+-- 索引
+CREATE INDEX idx_agents_user_profile_id ON agents(user_profile_id);
+CREATE INDEX idx_agents_status ON agents(status);
+CREATE INDEX idx_agents_updated_at ON agents(updated_at DESC);
+```
+
+#### 3. Agent 版本历史表 (agent_versions)
+
+```sql
+CREATE TABLE agent_versions (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  version TEXT NOT NULL,
+  config_snapshot TEXT NOT NULL,  -- 完整配置快照（JSON）
+  profile_snapshot TEXT NOT NULL, -- 用户画像快照（JSON）
+  created_at INTEGER NOT NULL,
+  reason TEXT,                    -- 版本变更原因
+  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_agent_versions_agent_id ON agent_versions(agent_id);
+CREATE INDEX idx_agent_versions_created_at ON agent_versions(created_at DESC);
+```
+
+#### 4. 对话会话表 (conversations)
+
+```sql
+CREATE TABLE conversations (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  title TEXT,                     -- 会话标题（可选，自动生成或用户设置）
+  context_summary TEXT,           -- 会话摘要（JSON）
+  message_count INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+
+  -- 元数据
+  source TEXT NOT NULL DEFAULT 'mcp',  -- mcp/web/ui（调用来源）
+  metadata TEXT,                        -- JSON：其他元数据
+
+  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_conversations_agent_id ON conversations(agent_id);
+CREATE INDEX idx_conversations_created_at ON conversations(created_at DESC);
+CREATE INDEX idx_conversations_source ON conversations(source);
+```
+
+#### 5. 对话消息表 (conversation_messages)
+
+```sql
+CREATE TABLE conversation_messages (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  role TEXT NOT NULL,              -- user/assistant/system
+  content TEXT NOT NULL,
+  metadata TEXT,                   -- JSON：
+                                  -- - retrieved_docs: 检索的文档列表
+                                  -- - user_profile_context: 用户画像上下文
+                                  -- - reasoning: 推理过程（可选）
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_conversation_messages_conversation_id ON conversation_messages(conversation_id);
+CREATE INDEX idx_conversation_messages_created_at ON conversation_messages(created_at ASC);
+```
+
+#### 6. 插件表 (plugins)
+
+```sql
+CREATE TABLE plugins (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  version TEXT NOT NULL,
+  author TEXT,
+  description TEXT,
+  repository_url TEXT,            -- GitHub 仓库等
+
+  -- 能力声明
+  capabilities TEXT NOT NULL,      -- JSON：
+                                  -- - tools: 工具定义数组
+                                  -- - data_sources: 数据源定义
+                                  -- - permissions: 权限声明
+
+  -- 执行环境
+  runtime TEXT NOT NULL DEFAULT 'native',  -- native/wasm/sandbox
+  entry_point TEXT,                -- 入口文件或函数
+
+  -- 状态
+  enabled INTEGER NOT NULL DEFAULT 0,
+  installed_at INTEGER,
+  last_used_at INTEGER,
+
+  -- 元数据
+  metadata TEXT,                   -- JSON：其他元数据
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- 索引
+CREATE INDEX idx_plugins_enabled ON plugins(enabled);
+CREATE INDEX idx_plugins_name ON plugins(name);
+```
+
+#### 7. Agent 插件关联表 (agent_plugins)
+
+```sql
+CREATE TABLE agent_plugins (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  plugin_id TEXT NOT NULL,
+  config TEXT,                     -- JSON：插件配置
+  enabled INTEGER NOT NULL DEFAULT 1,
+  installed_at INTEGER NOT NULL,
+  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+  FOREIGN KEY (plugin_id) REFERENCES plugins(id) ON DELETE CASCADE,
+  UNIQUE(agent_id, plugin_id)
+);
+
+-- 索引
+CREATE INDEX idx_agent_plugins_agent_id ON agent_plugins(agent_id);
+CREATE INDEX idx_agent_plugins_plugin_id ON agent_plugins(plugin_id);
+```
+
+#### 8. Agent 性能指标表 (agent_metrics)
+
+```sql
+CREATE TABLE agent_metrics (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  conversation_id TEXT,            -- 可选，关联到具体对话
+  metric_type TEXT NOT NULL,       -- call_latency/satisfaction/accuracy/etc
+  metric_value REAL NOT NULL,
+  metadata TEXT,                   -- JSON：额外的度量信息
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL
+);
+
+-- 索引
+CREATE INDEX idx_agent_metrics_agent_id ON agent_metrics(agent_id);
+CREATE INDEX idx_agent_metrics_type ON agent_metrics(metric_type);
+CREATE INDEX idx_agent_metrics_created_at ON agent_metrics(created_at DESC);
+```
+
+#### 9. 用户反馈表 (user_feedback)
+
+```sql
+CREATE TABLE user_feedback (
+  id TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  conversation_id TEXT,
+  message_id TEXT,
+
+  -- 反馈类型
+  feedback_type TEXT NOT NULL,     -- rating/correction/preference
+  rating INTEGER,                  -- 1-5 评分（feedback_type=rating）
+  correction TEXT,                 -- 修正内容（feedback_type=correction）
+  preference_key TEXT,             -- 偏好键（feedback_type=preference）
+  preference_value TEXT,           -- 偏好值
+
+  -- 元数据
+  context TEXT,                    -- JSON：反馈上下文
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+
+  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE SET NULL,
+  FOREIGN KEY (message_id) REFERENCES conversation_messages(id) ON DELETE SET NULL
+);
+
+-- 索引
+CREATE INDEX idx_user_feedback_agent_id ON user_feedback(agent_id);
+CREATE INDEX idx_user_feedback_type ON user_feedback(feedback_type);
+CREATE INDEX idx_user_feedback_created_at ON user_feedback(created_at DESC);
+```
+
+#### 10. RAG 检索历史表 (rag_retrieval_history)
+
+```sql
+CREATE TABLE rag_retrieval_history (
+  id TEXT PRIMARY KEY,
+  conversation_id TEXT NOT NULL,
+  message_id TEXT NOT NULL,
+
+  -- 查询信息
+  query TEXT NOT NULL,
+  query_expansion TEXT,            -- JSON：扩展后的查询
+  retrieval_strategy TEXT NOT NULL, -- semantic/keyword/graph/hybrid
+
+  -- 检索结果
+  retrieved_docs TEXT NOT NULL,   -- JSON：检索到的文档列表
+  retrieval_score REAL,           -- 检索质量分数
+  retrieval_latency INTEGER,      -- 检索耗时（毫秒）
+
+  -- 上下文构建
+  context_tokens INTEGER,          -- 上下文 token 数
+  context_used INTEGER NOT NULL DEFAULT 1,
+
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+
+  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+  FOREIGN KEY (message_id) REFERENCES conversation_messages(id) ON DELETE CASCADE
+);
+
+-- 索引
+CREATE INDEX idx_rag_retrieval_history_conversation_id ON rag_retrieval_history(conversation_id);
+CREATE INDEX idx_rag_retrieval_history_created_at ON rag_retrieval_history(created_at DESC);
+```
+
+### JSON 数据结构示例
+
+#### 用户画像数据 (profile_data)
+
+```json
+{
+  "professional_domains": [
+    { "domain": "前端架构", "confidence": 0.85, "evidenceCount": 47 },
+    { "domain": "Rust 编程", "confidence": 0.72, "evidenceCount": 23 },
+    { "domain": "系统设计", "confidence": 0.65, "evidenceCount": 18 }
+  ],
+  "interests": [
+    { "topic": "性能优化", "score": 0.92, "lastUpdated": 1709097600 },
+    { "topic": "TypeScript 高级技巧", "score": 0.88, "lastUpdated": 1709001600 },
+    { "topic": "Tauri 跨平台开发", "score": 0.81, "lastUpdated": 1708995200 }
+  ],
+  "tech_stack": [
+    { "technology": "React", "proficiency": "expert", "frequency": 156 },
+    { "technology": "TypeScript", "proficiency": "advanced", "frequency": 142 },
+    { "technology": "Rust", "proficiency": "intermediate", "frequency": 23 },
+    { "technology": "Tauri", "proficiency": "intermediate", "frequency": 18 },
+    { "technology": "Zustand", "proficiency": "advanced", "frequency": 34 }
+  ],
+  "decision_style": {
+    "riskTolerance": "moderate",
+    "analyticalDepth": "data-driven",
+    "communicationStyle": "concise"
+  },
+  "knowledge_gaps": [
+    {
+      "topic": "WebAssembly",
+      "reason": "频繁搜索但缺乏深度收藏",
+      "suggestedResources": ["collection_id_1", "collection_id_2"]
+    }
+  ],
+  "learning_path": [
+    {
+      "topic": "Rust 编程",
+      "timeline": "2024-01 → 2024-06",
+      "depth": "intermediate"
+    }
+  ],
+  "value_preferences": [
+    { "dimension": "性能 vs 简洁", "preference": "performance", "confidence": 0.78 },
+    { "dimension": "开发速度 vs 质量", "preference": "quality", "confidence": 0.85 }
+  ]
+}
+```
+
+#### Agent 能力配置 (capabilities)
+
+```json
+{
+  "tools": ["semantic_search", "get_user_profile", "ask_agent"],
+  "plugins": ["github_pr_reviewer", "meeting_assistant"],
+  "max_context_size": 16000,
+  "supported_languages": ["zh", "en"],
+  "response_formats": ["text", "markdown", "json"]
+}
+```
+
+#### RAG 检索结果 (retrieved_docs)
+
+```json
+{
+  "docs": [
+    {
+      "id": "collection_123",
+      "title": "Zustand 状态管理最佳实践",
+      "url": "https://example.com/zustand-best-practices",
+      "relevanceScore": 0.92,
+      "citation": "[你 2024-01-15 收藏的文章]",
+      "snippet": "zustand-persist 是 Zustand 官方推荐的持久化方案..."
+    },
+    {
+      "id": "collection_456",
+      "title": "深入理解 Web Storage",
+      "url": "https://example.com/web-storage",
+      "relevanceScore": 0.78,
+      "citation": "[你 2024-02-03 收藏的文章]",
+      "snippet": "localStorage 适合存储简单的键值对数据..."
+    }
+  ],
+  "totalRetrieved": 2,
+  "strategy": "hybrid",
+  "queryExpansion": ["zustand", "persist", "状态管理", "local storage"]
+}
+```
+
+### 数据完整性约束
+
+```sql
+-- 确保每个用户只有一个活跃的用户画像
+CREATE TRIGGER limit_active_profiles
+BEFORE INSERT ON user_profiles
+BEGIN
+  SELECT CASE
+    WHEN (SELECT COUNT(*) FROM user_profiles WHERE user_id = NEW.user_id) >= 1
+    THEN RAISE(ABORT, 'Only one profile per user allowed')
+  END;
+END;
+
+-- 确保 Agent 状态转换的有效性
+CREATE TRIGGER validate_agent_status
+BEFORE UPDATE OF status ON agents
+BEGIN
+  SELECT CASE
+    WHEN NEW.status NOT IN ('active', 'paused', 'archived')
+    THEN RAISE(ABORT, 'Invalid agent status')
+    WHEN OLD.status = 'archived' AND NEW.status != 'archived'
+    THEN RAISE(ABORT, 'Cannot unarchive an agent')
+  END;
+END;
+
+-- 自动更新对话的 message_count
+CREATE TRIGGER update_message_count
+AFTER INSERT ON conversation_messages
+BEGIN
+  UPDATE conversations
+  SET message_count = message_count + 1,
+      updated_at = strftime('%s', 'now')
+  WHERE id = NEW.conversation_id;
+END;
+
+-- 自动更新 Agent 的最后使用时间
+CREATE TRIGGER update_agent_last_used
+AFTER INSERT ON conversations
+BEGIN
+  UPDATE agents
+  SET updated_at = strftime('%s', 'now')
+  WHERE id = NEW.agent_id;
+END;
+```
+
+### 性能优化
+
+#### 索引策略
+
+| 表名 | 索引 | 用途 |
+|------|------|------|
+| `user_profiles` | `user_id`, `updated_at` | 用户画像查询、增量更新 |
+| `agents` | `user_profile_id`, `status`, `updated_at` | Agent 列表、状态过滤 |
+| `conversations` | `agent_id`, `created_at`, `source` | 会话历史、时间线查询 |
+| `conversation_messages` | `conversation_id`, `created_at` | 消息加载、对话上下文 |
+| `agent_metrics` | `agent_id`, `metric_type`, `created_at` | 性能分析、趋势追踪 |
+| `rag_retrieval_history` | `conversation_id`, `created_at` | RAG 调试、检索历史 |
+
+#### 数据归档策略
+
+```sql
+-- 归档 6 个月前的对话历史
+CREATE TABLE archived_conversations AS
+SELECT * FROM conversations WHERE updated_at < strftime('%s', 'now', '-6 months');
+
+-- 归档 1 年前的检索历史
+CREATE TABLE archived_rag_retrievals AS
+SELECT * FROM rag_retrieval_history WHERE created_at < strftime('%s', 'now', '-12 months');
+```
+
+### 数据迁移策略
+
+**版本迁移支持:**
+
+```sql
+-- 版本表
+CREATE TABLE schema_migrations (
+  version INTEGER PRIMARY KEY,
+  applied_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  description TEXT
+);
+
+-- 迁移示例：添加插件系统
+INSERT INTO schema_migrations (version, description) VALUES (7, 'Add plugin system support');
+```
+
+---
+
+## Non-Functional Requirements
+
+### 性能 (Performance)
+
+| 指标 | 要求 | 测量方式 |
+|------|------|----------|
+| **唤起响应** | 全局快捷键到搜索框显示 < 300ms | 体感 + 性能测试 |
+| **搜索延迟** | 从按下回车到结果显示 < 500ms | 实测 |
+| **收集同步** | 插件点击到应用确认 < 2s | 实测 |
+| **启动时间** | 应用冷启动 < 3s | 实测 |
+| **Embedding 生成** | 单篇内容向量生成 < 1s | 后台处理，不阻塞 UI |
+| **图谱构建** | 增量更新图谱（新增1篇内容） < 2s | 后台处理，不阻塞 UI |
+| **图谱渲染** | 打开图谱视图到首次渲染完成 < 500ms（< 50节点） | 实测 |
+| **图谱交互** | 节点拖拽、缩放、平移响应 < 16ms（60fps） | 性能测试 |
+| **图谱布局计算** | 力导向布局稳定时间 < 3s（< 100节点） | 实测 |
+| **图谱路径查找** | 两节点间最短路径计算 < 100ms | 实测 |
+| **关联发现** | 新内容与现有内容的关联发现 < 5s（与最近 100 篇对比） | 后台处理，不阻塞 UI |
+| **语义相似度计算** | 单对内容语义相似度计算 < 50ms | 后台处理，使用缓存 |
+| **关联权重计算** | 单条关联权重计算 < 10ms | 后台处理 |
+| **关联批量发现** | 10 篇新内容的关联批量发现 < 30s | 后台处理，显示进度 |
+| **关联更新** | 单篇内容更新后的关联重新计算 < 2s | 后台处理，不阻塞 UI |
+| **关联查询** | 查询节点的所有关联 < 50ms（< 50 条关联） | 实测 |
+| **关联过滤** | 应用关联过滤条件 < 100ms | 实测 |
+| **AI 摘要生成** | 单篇内容摘要生成 < 3s（本地模型） | 后台处理，不阻塞 UI |
+| **AI 标签生成** | 单篇内容标签生成 < 2s（本地模型） | 后台处理，不阻塞 UI |
+| **AI 分类识别** | 单篇内容分类识别 < 1s（规则匹配） | 后台处理，不阻塞 UI |
+| **AI 关键词提取** | 单篇内容关键词提取 < 1s | 后台处理，不阻塞 UI |
+| **AI 批量处理** | 10 篇内容批量处理 < 30s | 后台处理，显示进度 |
+| **AI 模型加载** | 不适用（使用云端 API） | 无需加载本地模型 |
+
+#### Agent 生成系统性能 (Agent Generation Performance)
+
+| 指标 | 要求 | 测量方式 |
+|------|------|----------|
+| **用户画像提取** | 增量提取（1000 条新内容） < 5s | 后台处理 |
+| **Agent 生成** | Agent 初始化生成 < 30s | 实测 |
+| **Agent 版本切换** | Agent 版本回滚 < 1s | 实测 |
+| **RAG 语义检索** | 向量检索 Top-10 < 100ms | 实测 |
+| **RAG 上下文构建** | 上下文构建（Top-10 文档） < 200ms | 实测 |
+| **Agent 响应时间** | 首字响应 < 1s | 实测 |
+| **Agent 完整响应** | 完整回答生成 < 5s | 实测 |
+| **Agent 对话历史** | 加载 100 条消息历史 < 500ms | 实测 |
+| **Agent 指标查询** | 性能指标查询 < 200ms | 实测 |
+| **插件加载** | 单个插件加载 < 100ms | 实测 |
+| **插件执行** | 插件工具调用 < 50ms | 实测 |
+| **决策风格模拟** | 决策推理 < 500ms | 后台处理 |
+| **知识盲区识别** | 盲区分析（1000 条内容） < 3s | 后台处理 |
+| **反馈学习** | 单次反馈学习 < 200ms | 后台处理 |
+| **Agent 进化** | 增量优化（10 次反馈） < 5s | 后台处理 |
+
+**Agent 性能优先级**：
+
+* P0: RAG 语义检索、RAG 上下文构建、Agent 响应时间（直接影响用户体验）
+* P1: 用户画像提取、Agent 生成、插件执行、决策风格模拟（可后台处理）
+* P2: Agent 版本切换、知识盲区识别、反馈学习、Agent 进化（低频操作）
+
+#### 内容编辑器性能 (Editor Performance)
+
+| 指标 | 要求 | 测量方式 |
+|------|------|----------|
+| **编辑器响应** | 编辑器响应时间 < 16ms（60fps） | 性能测试 |
+| **页面加载** | 页面加载时间 < 500ms（1000 个块以内） | 实测 |
+| **命令菜单唤起** | 命令菜单唤起时间 < 100ms | 实测 |
+| **块插入** | 块插入操作 < 50ms | 实测 |
+| **块删除** | 块删除操作 < 50ms | 实测 |
+| **块重排** | 拖拽块重排响应 < 50ms | 实测 |
+| **自动保存** | 自动保存延迟 < 1s | 实测 |
+| **撤销/重做** | 撤销/重做操作 < 100ms | 实测 |
+| **大型页面** | 支持 10000+ 块流畅编辑 | 实测 |
+| **虚拟滚动** | 虚拟滚动帧率 ≥ 60fps | 性能测试 |
+| **富文本格式** | 文本格式化操作 < 50ms | 实测 |
+| **媒体加载** | 图片懒加载时间 < 200ms | 实测 |
+| **表格渲染** | 表格（100 行）渲染 < 500ms | 实测 |
+
+**编辑器性能优先级**：
+
+* P0: 编辑器响应、页面加载、自动保存（直接影响用户体验）
+* P1: 命令菜单唤起、块操作、富文本格式（提升编辑效率）
+* P2: 虚拟滚动、媒体加载、表格渲染（优化特定场景）
+
+**性能优先级**：
+
+* P0: 唤起响应、搜索延迟（直接影响用户体验）
+* P1: 收集同步、Embedding 生成、图谱构建、关联发现、AI 处理（可后台处理）
+* P2: 启动时间、图谱布局计算、AI 模型加载、关联批量处理（通过开机自启和预加载缓解）
+
+### 可靠性 (Reliability)
+
+| 指标 | 要求 |
+|------|------|
+| **离线可用性** | 100% 核心功能在无网络时正常工作 |
+| **数据持久性** | 收集的内容不会因应用崩溃丢失 |
+| **搜索准确性** | 语义搜索成功率 ≥ 80%（用户能找到目标内容） |
+| **同步可靠性** | 插件收集成功率 100%（应用运行时） |
+| **图谱一致性** | 图谱结构与内容数据保持一致，无孤立节点或无效边 |
+| **图谱更新可靠性** | 新增内容后，图谱增量更新成功率 100% |
+| **图谱渲染稳定性** | 大量节点（> 200）时，图谱视图不崩溃，支持降级渲染 |
+| **关联发现可靠性** | 关联发现成功率 ≥ 95%，失败时记录日志但不影响内容保存 |
+| **关联计算准确性** | 关联权重计算准确，相同输入产生相同输出（缓存机制） |
+| **关联数据一致性** | 关联数据与内容数据保持一致，内容删除时自动删除相关关联 |
+| **关联更新可靠性** | 内容更新后，关联重新计算成功率 ≥ 98% |
+| **关联去重准确性** | 关联去重算法准确，无重复关联或误删有效关联 |
+| **AI 处理可靠性** | AI 处理失败率 < 5%，失败时自动降级到提取式方法 |
+| **AI 结果一致性** | 相同内容的 AI 处理结果保持一致（缓存机制） |
+| **AI API 稳定性** | 云端 API 调用失败时优雅降级，不影响内容保存 |
+
+#### Agent 生成系统可靠性 (Agent Generation Reliability)
+
+| 指标 | 要求 |
+|------|------|
+| **用户画像准确性** | 画像特征准确率 ≥ 85%（用户验证） |
+| **Agent 生成成功率** | Agent 初始化成功率 100% |
+| **RAG 检索准确性** | 相关文档检索召回率 ≥ 80% |
+| **RAG 检索相关性** | 检索结果相关性 ≥ 0.7（平均余弦相似度） |
+| **Agent 回答质量** | Agent 回答满意度 ≥ 4.0/5.0（用户评分） |
+| **Agent 决策一致性** | 决策风格与用户偏好一致性 ≥ 80% |
+| **插件执行可靠性** | 插件执行成功率 ≥ 98%，失败时优雅降级 |
+| **插件沙箱隔离** | 插件崩溃不影响主应用，沙箱隔离 100% |
+| **对话历史完整性** | 对话消息持久化 100%，无消息丢失 |
+| **反馈学习有效性** | 反馈学习后，相关指标提升 ≥ 10% |
+| **Agent 版本可回滚** | Agent 版本回滚成功率 100% |
+| **知识盲区识别准确性** | 知识盲区识别准确率 ≥ 75% |
+| **画像更新及时性** | 新内容添加后，画像在 24 小时内更新 |
+| **Agent 进化有效性** | Agent 使用 2 个月后，满意度提升 ≥ 15% |
+
+**Agent 容错处理**：
+
+* 用户画像提取失败时，使用默认画像或保留旧版本
+* Agent 生成失败时，记录错误日志，提供详细错误信息
+* RAG 检索失败时，使用通用知识库或提示用户扩展知识库
+* Agent 回答超时时，返回部分结果或建议用户重试
+* 插件执行失败时，禁用该插件并通知用户，不影响其他功能
+* 对话历史丢失时，从备份恢复或提供历史会话列表
+* 反馈提交失败时，本地缓存反馈，下次同步时重试
+* Agent 性能下降时，自动触发诊断和优化建议
+
+**容错处理**：
+
+* 内容提取失败时，至少保存 URL 和标题
+* 应用未运行时，插件友好提示启动
+* 图谱构建失败时，回退到基础列表视图，不影响其他功能
+* 图谱渲染性能不足时，自动启用 LOD 优化或节点过滤
+* 关联发现失败时，记录错误日志，但不影响内容保存和其他功能
+* 关联计算超时时，使用简化算法或跳过该关联类型，不影响其他关联
+* 关联更新失败时，保留旧关联，标记为需要更新，下次重试
+* AI 模型加载失败时，使用提取式方法（关键词、首段）作为降级
+* AI 处理超时时，使用简化算法或跳过该步骤，不影响内容保存
+* AI 处理结果质量不佳时，允许用户手动修正，不影响其他功能
+
+### 安全 (Security)
+
+| 需求 | 说明 |
+|------|------|
+| **本地存储** | 所有用户数据存储在本地，不上传云端 |
+| **HTTP Server 访问** | 仅 localhost 访问，可选 token 验证 |
+| **无外部依赖** | 核心功能不依赖外部 API（本地 AI 推理） |
+| **AI 数据隐私** | 使用本地 AI 模型时，内容数据不离开设备 |
+| **云端 API 提示** | 使用云端 API 时，明确提示用户数据会发送到外部服务 |
+| **API Key 安全** | 用户提供的 API Key 仅存储在本地，加密保存 |
+| **AI 处理日志** | AI 处理日志仅存储在本地，不上传 |
+
+#### Agent 生成系统安全 (Agent Generation Security)
+
+| 需求 | 说明 |
+|------|------|
+| **用户画像隐私** | 用户画像完全存储在本地，不上传云端 |
+| **Agent 配置安全** | Agent 配置文件加密存储，包含敏感权限信息 |
+| **对话历史加密** | 对话历史内容加密存储，仅用户可访问 |
+| **插件权限管理** | 插件权限明确声明，用户审核后授予 |
+| **插件沙箱隔离** | 插件在沙箱中执行，无法访问系统资源 |
+| **MCP 通信安全** | MCP 端点仅 localhost 访问，可选 token 验证 |
+| **Agent 导出安全** | Agent 导出时不包含知识库内容，仅包含配置 |
+| **用户反馈隐私** | 用户反馈仅存储在本地，用于 Agent 优化 |
+| **知识库访问控制** | Agent 仅能访问授权的知识范围（收藏夹） |
+| **敏感数据过滤** | Agent 对话中自动过滤敏感信息（密码、密钥等） |
+| **插件代码验证** | 插件安装时验证代码签名和来源（可选，Beta） |
+| **Agent 日志安全** | Agent 执行日志仅包含元数据，不包含敏感内容 |
+
+**隐私优先（Agent 扩展）**：
+
+* 用户画像所有权：用户完全拥有自己的画像数据，可随时删除或导出
+* Agent 对话隐私：Agent 对话历史完全本地存储，不上传云端
+* 插件透明度：插件代码开源或可审计，用户可查看插件功能
+* 知识库最小化：Agent 仅访问用户授权的知识范围
+* 敏感信息保护：自动检测和保护敏感信息（API Key、密码等）
+* 可遗忘性：用户可请求删除 Agent、对话历史、用户画像
+* 数据可移植性：用户可导出所有数据（画像、Agent、对话、插件配置）
+
+**隐私优先**：
+
+* 无遥测数据收集
+* 无用户行为追踪
+* 数据完全由用户掌控
+* 本地 AI 处理：所有 AI 推理在本地完成，内容不离开设备
+* 可选云端 API：用户可选择使用云端 API，但必须明确知情
+* API Key 管理：用户自行管理 API Key，应用不存储或上传
+
+### 集成 (Integration)
+
+| 需求 | 说明 |
+|------|------|
+| **HTTP API 稳定性** | 本地 HTTP Server API 版本稳定，向后兼容 |
+| **CORS 配置** | 正确配置 CORS 允许浏览器插件访问 |
+| **健康检查** | 提供 `/api/health` 端点供插件检测应用状态 |
+| **MCP 协议兼容** | MCP 端点（`/mcp`）实现标准 MCP 协议，使用官方 rmcp SDK，支持主流 AI 助手（Claude Desktop、Cursor 等） |
+| **MCP 工具注册** | MCP 端点正确注册搜索工具，提供清晰的工具描述和参数定义 |
+| **MCP 传输方式** | 支持 Streamable HTTP 传输方式（MCP 协议标准） |
+| **MCP 配置简化** | AI 助手通过 URL `http://127.0.0.1:21890/mcp` 连接，无需本地文件配置 |
+
+### 可维护性 (Maintainability)
+
+| 需求 | 说明 |
+|------|------|
+| **代码质量** | TypeScript 类型安全，Biome 格式化 |
+| **Monorepo 结构** | 清晰的代码组织，共享类型定义 |
+| **日志记录** | 关键操作记录日志，便于调试 |
+
+---
+
+## References
+
+### 相关文档
+
+* **技术规范：** [知识图谱与 AI 分类技术规范](./tech-spec-knowledge-graph-and-ai.md) - 知识图谱构建和 AI 内容理解功能的完整技术规范
+* **架构文档：** [AI 与图谱架构分离说明](./architecture-ai-graph-separation.md) - AI 处理和图谱算法的职责分离架构决策
+* **实施计划：** [知识图谱与 AI 实施计划](./sprint-artifacts/implementation-plan-ai-graph.md) - 知识图谱与 AI 分类功能的实施计划和步骤
+* **架构文档：** [系统架构](./architecture.md) - 系统架构、ADR、实现模式
+* **项目索引：** [文档索引](./index.md) - 项目文档索引和快速导航

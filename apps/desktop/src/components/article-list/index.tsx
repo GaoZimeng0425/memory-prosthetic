@@ -52,6 +52,7 @@ interface ArticleListProps {
   selectedId: number | null
   onSelect: (id: number) => void
   onDelete: (id: number) => void
+  onPermanentDelete: (id: number) => void
   onOpenUrl: (url: string) => void
   onToggleStar?: (id: number) => void
   onArchive?: (id: number) => void
@@ -70,6 +71,7 @@ export function ArticleList({
   selectedId,
   onSelect,
   onDelete,
+  onPermanentDelete,
   onOpenUrl,
   onToggleStar,
   onArchive,
@@ -236,6 +238,7 @@ export function ArticleList({
                 key={group.label}
                 onArchive={onArchive}
                 onDelete={onDelete}
+                onPermanentDelete={onPermanentDelete}
                 onOpenUrl={onOpenUrl}
                 onSelect={onSelect}
                 onToggleStar={onToggleStar}

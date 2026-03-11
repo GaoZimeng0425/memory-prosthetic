@@ -45,8 +45,11 @@ export function useFavorites(): UseFavoritesReturn {
   const deleteMutation = useMutation({
     ...favorites.mutations.delete(),
     onSuccess: () => {
+      // Invalidate favorites API queries
       queryClient.invalidateQueries({ queryKey: favorites.keys.lists() })
       queryClient.invalidateQueries({ queryKey: favorites.keys.details() })
+      // Invalidate sync API queries (for sidebar)
+      queryClient.invalidateQueries({ queryKey: ['sidebar-sync'] })
       // Also invalidate collections since favorite counts may change
       queryClient.invalidateQueries({ queryKey: ['collections'] })
     },

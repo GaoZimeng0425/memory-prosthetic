@@ -38,7 +38,7 @@ export function GraphPage({ onNodeSelect }: GraphPageProps) {
   const [clusterThreshold, setClusterThreshold] = useState(0.3)
   const [isClusterLoading, setIsClusterLoading] = useState(false)
 
-  const handleEdgeClick = (edgeId: string) => {
+  const handleEdgeClick = (_edgeId: string) => {
     // Edge click handler - can be extended to show edge details
   }
 

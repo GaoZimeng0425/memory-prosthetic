@@ -36,7 +36,7 @@ export function FavoriteSelector({ selectedFavoriteId, onSelect, disabled }: Fav
     }
   }, [favoritesList, selectedFavoriteId, onSelect])
 
-  const selectedFavorite = favoritesList?.find((f) => f.id === selectedFavoriteId)
+  const selectedFavorite = favoritesList?.find((f: { id: number }) => f.id === selectedFavoriteId)
 
   return (
     <DropdownMenu onOpenChange={setOpen} open={open}>
@@ -52,7 +52,7 @@ export function FavoriteSelector({ selectedFavoriteId, onSelect, disabled }: Fav
             <span className="text-muted-foreground text-xs">暂无文件夹</span>
           </DropdownMenuItem>
         ) : (
-          favoritesList.map((favorite) => (
+          favoritesList.map((favorite: { id: number; name: string }) => (
             <DropdownMenuItem
               className={selectedFavoriteId === favorite.id ? 'bg-accent' : ''}
               key={favorite.id}

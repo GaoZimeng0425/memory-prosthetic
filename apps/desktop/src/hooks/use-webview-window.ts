@@ -23,7 +23,7 @@ export const useWebviewWindow = (enabled: boolean): UseWebviewWindowReturn => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(false)
 
-  const openWebview = useCallback(async (url: string, title: string, containerElement?: HTMLElement | null) => {
+  const openWebview = useCallback(async (url: string, _title: string, containerElement?: HTMLElement | null) => {
     try {
       setIsLoading(true)
       setError(false)

@@ -43,12 +43,12 @@ export const EditorShortcutsHelp = ({ open, onOpenChange }: EditorShortcutsHelpP
         </DialogHeader>
 
         <div className="grid grid-cols-1 gap-3 py-4 sm:grid-cols-2">
-          {shortcuts.map((shortcut, index) => (
-            <div className="flex items-center justify-between rounded-lg border p-3" key={index}>
+          {shortcuts.map((shortcut) => (
+            <div className="flex items-center justify-between rounded-lg border p-3" key={shortcut.description}>
               <span className="text-sm">{shortcut.description}</span>
               <div className="flex items-center gap-1">
-                {shortcut.keys.map((key, keyIndex) => (
-                  <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs" key={keyIndex}>
+                {shortcut.keys.map((key) => (
+                  <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs" key={key}>
                     {key}
                   </kbd>
                 ))}

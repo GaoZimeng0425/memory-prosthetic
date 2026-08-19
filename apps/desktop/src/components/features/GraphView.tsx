@@ -236,7 +236,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
       // 构建边数据，添加动态距离和强度属性（用于力导向布局）
       // 过滤掉引用了不存在节点的边，避免 G6 报错
       const edges: GraphEdgeData[] = graphData.edges
-        .filter((edge) => {
+        .filter((edge: GraphEdge) => {
           const sourceId = String(edge.sourceId)
           const targetId = String(edge.targetId)
           const sourceExists = nodeIdSet.has(sourceId)
@@ -247,7 +247,7 @@ export const GraphView = forwardRef<GraphViewRef, GraphViewProps>(
           }
           return true
         })
-        .map((edge) => {
+        .map((edge: GraphEdge) => {
           const weight = edge.weight
           // 动态边距离：权重越高，距离越短（关联性越强，距离越近）
           // baseDistance 150, weightFactor 0.5-1.5

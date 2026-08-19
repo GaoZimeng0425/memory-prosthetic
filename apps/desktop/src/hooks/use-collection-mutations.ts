@@ -91,12 +91,12 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
       const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
       // Optimistically update cache
-      updateCollectionInCache(queryClient, id, { favorite_id: favoriteId })
+      updateCollectionInCache(queryClient, id, { favoriteId })
 
       // Return context with previous value for rollback
       return { previousCollections }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       // Rollback to previous value on error
       if (context?.previousCollections) {
         queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
@@ -178,17 +178,15 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
 
       const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
-      // Optimistically update status
-      updateCollectionInCache(queryClient, id, { status: 'archived' })
+      // Note: We don't optimistically update status since CollectionListItem doesn't include status
+      // The list will be refreshed via invalidateQueries after mutation settles
 
       return { previousCollections }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
-      // Rollback status to active
-      updateCollectionInCache(queryClient, variables, { status: 'active' })
       console.error('[archive] Mutation failed, rolled back:', error)
     },
     onSettled: () => {
@@ -209,17 +207,15 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
 
       const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
-      // Optimistically update status
-      updateCollectionInCache(queryClient, id, { status: 'active' })
+      // Note: We don't optimistically update status since CollectionListItem doesn't include status
+      // The list will be refreshed via invalidateQueries after mutation settles
 
       return { previousCollections }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
-      // Rollback status to archived
-      updateCollectionInCache(queryClient, variables, { status: 'archived' })
       console.error('[restore] Mutation failed, rolled back:', error)
     },
     onSettled: () => {
@@ -240,17 +236,15 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
 
       const previousCollections = queryClient.getQueryData(collections.keys.lists())
 
-      // Optimistically update status to deleted
-      updateCollectionInCache(queryClient, id, { status: 'deleted' })
+      // Note: We don't optimistically update status since CollectionListItem doesn't include status
+      // The list will be refreshed via invalidateQueries after mutation settles
 
       return { previousCollections }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }
-      // Rollback status to active
-      updateCollectionInCache(queryClient, variables, { status: 'active' })
       console.error('[delete] Mutation failed, rolled back:', error)
     },
     onSettled: () => {
@@ -276,7 +270,7 @@ export function useCollectionMutations(): UseCollectionMutationsReturn {
 
       return { previousCollections }
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(collections.keys.lists(), context.previousCollections)
       }

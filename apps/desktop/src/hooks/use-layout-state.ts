@@ -58,7 +58,7 @@ export function useLayoutHandlers(setState: {
   }
 
   const toggleSidebar = () => {
-    setState.setSidebarState((s) => (s === 'expanded' ? 'collapsed' : 'expanded'))
+    setState.setSidebarState((s: SidebarState) => (s === 'expanded' ? 'collapsed' : 'expanded'))
   }
 
   return {

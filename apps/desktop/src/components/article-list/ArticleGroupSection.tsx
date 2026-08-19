@@ -81,7 +81,7 @@ export function ArticleGroupSection({
         <SelectFavoriteDialog
           collectionId={favoriteDialogCollectionId}
           onCreateNew={() => setIsCreateFavoriteOpen(true)}
-          onOpenChange={(open) => {
+          onOpenChange={(open: boolean) => {
             if (!open) {
               handleCloseFavoriteDialog()
             }
@@ -92,7 +92,7 @@ export function ArticleGroupSection({
 
       {/* Create Favorite Dialog */}
       <CreateFavoriteDialog
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           if (!open) {
             setIsCreateFavoriteOpen(false)
           }

@@ -29,7 +29,7 @@ export function useSearchSelectListener(isSearchWindow: boolean) {
 
     const unlisten = listen<{ id: number }>('search:select', async (event) => {
       console.log('[useSearchSelectListener] Received search:select event:', event.payload)
-      const { id } = event.payload
+      const id = event.payload.id
 
       // Show and focus main window (handles hidden and minimized states)
       try {

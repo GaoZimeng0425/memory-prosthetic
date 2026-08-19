@@ -5,11 +5,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createElement } from 'react'
 
-import type { Association, AssociationType } from '@memory-prosthetic/shared'
+import type { Association } from '@memory-prosthetic/shared'
 
 // Import the mocked invoke from the global setup
 import { invoke } from '@tauri-apps/api/core'
@@ -40,7 +41,7 @@ describe('useArticleAssociations', () => {
   describe('initial state', () => {
     it('should return initial loading state when articleId is provided', () => {
       const wrapper = createWrapper()
-      invoke.mockImplementation(() => new Promise(() => {})) // Never resolves
+      ;(invoke as unknown as Mock).mockImplementation(() => new Promise(() => {})) // Never resolves
 
       const { result } = renderHook(() => useArticleAssociations(123), { wrapper })
 
@@ -117,7 +118,7 @@ describe('useArticleAssociations', () => {
         },
       ]
 
-      invoke.mockResolvedValueOnce({
+      ;(invoke as unknown as Mock).mockResolvedValueOnce({
         success: true,
         data: mockAssociations,
       })
@@ -139,7 +140,7 @@ describe('useArticleAssociations', () => {
     it('should use default limit of 50', async () => {
       const wrapper = createWrapper()
 
-      invoke.mockResolvedValueOnce({
+      ;(invoke as unknown as Mock).mockResolvedValueOnce({
         success: true,
         data: [],
       })

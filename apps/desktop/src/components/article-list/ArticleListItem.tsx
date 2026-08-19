@@ -49,7 +49,7 @@ export function ArticleListItem({
   const { favorites } = useFavorites()
   const { getActiveNav } = useAppNavigation()
   const activeNav = getActiveNav()
-  const favorite = item.favoriteId ? favorites.find((f) => f.id === item.favoriteId) : null
+  const favorite = item.favoriteId ? favorites.find((f: Favorite) => f.id === item.favoriteId) : null
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>

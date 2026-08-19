@@ -102,7 +102,7 @@ export const AiButton = ({ article, onOpenSettings }: AiButtonProps) => {
   const handleProcess = async () => {
     try {
       // 获取现有 tags 的名称
-      const existingTagNames = collectionTags.map((t) => t.name)
+      const existingTagNames = collectionTags.map((t: { name: string }) => t.name)
       const aiResult = await processCollection(article, existingTagNames)
       setResult(aiResult)
 

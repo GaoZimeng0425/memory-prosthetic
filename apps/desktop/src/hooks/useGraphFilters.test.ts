@@ -5,9 +5,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 
-import type { Association, AssociationType, GraphFilters } from '@memory-prosthetic/shared'
+import type { GraphFilters } from '@memory-prosthetic/shared'
 import { useGraphFilters } from '@/hooks/useGraphFilters'
 
 // Mock graph store
@@ -33,7 +34,7 @@ describe('useGraphFilters', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset the mock to return default state
-    ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+    ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
       const state = {
         filters: { ...originalFilters },
         updateFilters: mockUpdateFilters,
@@ -111,7 +112,7 @@ describe('useGraphFilters', () => {
     })
 
     it('should return true for focus mode when focusedNodeId is set', () => {
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = {
           filters: {
             minWeight: 0.2,
@@ -250,7 +251,7 @@ describe('useGraphFilters', () => {
     })
 
     it('should toggle focus mode when same node is clicked', () => {
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = {
           filters: {
             minWeight: 0.2,
@@ -283,7 +284,7 @@ describe('useGraphFilters', () => {
     })
 
     it('should switch focus mode when different node is clicked', () => {
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = {
           filters: {
             minWeight: 0.2,

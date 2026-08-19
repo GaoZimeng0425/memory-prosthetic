@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { collections as collectionsApi } from '@/apis'
 import { AppSidebar, type SidebarState } from '@/components/AppSidebar'
 import { DragRegion } from '@/components/DragRegion'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { CreateFavoriteDialog } from '@/components/features/CreateFavoriteDialog'
 import { SettingsDialog } from '@/components/features/SettingsDialog'
 import { TagDialog } from '@/components/features/TagDialog'
@@ -197,20 +198,22 @@ function RootLayout() {
 
   // For main window, render full layout with sidebar
   return (
-    <RootLayoutContent
-      handleOpenUrl={handleOpenUrl}
-      handleSearchClick={handleSearchClick}
-      handleSearchResultSelect={handleSearchResultSelect}
-      isCreateFavoriteOpen={isCreateFavoriteOpen}
-      isSearchOpen={isSearchOpen}
-      isSettingsOpen={isSettingsOpen}
-      setIsCreateFavoriteOpen={setIsCreateFavoriteOpen}
-      setIsSearchOpen={setIsSearchOpen}
-      setIsSettingsOpen={setIsSettingsOpen}
-      setSidebarState={setSidebarState}
-      sidebarState={sidebarState}
-      sidebarStats={sidebarStats}
-    />
+    <ErrorBoundary>
+      <RootLayoutContent
+        handleOpenUrl={handleOpenUrl}
+        handleSearchClick={handleSearchClick}
+        handleSearchResultSelect={handleSearchResultSelect}
+        isCreateFavoriteOpen={isCreateFavoriteOpen}
+        isSearchOpen={isSearchOpen}
+        isSettingsOpen={isSettingsOpen}
+        setIsCreateFavoriteOpen={setIsCreateFavoriteOpen}
+        setIsSearchOpen={setIsSearchOpen}
+        setIsSettingsOpen={setIsSettingsOpen}
+        setSidebarState={setSidebarState}
+        sidebarState={sidebarState}
+        sidebarStats={sidebarStats}
+      />
+    </ErrorBoundary>
   )
 }
 

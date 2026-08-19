@@ -111,7 +111,7 @@ export const ReaderSettings = ({ trigger }: ReaderSettingsProps) => {
               <span className="text-muted-foreground text-xs">推荐全屏模式使用</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {availableColors.map((color) => (
+              {availableColors.map((color: string) => (
                 <button
                   className={cn(
                     'group relative flex flex-col items-center gap-1.5 rounded-md border-2 border-border/20 p-2 transition-colors',

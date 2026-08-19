@@ -5,8 +5,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Mock Tauri API
@@ -48,7 +48,7 @@ describe('GraphControls', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset the mock to return default state
-    ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+    ;(useGraphStore as unknown as Mock).mockImplementation((selector: unknown) => {
       const state = {
         filters: defaultFilters,
         updateFilters: mockUpdateFilters,
@@ -71,7 +71,7 @@ describe('GraphControls', () => {
         types: ['semantic'],
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector: unknown) => {
         const state = {
           filters: filtersWithLayout,
           updateFilters: mockUpdateFilters,
@@ -90,7 +90,6 @@ describe('GraphControls', () => {
 
   describe('updateFilters Integration', () => {
     it('should call updateFilters when minWeight changes', async () => {
-      const user = userEvent.setup()
       const onFiltersChange = vi.fn()
 
       renderWithQueryClient(

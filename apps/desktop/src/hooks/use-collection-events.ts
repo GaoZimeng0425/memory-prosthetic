@@ -86,7 +86,6 @@ export function useCollectionEvents(): void {
       // Handle different event types with optimistic updates
       switch (type) {
         case 'Created': {
-          const { id } = payload as CollectionEvent['Created']
           // Invalidate collections list to fetch new item
           await queryClient.invalidateQueries({
             queryKey: collections.keys.lists(),

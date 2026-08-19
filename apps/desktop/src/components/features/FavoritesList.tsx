@@ -174,7 +174,7 @@ function FavoriteItemWithCount({ favorite, active, onFavoriteChange }: FavoriteI
 
       <EditFavoriteDialog
         favorite={favorite}
-        onOpenChange={(open) => {
+        onOpenChange={(open: boolean) => {
           setIsEditDialogOpen(open)
           if (!open) {
             onFavoriteChange?.()

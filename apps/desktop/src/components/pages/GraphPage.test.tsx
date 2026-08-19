@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
@@ -64,7 +65,7 @@ describe('GraphPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset the mock to return default state
-    ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+    ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
       const state = defaultStoreState
       if (typeof selector === 'function') {
         return selector(state)
@@ -110,7 +111,7 @@ describe('GraphPage', () => {
         types: ['semantic'],
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = { ...defaultStoreState, filters: customFilters }
         if (typeof selector === 'function') {
           return selector(state)
@@ -150,7 +151,7 @@ describe('GraphPage', () => {
         threshold: 0.3,
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = { ...defaultStoreState, clusterResult: mockClusterResult }
         if (typeof selector === 'function') {
           return selector(state)
@@ -164,7 +165,7 @@ describe('GraphPage', () => {
     })
 
     it('should use selectedClusterId from store', () => {
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = { ...defaultStoreState, selectedClusterId: 1 }
         if (typeof selector === 'function') {
           return selector(state)
@@ -210,7 +211,7 @@ describe('GraphPage', () => {
         maxDepth: 2,
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = { ...defaultStoreState, filters: fullFilters }
         if (typeof selector === 'function') {
           return selector(state)
@@ -232,7 +233,7 @@ describe('GraphPage', () => {
         maxNodes: 500,
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = { ...defaultStoreState, filters: newFilters }
         if (typeof selector === 'function') {
           return selector(state)
@@ -273,7 +274,7 @@ describe('GraphPage', () => {
         threshold: 0.3,
       }
 
-      ;(useGraphStore as vi.Mock).mockImplementation((selector) => {
+      ;(useGraphStore as unknown as Mock).mockImplementation((selector) => {
         const state = {
           ...defaultStoreState,
           clusterResult: mockClusterResult,
